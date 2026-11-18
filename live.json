@@ -1,0 +1,10 @@
+{
+  "schema": "nexus-live-v1",
+  "generated_at": null,
+  "sources": {
+    "cbp": { "status": "pending", "retrieved_at": null, "url": "https://bwt.cbp.gov/api/waittimes", "coverage": 0 },
+    "cbsa": { "status": "pending", "retrieved_at": null, "url": "https://www.cbsa-asfc.gc.ca/bwt-taf/bwt-eng.csv", "coverage": 0 }
+  },
+  "directions": { "us": {}, "ca": {} },
+  "disclaimer": "Initial placeholder. GitHub Actions must run successfully before live readings are published."
+}
