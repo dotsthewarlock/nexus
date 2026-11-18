@@ -1,4 +1,3 @@
-
 name: Publish Nexus RC1 live snapshot
 
 on:
@@ -44,6 +43,7 @@ jobs:
         run: |
           mkdir -p site/data
           cp index.html site/index.html
+          cp styles.css site/styles.css
           cp data/live.json site/data/live.json
           touch site/.nojekyll
 

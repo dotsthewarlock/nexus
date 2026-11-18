@@ -3,145 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f6f8fb">
+  <meta name="theme-color" content="#142b40">
   <meta name="description" content="Nexus commuter: official CBP and CBSA border wait reports for three Windsor–Detroit crossings.">
-  <title>Nexus RC1 | Windsor–Detroit border commuter</title>
-  <style>
-    :root { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color-scheme: light; --bg:#f5f7fa; --surface:#ffffff; --surface-alt:#edf3f5; --ink:#142432; --muted:#647482; --line:#dce5e9; --accent:#086f76; --accent-soft:#e1f3f2; --accent-ink:#085961; --warn-bg:#fff3dc; --warn-ink:#78521d; --shadow:0 12px 34px rgba(28,56,69,.055); --ring:#007e87; }
-    *,*::before,*::after { box-sizing:border-box; }
-    body { background:var(--bg); color:var(--ink); margin:0; min-height:100vh; }
-    button, input, select { font:inherit; }
-    button { cursor:pointer; }
-    button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible { outline:3px solid var(--ring); outline-offset:3px; }
-    a { color:var(--accent-ink); }
-    .page { max-width:1080px; margin:auto; padding:0 28px 48px; }
-    .topbar { height:78px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); }
-    .brand { display:flex; align-items:center; gap:12px; text-decoration:none; color:var(--ink); }
-    .brand-mark { background:var(--accent); color:#fff; border-radius:13px; width:36px; height:36px; display:grid; place-items:center; font-weight:800; font-size:21px; letter-spacing:-4px; padding-right:3px; }
-    .brand-name { font-weight:780; letter-spacing:-.9px; font-size:22px; line-height:1.06; }
-    .brand-subtitle { font-size:10px; color:var(--muted); font-weight:650; letter-spacing:1.7px; text-transform:uppercase; margin-top:5px; }
-    .utility-actions { display:flex; align-items:center; gap:10px; }
-    .tiny-tag { color:var(--muted); background:var(--surface); border:1px solid var(--line); border-radius:100px; padding:7px 11px; font-size:11px; font-weight:750; text-transform:uppercase; letter-spacing:.7px; }
-    .icon-btn { background:var(--surface); border:1px solid var(--line); color:var(--ink); border-radius:11px; height:39px; min-width:42px; display:grid; place-items:center; font-size:20px; box-shadow:var(--shadow); }
-    .intro { padding:32px 0 17px; display:flex; justify-content:space-between; gap:22px; align-items:flex-end; }
-    .eyebrow { font-size:11px; font-weight:800; letter-spacing:1.4px; color:var(--accent); text-transform:uppercase; margin:0 0 9px; }
-    h1 { margin:0; font-size:clamp(28px,4vw,43px); line-height:1.13; letter-spacing:-1.8px; font-weight:800; }
-    .intro p:last-child { margin:9px 0 0; color:var(--muted); font-size:14px; }
-    .current-date { color:var(--muted); font-size:12px; padding-bottom:7px; white-space:nowrap; }
-    .demo-banner { display:flex; align-items:flex-start; gap:11px; padding:13px 15px; background:var(--warn-bg); color:var(--warn-ink); border:1px solid #f3dbab; border-radius:13px; font-size:12px; line-height:1.5; }
-    .demo-banner strong { display:block; font-size:12px; }
-    .demo-banner span.symbol { font-weight:800; font-size:14px; border:1px solid currentColor; width:21px; height:21px; flex:0 0 21px; border-radius:100%; text-align:center; line-height:19px; }
-    .demo-banner .banner-copy { flex:1; }
-    .text-action { border:0; background:none; text-decoration:underline; color:inherit; font-weight:750; padding:0; white-space:nowrap; font-size:12px; }
-    .toolbar { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:23px 0 16px; }
-    .toolbar-label { color:var(--muted); text-transform:uppercase; letter-spacing:1px; font-size:11px; font-weight:800; }
-    .segmented { background:var(--surface-alt); border-radius:13px; padding:4px; display:inline-flex; gap:2px; border:1px solid var(--line); }
-    .segmented button { min-height:38px; border:0; border-radius:9px; background:transparent; color:var(--muted); font-size:12px; font-weight:700; padding:0 18px; }
-    .segmented button.active { background:var(--surface); color:var(--ink); box-shadow:0 2px 7px rgba(34,48,55,.1); }
-    .section-heading { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:8px 0 14px; }
-    h2 { font-size:18px; letter-spacing:-.5px; margin:0; }
-    .section-heading p { color:var(--muted); margin:0; font-size:12px; }
-    .cards { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:13px; }
-    .crossing-card { background:var(--surface); border:1.5px solid var(--line); border-radius:17px; padding:17px; min-width:0; position:relative; box-shadow:var(--shadow); display:flex; flex-direction:column; transition:border-color .1s,box-shadow .1s; }
-    .crossing-card.selected { border:2px solid var(--accent); padding:16.5px; box-shadow:0 0 0 3px var(--accent-soft),var(--shadow); }
-    .card-top { display:flex; justify-content:space-between; gap:6px; align-items:flex-start; min-height:55px; }
-    .crossing-title { font-size:17px; line-height:1.28; font-weight:760; letter-spacing:-.55px; max-width:230px; margin:0; }
-    .crossing-short { font-size:11px; color:var(--muted); margin-top:5px; }
-    .star-btn { display:grid; place-items:center; width:34px; height:34px; flex:none; border:0; border-radius:10px; background:var(--surface-alt); color:var(--muted); font-size:22px; line-height:1; }
-    .star-btn.is-fav { color:#b77c13; background:#fff3d8; }
-    .reading { margin-top:17px; padding-top:13px; border-top:1px solid var(--line); }
-    .reading-label { text-transform:uppercase; color:var(--muted); font-size:10px; font-weight:800; letter-spacing:1.1px; }
-    .reading-main { display:flex; align-items:baseline; gap:7px; margin:6px 0; }
-    .reading-number { letter-spacing:-2px; font-weight:800; font-size:44px; line-height:1; font-variant-numeric:tabular-nums; }
-    .reading-unit { color:var(--muted); font-size:13px; font-weight:700; }
-    .reading-note { font-size:11px; color:var(--muted); }
-    .card-meta { margin-top:15px; border-top:1px solid var(--line); padding-top:13px; display:grid; gap:9px; }
-    .meta-row { font-size:11px; display:flex; align-items:center; justify-content:space-between; gap:9px; }
-    .meta-row span:first-child { color:var(--muted); }
-    .meta-row strong { color:var(--ink); font-size:11px; text-align:right; font-weight:650; }
-    .card-bottom { display:flex; align-items:center; gap:10px; margin-top:auto; padding-top:18px; }
-    .pick-btn { background:var(--surface-alt); border:1px solid var(--line); color:var(--ink); border-radius:10px; padding:11px 12px; font-size:12px; font-weight:800; width:100%; min-height:40px; }
-    .pick-btn.current { background:var(--accent-soft); border-color:transparent; color:var(--accent-ink); }
-    .pill { display:inline-block; padding:5px 8px; border-radius:100px; font-size:10px; font-weight:800; letter-spacing:.2px; background:var(--surface-alt); color:var(--muted); }
-    .pill.tinted { background:var(--accent-soft); color:var(--accent-ink); }
-    .journey { margin-top:22px; background:var(--surface); border:1px solid var(--line); border-radius:17px; padding:21px 22px; box-shadow:var(--shadow); display:grid; grid-template-columns:1.2fr 1fr auto; gap:20px; align-items:center; }
-    .journey-title { font-size:16px; font-weight:800; letter-spacing:-.35px; }
-    .journey-detail { font-size:12px; color:var(--muted); margin-top:7px; line-height:1.45; }
-    .dest-tabs { display:flex; flex-wrap:wrap; gap:8px; margin-top:11px; }
-    .dest-tab { border:1px solid var(--line); background:var(--surface); color:var(--muted); border-radius:9px; padding:8px 14px; min-height:35px; font-weight:750; font-size:12px; }
-    .dest-tab.active { background:var(--accent-soft); border-color:var(--accent-soft); color:var(--accent-ink); }
-    .selected-route { font-size:12px; color:var(--muted); line-height:1.55; }
-    .selected-route strong { display:block; color:var(--ink); font-size:14px; margin-top:2px; }
-    .selected-route .route-name { margin-bottom:8px; }
-    .primary-btn { width:190px; background:var(--accent); color:#fff; border:1px solid var(--accent); border-radius:11px; min-height:47px; padding:10px 13px; font-size:12px; font-weight:800; letter-spacing:.1px; }
-    .primary-btn:hover { filter:brightness(.95); }
-    .route-warning { color:var(--muted); font-size:11px; line-height:1.5; margin-top:8px; max-width:190px; }
-    .footer { margin-top:24px; padding:17px 2px 0; border-top:1px solid var(--line); display:flex; align-items:start; justify-content:space-between; gap:22px; }
-    .footer p { max-width:500px; color:var(--muted); font-size:11px; line-height:1.55; margin:0; }
-    .source-links { display:flex; flex-wrap:wrap; gap:16px; }
-    .source-links a { font-size:11px; font-weight:750; white-space:nowrap; }
-    dialog { border:1px solid var(--line); background:var(--surface); color:var(--ink); border-radius:18px; width:min(500px,calc(100% - 24px)); padding:0; box-shadow:0 25px 75px rgba(10,34,45,.28); max-height:90vh; }
-    dialog::backdrop { background:rgba(8,23,35,.46); }
-    .dialog-head { padding:22px 23px 16px; display:flex; justify-content:space-between; align-items:start; border-bottom:1px solid var(--line); }
-    .dialog-head h2 { font-size:21px; }
-    .dialog-head p { margin:6px 0 0; font-size:12px; color:var(--muted); }
-    .close-btn { background:var(--surface-alt); border:0; width:32px; height:32px; border-radius:9px; color:var(--ink); font-size:19px; }
-    .dialog-body { padding:22px 23px; display:grid; gap:19px; }
-    .field label { display:block; font-size:12px; font-weight:770; margin-bottom:8px; }
-    .field input,.field select { background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:10px; width:100%; min-height:43px; padding:10px 12px; font-size:13px; }
-    .field .help { margin-top:6px; font-size:11px; line-height:1.45; color:var(--muted); }
-    .switch-row { display:flex; gap:14px; align-items:center; justify-content:space-between; }
-    .switch-row strong { font-size:12px; }
-    .switch-row p { font-size:11px; margin:5px 0 0; color:var(--muted); }
-    .switch-row input { appearance:none; width:43px; height:25px; border-radius:18px; background:#b4c2c9; position:relative; flex:0 0 43px; cursor:pointer; }
-    .switch-row input::after { content:""; background:white; width:19px; height:19px; position:absolute; left:3px; top:3px; border-radius:100%; transition:transform .15s; }
-    .switch-row input:checked { background:var(--accent); }
-    .switch-row input:checked::after { transform:translateX(18px); }
-    .dialog-footer { padding:0 23px 22px; }
-    .save-btn { width:100%; border:0; border-radius:11px; background:var(--accent); color:white; min-height:45px; font-weight:800; }
-    .small-heading { font-size:11px; font-weight:800; letter-spacing:1px; color:var(--muted); text-transform:uppercase; border-top:1px solid var(--line); padding-top:18px; }
-    body[data-theme="dark"] { color-scheme:dark; --bg:#0c171e; --surface:#14232d; --surface-alt:#20323d; --ink:#ecf5f6; --muted:#a4b8c1; --line:#314651; --accent:#36b9b3; --accent-soft:#143d43; --accent-ink:#8ee6dd; --warn-bg:#352a1b; --warn-ink:#ffdfa6; --shadow:0 10px 34px rgba(0,0,0,.1); --ring:#77dacf; }
-    body[data-theme="dark"] .star-btn.is-fav { color:#ffcf79; background:#46351d; }
-    body[data-theme="dark"] .demo-banner { border-color:#6d512c; }
-    @media (max-width:800px) { .cards { grid-template-columns:1fr; gap:11px; } .crossing-card { padding:15px 16px; } .crossing-card.selected { padding:14.5px 15.5px; } .card-top { min-height:auto; } .crossing-title { font-size:17px; } .reading { margin-top:11px; } .card-meta { grid-template-columns:1fr 1fr; column-gap:22px; margin-top:12px; } .card-bottom { padding-top:14px; } .journey { grid-template-columns:1fr 1fr; } .journey-action { grid-column:1 / -1; } .primary-btn { width:100%; } .route-warning { max-width:none; } }
-    @media (max-width:560px) { .page { padding:0 16px 30px; } .topbar { height:67px; } .brand-name { font-size:20px; } .intro { padding-top:26px; } .intro h1 { font-size:29px; letter-spacing:-1.2px; } .current-date { display:none; } .demo-banner { flex-wrap:wrap; } .demo-banner .text-action { margin-left:32px; } .toolbar { align-items:stretch; flex-direction:column; gap:9px; padding:19px 0 12px; } .segmented { width:100%; } .segmented button { flex:1; padding:0 8px; } .section-heading { margin-top:7px; } .section-heading p { font-size:11px; max-width:145px; text-align:right; } .card-top { min-height:45px; } .reading-number { font-size:39px; } .reading { padding-top:11px; } .crossing-card .card-meta { padding-top:11px; } .journey { padding:17px; grid-template-columns:1fr; gap:15px; } .journey-action { grid-column:auto; } .footer { flex-direction:column; gap:14px; } }
-    @media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
-  
-    .route-inputs { display:grid; grid-template-columns:1fr; gap:6px; margin-top:13px; }
-    .route-inputs label { font-size:11px; font-weight:800; color:var(--muted); }
-    .route-inputs label span { font-weight:500; }
-    .route-inputs input { width:100%; min-height:37px; border-radius:9px; border:1px solid var(--line); background:var(--surface); padding:8px 11px; color:var(--ink); font-size:12px; }
-    .link-btn { display:block; width:190px; margin-top:8px; border:1px solid var(--line); color:var(--accent-ink); background:var(--surface); border-radius:10px; min-height:37px; font-size:12px; font-weight:700; }
-    .reading-number.reading-closed { font-size:25px; letter-spacing:-.5px; }
-    .crossing-card.unavailable .reading-number { color:var(--muted); }
-    .reading-note.caution { color:var(--warn-ink); }
-    .notice { background:var(--warn-bg); color:var(--warn-ink); padding:8px; border-radius:8px; margin-top:11px; font-size:11px; line-height:1.4; }
-    .demo-banner[data-state="healthy"] { background:var(--accent-soft); color:var(--accent-ink); border-color:var(--line); }
-    .demo-banner[data-state="neutral"] { background:var(--surface-alt); color:var(--muted); border-color:var(--line); }
-    @media (max-width:800px) { .journey { grid-template-columns:1fr 1fr auto; } .journey-action { grid-column:auto; } }
-    @media (max-width:560px) { .journey { grid-template-columns:1fr; } .link-btn, .primary-btn { width:100%; } .journey-action { grid-column:auto; } }
-
-    .wait-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}
-    .wait-block{background:var(--surface-alt);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
-    .wait-block .reading-label{color:var(--ink);letter-spacing:.4px;font-size:11px}
-    .wait-block .reading-main{margin:8px 0 5px}
-    .wait-block .reading-number{font-size:34px;letter-spacing:-1px}
-    .wait-block .reading-number.reading-closed{font-size:20px;letter-spacing:0}
-    .wait-block .reading-unit{font-size:11px}
-    .wait-block .reading-note{font-size:10px;line-height:1.45;margin-top:6px}
-    .wait-lanes{font-size:11px;font-weight:750;margin-top:8px}
-    .posted-hours{border-top:1px solid var(--line);margin-top:12px;padding-top:11px;font-size:11px;color:var(--muted);line-height:1.45}
-    .posted-hours strong{color:var(--ink)}
-    .posted-hours .hours-entry{margin-top:4px}
-    .posted-hours .hours-source{margin-top:5px;font-size:10px}
-    .posted-hours a{color:var(--accent-ink)}
-    .location-btn{border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--accent-ink);padding:6px 9px;font-size:11px;font-weight:750;text-transform:none;letter-spacing:0;margin-left:8px}
-    .location-btn:disabled{opacity:.65;cursor:wait}
-    .location-status{color:var(--muted);font-size:10px;font-weight:500;text-transform:none;letter-spacing:0;margin-left:7px}
-    .wait-block.nexus-preferred{border-color:var(--accent)}
-    .wait-block.nexus-preferred .reading-label{color:var(--accent-ink)}
-    @media(max-width:380px){.wait-grid{gap:6px}.wait-block{padding:9px 8px}.wait-block .reading-number{font-size:30px}}
-</style>
+  <title>Nexus RC1.3 | Windsor–Detroit border commuter</title>
+  <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
 <div class="page">
@@ -150,7 +15,7 @@
       <span class="brand-mark" aria-hidden="true">N</span>
       <div><div class="brand-name">nexus</div><div class="brand-subtitle">border companion</div></div>
     </div>
-    <div class="utility-actions"><span class="tiny-tag">Release Candidate 01</span><button id="settingsButton" class="icon-btn" type="button" aria-label="Open settings" title="Settings">⚙</button></div>
+    <div class="utility-actions"><span class="tiny-tag">RC 1.3</span><button id="settingsButton" class="icon-btn" type="button" aria-label="Open settings" title="Settings">⚙</button></div>
   </header>
 
   <main>
@@ -166,7 +31,7 @@
     </section>
 
     <section aria-label="Travel direction">
-      <div class="toolbar"><div class="toolbar-label">Travel direction <button type="button" id="locateDirection" class="location-btn" title="Detect border side from device location">Use my location</button><span id="locationStatus" class="location-status" role="status"></span></div><div class="segmented" role="group" aria-label="Choose direction"><button type="button" id="toUS" aria-pressed="true">Canada → USA</button><button type="button" id="toCA" aria-pressed="false">USA → Canada</button></div></div>
+      <div class="toolbar"><div class="toolbar-label">Travel direction <button type="button" id="locateDirection" class="location-btn" title="Detect border side from your device location">Use my location</button><span id="locationStatus" class="location-status" role="status"></span></div><div class="segmented" role="group" aria-label="Choose direction"><button type="button" id="toUS" aria-pressed="true">Canada → USA</button><button type="button" id="toCA" aria-pressed="false">USA → Canada</button></div></div>
     </section>
 
     <section aria-labelledby="crossing-heading">
@@ -191,7 +56,7 @@
       <div class="field"><label for="homeInput">Home destination</label><input type="text" id="homeInput" placeholder="Street address or place" autocomplete="street-address"><div class="help">Used only to build a Google Maps link when you choose Home.</div></div>
       <div class="field"><label for="workInput">Work destination</label><input type="text" id="workInput" placeholder="Street address or place"><div class="help">Use a destination that your map application can find reliably.</div></div>
       <div class="field"><label for="themeInput">Appearance</label><select id="themeInput"><option value="system">Follow device</option><option value="light">Always light</option><option value="dark">Always dark</option></select></div>
-      <div class="switch-row"><div><strong>I use NEXUS</strong><p>Both waits display. NEXUS preference prioritizes US-bound CBP NEXUS waits; Canada-bound NEXUS waits remain unavailable.</p></div><input id="nexusInput" aria-label="I use NEXUS" type="checkbox" role="switch"></div>
+      <div class="switch-row"><div><strong>I use NEXUS</strong><p>Both regular and NEXUS waits always display. This preference prioritizes reported NEXUS waits for US-bound comparisons; Canada-bound NEXUS waits are unavailable.</p></div><input id="nexusInput" aria-label="I use NEXUS" type="checkbox" role="switch"></div>
       <div class="small-heading">Build diagnostics</div>
       <div class="field"><div class="help" id="diagnosticText">Waiting for official feed snapshots.</div><div class="help">Feed snapshots are published on a schedule, not directly polled from your device. CBSA does not supply separate Canada-bound NEXUS waits. Incidents and route-through-crossing are not yet validated.</div></div>
     </div>
@@ -199,9 +64,35 @@
   </form>
 </dialog>
 
+
+<dialog id="cameraDialog" class="camera-dialog" aria-labelledby="cameraTitle" aria-describedby="cameraDescription">
+  <div class="dialog-head">
+    <div><h2 id="cameraTitle">Crossing camera</h2><p id="cameraDescription">Official operator camera and approach views</p></div>
+    <button id="closeCamera" class="close-btn" type="button" aria-label="Close camera preview">×</button>
+  </div>
+  <div class="camera-body">
+    <div class="camera-stage" aria-label="Camera preview area">
+      <div id="cameraEmpty" class="camera-empty">
+        <span class="camera-icon" aria-hidden="true">▣</span>
+        <strong id="cameraEmptyTitle">Official source</strong>
+        <p id="cameraEmptyText">Preview loads only when requested.</p>
+        <button id="cameraTry" class="camera-try" type="button" hidden>Try live preview</button>
+      </div>
+      <iframe id="cameraFrame" title="Official crossing camera preview" referrerpolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin" allow="fullscreen" hidden></iframe>
+    </div>
+    <div class="camera-meta"><span id="cameraProvider">Source: crossing operator</span><span id="cameraNote">Live availability varies</span></div>
+    <div class="camera-controls">
+      <a id="cameraOfficial" class="camera-open" target="_blank" rel="noopener noreferrer">Open official camera page ↗</a>
+      <a id="cameraSecondary" class="camera-secondary" target="_blank" rel="noopener noreferrer" hidden>Other approach cameras ↗</a>
+    </div>
+    <p class="camera-disclaimer" id="cameraDisclaimer">Cameras are supplemental. They do not measure border inspection wait time.</p>
+  </div>
+</dialog>
+
 <script>
 (() => {
   'use strict';
+  const BUILD_VERSION = 'RC1.3';
   const STORAGE_KEY = 'nexus-prototype-v1'; // Keep RC1 compatible with Prototype 01 preferences.
   const CROSSINGS = [
     { id: 'ambassador', name: 'Ambassador Bridge', short: 'Bridge crossing', waypoint: 'Ambassador Bridge, Windsor Detroit border' },
@@ -310,9 +201,13 @@
     const port = reportFor(id);
     if (!port || (canonicalStatus(port.port_status) === 'closed' && ageMinutes(liveData?.generated_at) <= DATA_AGE_LIMIT_MIN))
       return { priority: 9, minutes: Infinity };
+    // NEXUS priority is meaningful only where CBP publishes NEXUS waits.
     if (state.nexus && state.direction === 'us') {
       const ns = readingState(port.nexus);
-      if (ns.kind === 'current' || ns.kind === 'delayed') return { priority: 0, minutes: port.nexus.minutes };
+      if (ns.kind === 'current' || ns.kind === 'delayed')
+        return { priority: 0, minutes: port.nexus.minutes };
+      // An explicitly closed NEXUS lane is not a zero-minute wait. Show a
+      // standard-lane fallback; never rank missing NEXUS as an open lane.
       const ss = readingState(port.standard);
       if (ss.kind === 'current' || ss.kind === 'delayed')
         return { priority: ns.kind === 'closed' ? 1 : 2, minutes: port.standard.minutes };
@@ -323,17 +218,18 @@
       ? { priority: 0, minutes: port.standard.minutes } : { priority: 9, minutes: Infinity };
   }
   function canonicalStatus(status) { return String(status || '').toLowerCase(); }
-  // CBSA's published Canada-bound NEXUS schedules. Not live lane confirmation.
+  // Published hours are intentionally distinguished from live operational status.
+  // These CA-bound times require periodic comparison with CBSA's office directory.
   const NEXUS_HOURS_CA = {
-    ambassador: ['Lane 1: weekdays (except holidays) 7am-midnight','Lane 1: weekends/holidays 8am-10pm','Lane 2: weekdays (except holidays) 2-9pm','Lane 3: weekdays (except holidays) 3-7pm'],
-    tunnel: ['Weekdays (except holidays) 7am-10pm','Weekends/holidays 11am-7pm'],
-    gordie: ['Weekdays 6am-11pm','Weekends/holidays 8am-10pm']
+    ambassador: ['Lane 1: weekdays (except holidays) 7am-midnight', 'Lane 1: weekends/holidays 8am-10pm', 'Lane 2: weekdays (except holidays) 2-9pm', 'Lane 3: weekdays (except holidays) 3-7pm'],
+    tunnel: ['Weekdays (except holidays) 7am-10pm', 'Weekends/holidays 11am-7pm'],
+    gordie: ['Weekdays 6am-11pm', 'Weekends/holidays 8am-10pm']
   };
   const NEXUS_HOURS_SOURCE = 'https://www.cbsa-asfc.gc.ca/data/cbsa-offices-services-bureaux-asfc-en.json';
-  function laneCount(reading, status, portClosed) {
-    if (portClosed) return 'Port closed';
-    if (status.kind === 'closed') return '0 lanes reported open';
-    if (['current','delayed'].includes(status.kind) && Number.isInteger(reading?.lanes_open) && reading.lanes_open >= 0)
+  function laneCount(reading, state, isClosed) {
+    if (isClosed) return 'Port closed';
+    if (state.kind === 'closed') return '0 lanes reported open';
+    if (['current','delayed'].includes(state.kind) && Number.isInteger(reading?.lanes_open) && reading.lanes_open >= 0)
       return reading.lanes_open + (reading.lanes_open === 1 ? ' lane reported open' : ' lanes reported open');
     return 'Open lanes not reported';
   }
@@ -367,18 +263,16 @@
       const n = state.direction === 'us' ? port?.nexus : null;
       const ns = readingState(n);
       const nexusReadable = state.direction === 'us' && ['current','delayed'].includes(ns.kind) && !isClosed;
-      const nexusWait = isClosed ? 'Closed' : state.direction === 'ca' ? '—' : ns.kind === 'closed' ? 'Closed'
-        : nexusReadable ? String(n.minutes) : '—';
-      const standardLaneText = state.direction === 'ca' ? 'Open lanes not reported' : laneCount(reading,status,isClosed);
-      const nexusLaneText = state.direction === 'ca' ? 'Open lanes not reported' : laneCount(n,ns,isClosed);
-      const nexusNote = state.direction === 'ca' ? 'CBSA does not publish separate NEXUS waits'
-        : isClosed ? 'Port reported closed' : ns.message;
+      const nexusWait = isClosed ? 'Closed' : state.direction === 'ca' ? '—' : ns.kind === 'closed' ? 'Closed' : nexusReadable ? String(n.minutes) : '—';
+      const nexusLaneText = state.direction === 'ca' ? 'Open lanes not reported' : laneCount(n, ns, isClosed);
+      const standardLaneText = state.direction === 'ca' ? 'Open lanes not reported' : laneCount(reading, status, isClosed);
+      const nexusNote = state.direction === 'ca' ? 'CBSA does not publish separate NEXUS waits' : isClosed ? 'Port reported closed' : ns.message;
       const hours = state.direction === 'ca' ? NEXUS_HOURS_CA[crossing.id] : null;
-      const publishedHours = hours ?
-        '<div class="posted-hours"><strong>Canada-bound NEXUS hours (published)</strong>' +
-        hours.map(h=>'<div class="hours-entry">'+escapeHtml(h)+'</div>').join('') +
-        '<div class="hours-source">Published schedule; not live lane confirmation. <a href="'+NEXUS_HOURS_SOURCE+'" target="_blank" rel="noopener noreferrer">CBSA office directory</a>. Check holiday exceptions.</div></div>'
-        : '<div class="posted-hours"><strong>US-bound NEXUS hours</strong><div class="hours-entry">Separate published schedule not verified; use CBP-reported lane status above.</div></div>';
+      const publishedHours = hours
+        ? '<div class="posted-hours"><strong>Canada-bound NEXUS hours (published)</strong>' +
+          hours.map(h => '<div class="hours-entry">' + escapeHtml(h) + '</div>').join('') +
+          '<div class="hours-source">Published schedule, not live lane confirmation. <a href="' + NEXUS_HOURS_SOURCE + '" target="_blank" rel="noopener noreferrer">CBSA directory</a>. Check holiday exceptions.</div></div>'
+        : '<div class="posted-hours"><strong>US-bound NEXUS hours</strong><div class="hours-entry">Separate published schedule not verified; consult CBP and current reported lane status above.</div></div>';
       const sourceLabel = state.direction === 'us' ? 'CBP' : 'CBSA';
       const stamp = reading?.observation_at ? ` · ${formatTime(reading.observation_at)}` : '';
       const notice = port?.notice ? `<div class="notice"><strong>Agency notice:</strong> ${escapeHtml(safeText(port.notice))}</div>` : '';
@@ -386,9 +280,8 @@
       card.className = `crossing-card${isSelected ? ' selected' : ''}${hasWait ? '' : ' unavailable'}`;
       card.innerHTML = `
         <div class="card-top"><div><h3 class="crossing-title">${crossing.name}</h3><div class="crossing-short">${crossing.short}</div></div><button class="star-btn ${isFav ? 'is-fav' : ''}" type="button" aria-pressed="${isFav}" aria-label="${isFav ? 'Remove favourite' : 'Pin favourite'}: ${crossing.name}" title="Pin favourite">${isFav ? '★' : '☆'}</button></div>
-
         <div class="wait-grid" aria-label="Regular and NEXUS wait times">
-          <div class="wait-block"><div class="reading-label">Regular · ${sourceLabel}</div>
+          <div class="wait-block"><div class="reading-label">Regular <span class="source-agency ${state.direction === 'us' ? 'cbp' : 'cbsa'}">${sourceLabel}</span></div>
             <div class="reading-main"><span class="reading-number ${waitString === 'Closed' ? 'reading-closed' : ''}">${waitString}</span>${hasWait ? '<span class="reading-unit">min</span>' : ''}</div>
             <div class="wait-lanes">${escapeHtml(standardLaneText)}</div>
             <div class="reading-note">${escapeHtml(readNote)}</div>
@@ -402,7 +295,8 @@
         ${publishedHours}
         <div class="card-meta"><div class="meta-row"><span>Data state</span><strong>${escapeHtml(isClosed ? 'Port closed' : status.kind === 'current' ? 'Current' : status.kind === 'delayed' ? 'Aging' : status.kind === 'stale' ? 'Stale · hidden' : status.kind === 'closed' ? 'Lane closed' : 'Unavailable')}${escapeHtml(stamp && hasWait ? stamp : '')}</strong></div></div>
         ${notice}
-        <div class="card-bottom"><button class="pick-btn ${isSelected ? 'current' : ''}" type="button" aria-pressed="${isSelected}">${isSelected ? '✓ Selected crossing' : 'Select crossing'}</button></div>`;
+        <div class="card-bottom"><button class="pick-btn ${isSelected ? 'current' : ''}" type="button" aria-pressed="${isSelected}">${isSelected ? '✓ Selected crossing' : 'Select crossing'}</button><button class="camera-btn" type="button" aria-label="Open camera for ${crossing.name}">${crossing.id === 'gordie' ? 'Approach cameras' : 'Camera'}</button></div>`;
+      card.querySelector('.camera-btn').addEventListener('click', () => openCamera(crossing));
       card.querySelector('.star-btn').addEventListener('click', () => {
         state.favorites[state.direction] = isFav ? null : crossing.id;
         save(); render();
@@ -439,7 +333,7 @@
     $('dataBanner').dataset.state = variant;
     $('demoHeading').textContent = heading;
     $('demoMessage').textContent = detail;
-    $('sortNote').textContent = state.nexus && state.direction === 'us' ? 'Pinned first · NEXUS wait ranking; regular fallback' : 'Pinned first · reported regular waits';
+    $('sortNote').textContent = state.nexus && state.direction === 'us' ? 'Pinned first · reported NEXUS waits; regular fallback' : 'Pinned first · reported regular waits';
     $('refreshButton').disabled = loadInProgress;
     $('refreshButton').textContent = loadInProgress ? 'Refreshing…' : 'Refresh';
     const diagnostics = [];
@@ -518,46 +412,118 @@
       render();
     }
   }
-  // Local-only, conservative approximation: refuse uncertain riverside coordinates.
+  // Optional, local-only coarse direction detector. Deliberately refuses
+  // ambiguous waterfront coordinates rather than guessing the country.
   function borderSide(latitude, longitude) {
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+    // Far from the local commuter region: preserve saved selection.
     if (latitude < 42.08 || latitude > 42.8 || longitude < -83.9 || longitude > -82.55) return null;
-    if (longitude < -83.18) return 'us';
-    if (latitude > 42.43 && longitude < -82.92) return 'us';
-    if (longitude > -82.90 && latitude < 42.34) return 'ca';
-    const points=[[-83.18,42.19],[-83.12,42.255],[-83.08,42.302],[-83.04,42.327],[-82.99,42.355],[-82.93,42.386],[-82.90,42.405]];
-    for(let i=1;i<points.length;i++){
-      const [lon1,lat1]=points[i-1],[lon2,lat2]=points[i];
-      if(longitude>=lon1 && longitude<=lon2){
-        const borderLatitude=lat1+(longitude-lon1)/(lon2-lon1)*(lat2-lat1);
-        if(latitude>borderLatitude+.012)return 'us';
-        if(latitude<borderLatitude-.012)return 'ca';
+    if (longitude < -83.18) return 'us'; // Detroit metro, west of Windsor
+    if (latitude > 42.43 && longitude < -82.92) return 'us'; // Northern Detroit suburbs
+    if (longitude > -82.90 && latitude < 42.34) return 'ca'; // East of Windsor
+    // Approximate centreline of Detroit River, used only away from its banks.
+    const points = [[-83.18,42.19],[-83.12,42.255],[-83.08,42.302],[-83.04,42.327],[-82.99,42.355],[-82.93,42.386],[-82.90,42.405]];
+    for (let i=1; i<points.length; i++) {
+      const [lon1,lat1]=points[i-1], [lon2,lat2]=points[i];
+      if (longitude >= lon1 && longitude <= lon2) {
+        const borderLatitude = lat1 + ((longitude-lon1)/(lon2-lon1))*(lat2-lat1);
+        if (latitude > borderLatitude + .012) return 'us';
+        if (latitude < borderLatitude - .012) return 'ca';
         return null;
       }
     }
     return null;
   }
-  function locationFeedback(message){ $('locationStatus').textContent=message; }
-  function detectDirection(){
-    if(!navigator.geolocation || manualDirectionOverride)return;
-    const button=$('locateDirection');button.disabled=true;
-    navigator.geolocation.getCurrentPosition(p=>{
-      button.disabled=false;
-      const side=borderSide(p.coords.latitude,p.coords.longitude);
-      if(!side){locationFeedback('Location uncertain; direction unchanged');return;}
-      state.direction=side;save();render();
-      locationFeedback(side==='us'?'Detected: travel to USA':'Detected: travel to Canada');
-    },err=>{
-      button.disabled=false;
-      locationFeedback(err.code===1?'Location blocked; select direction manually':'Location unavailable');
-    },{enableHighAccuracy:false,maximumAge:300000,timeout:7000});
+  function locationFeedback(message) { $('locationStatus').textContent = message; }
+  function detectDirection(requestPermission) {
+    if (!navigator.geolocation || manualDirectionOverride) return;
+    const b = $('locateDirection');
+    b.disabled = true;
+    navigator.geolocation.getCurrentPosition(position => {
+      b.disabled = false;
+      const side = borderSide(position.coords.latitude, position.coords.longitude);
+      if (!side) { locationFeedback('Location near border or outside coverage; direction unchanged'); return; }
+      state.direction = side === 'ca' ? 'us' : 'ca';
+      save(); render();
+      locationFeedback(side === 'ca' ? 'In Canada · travel to USA' : 'In USA · travel to Canada');
+    }, error => {
+      b.disabled = false;
+      if (requestPermission) locationFeedback(error.code === 1 ? 'Location blocked; select direction manually' : 'Location unavailable');
+    }, { enableHighAccuracy: false, maximumAge: 5*60*1000, timeout: 7000 });
   }
-  function autoDetectDirectionIfGranted(){
-    if(explicitDirection || !navigator.permissions?.query)return;
-    navigator.permissions.query({name:'geolocation'}).then(p=>{
-      if(p.state==='granted' && !manualDirectionOverride)detectDirection();
-    }).catch(()=>{});
+  // No automatic permission prompt on first visit. Previously granted access
+  // can be reused on launch; otherwise the user may opt in with one tap.
+  function autoDetectDirectionIfGranted() {
+    if (explicitDirection || !navigator.permissions?.query) return;
+    navigator.permissions.query({name:'geolocation'}).then(result => {
+      if (result.state === 'granted' && !manualDirectionOverride) detectDirection(false);
+    }).catch(() => {});
   }
+  // Official links only; no third-party proxies or unverified stream scraping.
+  // Ambassador camera iframe URLs come from the operator's own embed pages.
+  const CAMERAS = {
+    ambassador: {
+      us: {provider:'Ambassador Bridge', view:'Toward the United States', url:'https://www.ambassadorbridge.com/into-the-united-states/', embed:'https://ambassador.solutionspal.com/cams/cam2.html'},
+      ca: {provider:'Ambassador Bridge', view:'Toward Canada', url:'https://www.ambassadorbridge.com/into-canada/', embed:'https://ambassador.solutionspal.com/cams/cam1.html'}
+    },
+    tunnel: {
+      us: {provider:'Detroit–Windsor Tunnel', view:'Windsor to Detroit inspection', url:'https://www.dwtunnel.com/'},
+      ca: {provider:'Detroit–Windsor Tunnel', view:'Detroit to Windsor inspection / Randolph Street', url:'https://www.dwtunnel.com/'}
+    },
+    gordie: {
+      us: {provider:'Ontario 511 / MDOT', view:'Ontario Highway 401 approach cameras', url:'https://511on.ca/?SelectedLayers=Cameras', secondary:'https://mdotjboss.state.mi.us/MiDrive/map?cameras=true', secondaryLabel:'Michigan MDOT cameras ↗', approach:true},
+      ca: {provider:'MDOT / Ontario 511', view:'Michigan I-75 approach cameras', url:'https://mdotjboss.state.mi.us/MiDrive/map?cameras=true', secondary:'https://511on.ca/?SelectedLayers=Cameras', secondaryLabel:'Ontario 511 cameras ↗', approach:true}
+    }
+  };
+  let cameraActive = null;
+  function closeCamera() {
+    $('cameraFrame').removeAttribute('src');
+    $('cameraFrame').hidden = true;
+    $('cameraEmpty').hidden = false;
+    cameraActive = null;
+    if ($('cameraDialog').open) $('cameraDialog').close();
+  }
+  function openCamera(crossing) {
+    const view = CAMERAS[crossing.id]?.[state.direction];
+    if (!view) return;
+    cameraActive = view;
+    $('cameraTitle').textContent = crossing.name;
+    $('cameraDescription').textContent = (state.direction === 'us' ? 'Canada → USA' : 'USA → Canada') + ' · ' + view.view;
+    $('cameraProvider').textContent = 'Source: ' + view.provider;
+    $('cameraOfficial').href = view.url;
+    $('cameraOfficial').textContent = view.approach ? 'Open official approach cameras ↗' : 'Open official camera page ↗';
+    $('cameraSecondary').hidden = !view.secondary;
+    if (view.secondary) {
+      $('cameraSecondary').href = view.secondary;
+      $('cameraSecondary').textContent = view.secondaryLabel;
+    } else $('cameraSecondary').removeAttribute('href');
+    $('cameraEmptyTitle').textContent = view.embed ? 'Directional camera' : view.approach ? 'Nearby road cameras' : 'Official tunnel cameras';
+    $('cameraEmptyText').textContent = view.embed ? 'Tap to load the operator-provided preview. Third-party framing may be blocked on some devices.'
+      : view.approach ? 'The bridge operator has not published a verified embeddable crossing view. Open the appropriate government road-camera map.'
+      : 'The tunnel streams are hosted on the official site. A reliable external embed has not been verified.';
+    $('cameraTry').hidden = !view.embed;
+    $('cameraEmpty').hidden = false;
+    $('cameraFrame').hidden = true;
+    $('cameraFrame').removeAttribute('src');
+    $('cameraNote').textContent = view.embed ? 'Preview is opt-in' : 'Official link only';
+    $('cameraDisclaimer').textContent = view.approach ? 'These are nearby highway views, not verified border inspection queue cameras.'
+      : 'A camera view cannot establish inspection wait time, NEXUS lane availability, or a guaranteed route.';
+    $('cameraDialog').showModal();
+  }
+  $('closeCamera').addEventListener('click', closeCamera);
+  $('cameraDialog').addEventListener('close', () => {
+    $('cameraFrame').removeAttribute('src');
+    $('cameraFrame').hidden = true;
+    cameraActive = null;
+  });
+  $('cameraDialog').addEventListener('click', e => { if (e.target === $('cameraDialog')) closeCamera(); });
+  $('cameraTry').addEventListener('click', () => {
+    if (!cameraActive?.embed) return;
+    $('cameraFrame').src = cameraActive.embed;
+    $('cameraFrame').hidden = false;
+    $('cameraEmpty').hidden = true;
+    $('cameraNote').textContent = 'If blank or blocked, open official page';
+  });
   $('settingsButton').addEventListener('click', openSettings);
   $('closeSettings').addEventListener('click', () => $('settingsDialog').close());
   $('settingsDialog').addEventListener('click', e => { if (e.target === $('settingsDialog')) $('settingsDialog').close(); });
@@ -571,7 +537,7 @@
   });
   $('toUS').addEventListener('click', () => { manualDirectionOverride = true; state.direction = 'us'; save(); render(); locationFeedback('Manual direction'); });
   $('toCA').addEventListener('click', () => { manualDirectionOverride = true; state.direction = 'ca'; save(); render(); locationFeedback('Manual direction'); });
-  $('locateDirection').addEventListener('click', () => { manualDirectionOverride = false; detectDirection(); });
+  $('locateDirection').addEventListener('click', () => { manualDirectionOverride = false; detectDirection(true); });
   $('destHome').addEventListener('click', () => setDestChoice('home'));
   $('destWork').addEventListener('click', () => setDestChoice('work'));
   $('originRoute').addEventListener('input', e => { routeOrigin = e.target.value.slice(0, 180); });
