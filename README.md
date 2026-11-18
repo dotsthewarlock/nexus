@@ -1,6 +1,6 @@
-# Nexus RC1.4.1 — commuter decision dashboard
+# Nexus RC1.4.2 — commuter decision dashboard
 
-**Status:** RC1.4 published; RC1.4.1 camera hotfix ready for GitHub Pages deployment. The publishing workflow generates a fresh `data/live.json` from official sources.
+**Status:** RC1.4.2 camera-access correction; deployment is managed by GitHub Actions. The publishing workflow generates a fresh `data/live.json` from official sources.
 
 ## What's included
 
@@ -8,7 +8,7 @@
 - Persistent preferences for each travel direction, NEXUS, Home/Work, appearance, and recommendation sensitivity. Existing `nexus-prototype-v1` browser storage key is retained.
 - One-trip crossing override does not overwrite saved preference.
 - Deterministic `decision.js`: official closure/notice checks, lane status, source freshness, conservative/balanced/information-only comparison. Conservative minimum difference is 20 minutes of **comparable inspection wait**; balanced minimum is 10 minutes. Neither is a full-trip saving estimate.
-- Camera modal loads the official iframe on open: Ambassador Bridge directional image frames support tap-to-zoom (2×), drag-to-pan, keyboard access, and tap-to-reset. DWT retains its Dacast video players and adds Reload video; Nexus no longer imposes a 15-second cutoff before slow players start. Provider-side controls remain unchanged. Closing or switching cameras unloads the previous iframe.
+- Ambassador Bridge directional camera iframe supports tap-to-zoom (2×), drag-to-pan, keyboard access and tap-to-reset. Tunnel camera button opens the official DWT camera website in a new tab, because Nexus-hosted Dacast iframe playback is blocked on the github.io domain. No attempt is made to bypass publisher restrictions. Closing or switching bridge cameras unloads the previous iframe.
 - Expanded official data collection: CBP regular/NEXUS/Ready/FAST/commercial/pedestrian categories, lane counts and maximums; CBSA traveller and commercial waits; CBSA dedicated Canada-bound NEXUS schedules; Detroit–Windsor Tunnel operator lane counts and reported coarse travel-time category; optional Ontario 511 Windsor-Essex road advisories.
 - Observation and source retrieval times remain distinct; stale operator data are suppressed. Missing values are not converted to zero.
 - GitHub Actions publishes a static site and archives each normalized snapshot as an Actions artifact for **30 days**. This is bounded archival, not permanent history storage or a forecast service.
@@ -68,7 +68,7 @@ The GitHub workflow reads the secret only in the server-side collection step. Wi
 | DWT operator | `https://api.dwtunnel.com/api/traffic/conditionspublic` | Captured in user-supplied XHR; parser implemented; backend availability, permissions and update cadence remain to validate |
 | Ontario 511 | `https://511on.ca/api/v2/get/event` | Optional developer-key integration, coarse Windsor–Essex vicinity filtering only |
 | MDOT RIDE | `https://www.michigan.gov/mdot/travel/safety/efforts/its/its-data` | MiLogin for Business needed; linked only, no simulated API |
-| Official cameras | Operator-site links and player iframes | Autoload attempted; origin authorization/autoplay on actual devices still unverified |
+| Official cameras | Operator-site links and player iframes | Ambassador Bridge embed attempted; Tunnel is an authorized external-site link because Dacast blocks third-party playback |
 
 **Important constraints**
 
@@ -83,4 +83,4 @@ The GitHub workflow reads the secret only in the server-side collection step. Wi
 
 ## Publication
 
-The RC1.4.1 camera hotfix is intended for `dotsthewarlock/nexus` GitHub Pages. Validate the Actions job and deployed assets after publication. Live Dacast playback, bridge camera image content, routing, and camera reuse permissions require real-device/operator verification. Earlier identified recommendation-engine issues (schedule day specificity, routine notices, and comparison-age consistency) are **not changed by this camera-only patch**.
+The RC1.4.2 Tunnel correction opens `https://www.dwtunnel.com/` directly on camera tap. The operator controls its own Watch Live buttons and viewing durations. Restoring embedded Tunnel video requires explicit permission/authorization for the Nexus domain; changing referrers or proxying streams is not supported. Validate bridge camera imagery and routing on real devices. Earlier identified recommendation-engine issues (schedule day specificity, routine notices, and comparison-age consistency) are **not changed by this camera-only patch**.

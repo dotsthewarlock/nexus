@@ -10,10 +10,11 @@
     gordie: {waypoint:'Gordie Howe International Bridge'}
   };
   const CBSA_HOURS_URL = 'https://www.cbsa-asfc.gc.ca/data/cbsa-offices-services-bureaux-asfc-en.json';
-  const DACAST_ROOT='https://iframe.dacast.com/live/8b2b630f-b7c1-262d-f343-118f510224a0/';
   const CAMERAS = {
-    tunnel:{us:{provider:'Detroit–Windsor Tunnel',official:'https://www.dwtunnel.com/',views:[{title:'Windsor inspection',embed:DACAST_ROOT+'4aea1c45-d402-3690-afae-fe635942da82'}]},
-      ca:{provider:'Detroit–Windsor Tunnel',official:'https://www.dwtunnel.com/',views:[{title:'Detroit inspection',embed:DACAST_ROOT+'794566d4-a75e-3cd1-6f95-2d60e54f2fdb'},{title:'Randolph Street',embed:DACAST_ROOT+'5408b5c3-f8d1-f34b-a18a-9943047905b6'}]}},
+    // Dacast restricts third-party embedding on Nexus's github.io origin. The
+    // operator's own page is the supported viewer; never render a blocked iframe.
+    tunnel:{us:{provider:'Detroit–Windsor Tunnel',official:'https://www.dwtunnel.com/',views:[],externalOnly:true},
+      ca:{provider:'Detroit–Windsor Tunnel',official:'https://www.dwtunnel.com/',views:[],externalOnly:true}},
     ambassador:{us:{provider:'Ambassador Bridge',official:'https://www.ambassadorbridge.com/into-the-united-states/',views:[{title:'Towards USA',embed:'https://ambassador.solutionspal.com/cams/cam2.html'}]},
       ca:{provider:'Ambassador Bridge',official:'https://www.ambassadorbridge.com/into-canada/',views:[{title:'Towards Canada',embed:'https://ambassador.solutionspal.com/cams/cam1.html'}]}},
     gordie:{us:{provider:'Ontario 511',official:'https://511on.ca/?SelectedLayers=Cameras',views:[]},
@@ -86,6 +87,9 @@
     $('findingIcon').querySelector('use').setAttribute('href',evaluation.kind==='normal'?'#i-check':evaluation.kind==='closed'||evaluation.kind==='consider'||evaluation.kind==='caution'?'#i-alert':'#i-info');
     $('resetTrip').hidden=!tripOverride||tripOverride===preferredId();
     setText('navigateText',destination().trim()?'Preview route':'Set destination');
+    const tunnelCamera=activeId()==='tunnel';
+    setText('heroCameraText',tunnelCamera?'Cameras ↗':'Camera');
+    $('heroCamera').setAttribute('aria-label',tunnelCamera?'Open official Detroit–Windsor Tunnel cameras in a new tab':`Open ${NAMES[activeId()]} camera`);
     setText('heroFreshness',D.usable(home.primary)?`${home.primaryType==='nexus'?'NEXUS':'Regular'} report ${fmtAge(home.primary.age)} · ${prefs.direction==='us'?'CBP':'CBSA'}`:'No current inspection reading');
     renderAlternatives(evaluation);
     renderDataStatus();renderEvents();renderDetails();renderDiagnostics();
@@ -159,7 +163,7 @@
   }
   function renderDiagnostics(){
     const sources=data?.sources||{};
-    $('diagnosticText').innerHTML=[`<p>Build: RC1.4 · Schema: ${esc(data?.schema||'No snapshot')}</p>`,`<p>Generated: ${esc(data?.generated_at||'Unavailable')} · Browser fetch: ${esc(lastClientFetch||'Not yet')}</p>`,...Object.entries(sources).map(([k,v])=>`<p><strong>${esc(k.toUpperCase())}</strong> · ${esc(v.status||'?')} · ${esc(v.coverage===undefined?'':v.coverage+' records')} · Retrieved ${esc(v.retrieved_at||'unknown')}${v.error?' · '+esc(v.error):''}<br><a href="${esc(v.url||'#')}" target="_blank" rel="noopener noreferrer">Official source</a></p>`),
+    $('diagnosticText').innerHTML=[`<p>Build: RC1.4.2 · Schema: ${esc(data?.schema||'No snapshot')}</p>`,`<p>Generated: ${esc(data?.generated_at||'Unavailable')} · Browser fetch: ${esc(lastClientFetch||'Not yet')}</p>`,...Object.entries(sources).map(([k,v])=>`<p><strong>${esc(k.toUpperCase())}</strong> · ${esc(v.status||'?')} · ${esc(v.coverage===undefined?'':v.coverage+' records')} · Retrieved ${esc(v.retrieved_at||'unknown')}${v.error?' · '+esc(v.error):''}<br><a href="${esc(v.url||'#')}" target="_blank" rel="noopener noreferrer">Official source</a></p>`),
     '<p>MDOT RIDE requires MiLogin for Business. Ontario 511 event ingestion requires a developer key. Supplemental feed failure never fabricates a delay or closure.</p>'].join('');
   }
   async function refresh(){
@@ -264,7 +268,15 @@
     // publisher controls any provider-side viewing interval or restrictions.
   }
   function openCamera(id){
-    closeCamera();camera=CAMERAS[id]?.[prefs.direction];if(!camera)return;
+    const config=CAMERAS[id]?.[prefs.direction];
+    if(!config)return;
+    if(config.externalOnly){
+      // Opening directly on the user tap retains access to the authorized
+      // operator-hosted player without attempting to circumvent Dacast rules.
+      window.open(config.official,'_blank','noopener,noreferrer');
+      return;
+    }
+    closeCamera();camera=config;
     camera.kind=id==='ambassador'?'bridge':id==='tunnel'?'video':'links';
     setText('cameraTitle',NAMES[id]);setText('cameraDescription',`${prefs.direction==='us'?'Canada → USA':'USA → Canada'} · Official camera view`);
     setText('cameraProvider',camera.provider);$('cameraOfficial').href=camera.official;

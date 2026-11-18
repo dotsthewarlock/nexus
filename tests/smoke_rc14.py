@@ -61,22 +61,23 @@ def main():
   assert '4' in page.locator('#primaryValue').inner_text()
   assert '2 NEXUS lanes listed' in page.locator('#operatorLine').inner_text()
   page.screenshot(path=str(OUT/'rc14-mobile-dark.png'),full_page=True)
+  # Dacast blocks video from github.io. Both Tunnel directions must instead
+  # reach the operator's authorized player in one tap, without a broken modal.
+  page.evaluate('() => {window.__cameraOpens=[]; window.open=(...args)=>window.__cameraOpens.push(args);}')
+  assert page.locator('#heroCameraText').inner_text()=='Cameras ↗'
   page.locator('#heroCamera').click()
-  assert page.locator('#cameraDialog').evaluate('(x)=>x.open')
-  assert '794566d4' in page.locator('#cameraFrame').get_attribute('src')
-  assert page.locator('#cameraViews button').count()==2
-  page.locator('#cameraViews button').nth(1).click()
-  assert '5408b5c3' in page.locator('#cameraFrame').get_attribute('src')
-  assert page.locator('#cameraZoomSurface').is_hidden(), 'Tunnel player must remain interactive'
-  assert page.locator('#cameraReload').is_visible(), 'Tunnel needs manual reload fallback'
-  assert page.locator('#cameraFallback').is_hidden(), 'Do not cover playing video'
-  page.locator('#cameraReload').click()
-  assert '5408b5c3' in page.locator('#cameraFrame').get_attribute('src')
-  page.screenshot(path=str(OUT/'rc14-camera.png'))
-  page.locator('#closeCamera').click()
+  assert page.evaluate('window.__cameraOpens.length')==1
+  assert page.evaluate('window.__cameraOpens[0]')==['https://www.dwtunnel.com/','_blank','noopener,noreferrer']
+  assert not page.locator('#cameraDialog').evaluate('(x)=>x.open')
   assert page.locator('#cameraFrame').get_attribute('src') is None
+  page.locator('#toUS').click()
+  page.locator('#heroCamera').click()
+  assert page.evaluate('window.__cameraOpens.length')==2
+  assert page.evaluate('window.__cameraOpens[1][0]')=='https://www.dwtunnel.com/'
+  page.locator('#toCA').click()
   page.locator('#alternatives button[data-crossing="ambassador"]').click()
   assert page.locator('#crossingRole').inner_text()=='SELECTED FOR THIS TRIP'
+  assert page.locator('#heroCameraText').inner_text()=='Camera'
   page.locator('#heroCamera').click()
   assert 'cam1.html' in page.locator('#cameraFrame').get_attribute('src'), 'Canada-bound bridge camera'
   zoom=page.locator('#cameraZoomSurface')
@@ -113,5 +114,5 @@ def main():
   desktop.close()
   assert not errors,errors
   browser.close()
- print('RC1.4.1 camera smoke passed: bridge tap-to-zoom, drag pan, keyboard zoom, tunnel reload, camera switching and cleanup, 320/390/1440px.')
+ print('RC1.4.2 camera smoke passed: bridge zoom/pan, Tunnel one-tap operator link both directions, 320/390/1440px.')
 if __name__=='__main__': main()
