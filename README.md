@@ -1,6 +1,6 @@
-# Nexus RC1.4 — commuter decision dashboard
+# Nexus RC1.4.1 — commuter decision dashboard
 
-**Status:** locally built and tested, **not published**. Based on the published RC1.3 source. No live official feed values are bundled as real-time data. `data/live.json` in this package is intentionally a placeholder; the publishing workflow replaces it with freshly collected observations.
+**Status:** RC1.4 published; RC1.4.1 camera hotfix ready for GitHub Pages deployment. The publishing workflow generates a fresh `data/live.json` from official sources.
 
 ## What's included
 
@@ -8,7 +8,7 @@
 - Persistent preferences for each travel direction, NEXUS, Home/Work, appearance, and recommendation sensitivity. Existing `nexus-prototype-v1` browser storage key is retained.
 - One-trip crossing override does not overwrite saved preference.
 - Deterministic `decision.js`: official closure/notice checks, lane status, source freshness, conservative/balanced/information-only comparison. Conservative minimum difference is 20 minutes of **comparable inspection wait**; balanced minimum is 10 minutes. Neither is a full-trip saving estimate.
-- Direct camera iframe attempt upon modal opening: Ambassador Bridge directional operator embeds and three DWT Dacast views. DWT views respect the operator page's 15-second watching interval and offer an explicit restart. Close unloads iframe.
+- Camera modal loads the official iframe on open: Ambassador Bridge directional image frames support tap-to-zoom (2×), drag-to-pan, keyboard access, and tap-to-reset. DWT retains its Dacast video players and adds Reload video; Nexus no longer imposes a 15-second cutoff before slow players start. Provider-side controls remain unchanged. Closing or switching cameras unloads the previous iframe.
 - Expanded official data collection: CBP regular/NEXUS/Ready/FAST/commercial/pedestrian categories, lane counts and maximums; CBSA traveller and commercial waits; CBSA dedicated Canada-bound NEXUS schedules; Detroit–Windsor Tunnel operator lane counts and reported coarse travel-time category; optional Ontario 511 Windsor-Essex road advisories.
 - Observation and source retrieval times remain distinct; stale operator data are suppressed. Missing values are not converted to zero.
 - GitHub Actions publishes a static site and archives each normalized snapshot as an Actions artifact for **30 days**. This is bounded archival, not permanent history storage or a forecast service.
@@ -83,4 +83,4 @@ The GitHub workflow reads the secret only in the server-side collection step. Wi
 
 ## Publication
 
-This package has **not** been pushed to the GitHub repository. After explicit publication authorization, apply these files to `dotsthewarlock/nexus` and let the existing GitHub Pages workflow run. Verify the Actions job, the deployed `data/live.json` schema and source statuses, camera playback on real devices, and crossing-specific navigation before labeling the release production-ready.
+The RC1.4.1 camera hotfix is intended for `dotsthewarlock/nexus` GitHub Pages. Validate the Actions job and deployed assets after publication. Live Dacast playback, bridge camera image content, routing, and camera reuse permissions require real-device/operator verification. Earlier identified recommendation-engine issues (schedule day specificity, routine notices, and comparison-age consistency) are **not changed by this camera-only patch**.

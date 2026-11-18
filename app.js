@@ -12,8 +12,8 @@
   const CBSA_HOURS_URL = 'https://www.cbsa-asfc.gc.ca/data/cbsa-offices-services-bureaux-asfc-en.json';
   const DACAST_ROOT='https://iframe.dacast.com/live/8b2b630f-b7c1-262d-f343-118f510224a0/';
   const CAMERAS = {
-    tunnel:{us:{provider:'Detroit–Windsor Tunnel',official:'https://www.dwtunnel.com/',views:[{title:'Windsor inspection',embed:DACAST_ROOT+'4aea1c45-d402-3690-afae-fe635942da82',limit:15}]},
-      ca:{provider:'Detroit–Windsor Tunnel',official:'https://www.dwtunnel.com/',views:[{title:'Detroit inspection',embed:DACAST_ROOT+'794566d4-a75e-3cd1-6f95-2d60e54f2fdb',limit:15},{title:'Randolph Street',embed:DACAST_ROOT+'5408b5c3-f8d1-f34b-a18a-9943047905b6',limit:15}]}},
+    tunnel:{us:{provider:'Detroit–Windsor Tunnel',official:'https://www.dwtunnel.com/',views:[{title:'Windsor inspection',embed:DACAST_ROOT+'4aea1c45-d402-3690-afae-fe635942da82'}]},
+      ca:{provider:'Detroit–Windsor Tunnel',official:'https://www.dwtunnel.com/',views:[{title:'Detroit inspection',embed:DACAST_ROOT+'794566d4-a75e-3cd1-6f95-2d60e54f2fdb'},{title:'Randolph Street',embed:DACAST_ROOT+'5408b5c3-f8d1-f34b-a18a-9943047905b6'}]}},
     ambassador:{us:{provider:'Ambassador Bridge',official:'https://www.ambassadorbridge.com/into-the-united-states/',views:[{title:'Towards USA',embed:'https://ambassador.solutionspal.com/cams/cam2.html'}]},
       ca:{provider:'Ambassador Bridge',official:'https://www.ambassadorbridge.com/into-canada/',views:[{title:'Towards Canada',embed:'https://ambassador.solutionspal.com/cams/cam1.html'}]}},
     gordie:{us:{provider:'Ontario 511',official:'https://511on.ca/?SelectedLayers=Cameras',views:[]},
@@ -32,7 +32,9 @@
     destinations:{...defaults.destinations,...raw.destinations},
     recommendation:['conservative','balanced','information'].includes(raw.recommendation)?raw.recommendation:'conservative'};}catch{return structuredClone(defaults);}}
   let prefs=load(), tripOverride=null, customDestination='', routeOrigin='', data=null, lastClientFetch='', loadError='', busy=false;
-  let camera=null, cameraIndex=0, cameraTimeout=null, manuallySelectedDirection=false;
+  let camera=null, cameraIndex=0, manuallySelectedDirection=false;
+  // The camera is a cross-origin iframe; zoom/pan the visible bridge frame, never its internal DOM.
+  const bridgeZoom={scale:1,x:0,y:0,pointer:null};
   const urlParams=new URLSearchParams(location.search);
   const explicitDirection=urlParams.has('direction');
   if(['us','ca'].includes(urlParams.get('direction'))) prefs.direction=urlParams.get('direction');
@@ -196,22 +198,74 @@
     const u=new URL('https://www.google.com/maps/dir/');u.searchParams.set('api','1');u.searchParams.set('travelmode','driving');u.searchParams.set('destination',dest);if(routeOrigin)u.searchParams.set('origin',routeOrigin);u.searchParams.set('waypoints',CROSSINGS[activeId()].waypoint);
     window.open(u.toString(),'_blank','noopener,noreferrer');
   }
-  function cancelCameraTimer(){if(cameraTimeout!==null){clearTimeout(cameraTimeout);cameraTimeout=null;}}
-  function unloadCamera(){cancelCameraTimer();$('cameraFrame').removeAttribute('src');$('cameraFrame').hidden=true;}
+  function resetBridgeZoom(){
+    Object.assign(bridgeZoom,{scale:1,x:0,y:0,pointer:null});
+    $('cameraFrame').style.transform='';
+    $('cameraZoomSurface').classList.remove('is-zoomed','is-dragging');
+    $('cameraZoomSurface').setAttribute('aria-pressed','false');
+    $('cameraZoomSurface').setAttribute('aria-label','Zoom bridge camera');
+    setText('cameraZoomHintText','Tap to zoom');
+  }
+  function showBridgeZoom(enable){
+    resetBridgeZoom();
+    $('cameraZoomSurface').hidden=!enable;
+    $('cameraZoomHint').hidden=!enable;
+  }
+  function clampBridgePan(){
+    const stage=$('cameraStage');
+    const maxX=stage.clientWidth*(bridgeZoom.scale-1)/2;
+    const maxY=stage.clientHeight*(bridgeZoom.scale-1)/2;
+    bridgeZoom.x=Math.max(-maxX,Math.min(maxX,bridgeZoom.x));
+    bridgeZoom.y=Math.max(-maxY,Math.min(maxY,bridgeZoom.y));
+  }
+  function applyBridgeZoom(){
+    clampBridgePan();
+    $('cameraFrame').style.transform=bridgeZoom.scale===1?'':`translate(${bridgeZoom.x}px,${bridgeZoom.y}px) scale(${bridgeZoom.scale})`;
+    const zoomed=bridgeZoom.scale>1;
+    $('cameraZoomSurface').classList.toggle('is-zoomed',zoomed);
+    $('cameraZoomSurface').setAttribute('aria-pressed',String(zoomed));
+    $('cameraZoomSurface').setAttribute('aria-label',zoomed?'Pan zoomed bridge camera; tap to reset':'Zoom bridge camera');
+    setText('cameraZoomHintText',zoomed?'Drag to pan · Tap to reset':'Tap to zoom');
+  }
+  function toggleBridgeZoom(clientX,clientY){
+    if($('cameraZoomSurface').hidden)return;
+    if(bridgeZoom.scale>1){resetBridgeZoom();return;}
+    const rect=$('cameraStage').getBoundingClientRect();
+    bridgeZoom.scale=2;
+    bridgeZoom.x=(rect.left+rect.width/2-clientX)*(bridgeZoom.scale-1);
+    bridgeZoom.y=(rect.top+rect.height/2-clientY)*(bridgeZoom.scale-1);
+    applyBridgeZoom();
+  }
+  function unloadCamera(){
+    showBridgeZoom(false);
+    $('cameraFrame').removeAttribute('src');
+    $('cameraFrame').hidden=true;
+  }
   function closeCamera(){unloadCamera();camera=null;if($('cameraDialog').open)$('cameraDialog').close();}
   function activateCamera(index){
     if(!camera)return;
     cameraIndex=index;unloadCamera();
     const view=camera.views[index];
     $('cameraViews').querySelectorAll('button').forEach((b,i)=>b.setAttribute('aria-pressed',String(i===index)));
-    if(!view){$('cameraFallback').hidden=false;setText('cameraFallbackText','No verified embeddable inspection camera. Open the official approach-camera map.');$('cameraContinue').hidden=true;return;}
-    $('cameraFallback').hidden=true;$('cameraFrame').hidden=false;$('cameraFrame').src=view.embed;
-    if(view.limit){cameraTimeout=setTimeout(()=>{
-      unloadCamera();$('cameraFallback').hidden=false;setText('cameraFallbackText','Viewing interval complete');$('cameraContinue').hidden=false;
-    },view.limit*1000);}
+    if(!view){
+      $('cameraFallback').hidden=false;
+      setText('cameraFallbackText','No verified embeddable inspection camera. Open the official approach-camera map.');
+      $('cameraReload').hidden=true;
+      return;
+    }
+    $('cameraFallback').hidden=true;
+    $('cameraFrame').hidden=false;
+    $('cameraFrame').src=view.embed;
+    const isBridge=camera.kind==='bridge';
+    showBridgeZoom(isBridge);
+    $('cameraReload').hidden=false;
+    $('cameraReload').lastChild.textContent=isBridge?' Reload camera':' Reload video';
+    // Do not cut off a slow-starting Dacast player with our own timer. The
+    // publisher controls any provider-side viewing interval or restrictions.
   }
   function openCamera(id){
     closeCamera();camera=CAMERAS[id]?.[prefs.direction];if(!camera)return;
+    camera.kind=id==='ambassador'?'bridge':id==='tunnel'?'video':'links';
     setText('cameraTitle',NAMES[id]);setText('cameraDescription',`${prefs.direction==='us'?'Canada → USA':'USA → Canada'} · Official camera view`);
     setText('cameraProvider',camera.provider);$('cameraOfficial').href=camera.official;
     $('cameraViews').innerHTML=camera.views.map((v,i)=>`<button type="button" data-index="${i}" aria-pressed="${i===0}">${esc(v.title)}</button>`).join('');
@@ -219,6 +273,41 @@
     $('cameraViews').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>activateCamera(Number(b.dataset.index))));
     $('cameraDialog').showModal();activateCamera(0);
   }
+  const zoomSurface=$('cameraZoomSurface');
+  zoomSurface.addEventListener('pointerdown',e=>{
+    if(e.button!==0||zoomSurface.hidden)return;
+    bridgeZoom.pointer={id:e.pointerId,x:e.clientX,y:e.clientY,startX:bridgeZoom.x,startY:bridgeZoom.y,moved:false};
+    zoomSurface.setPointerCapture(e.pointerId);
+  });
+  zoomSurface.addEventListener('pointermove',e=>{
+    const p=bridgeZoom.pointer;
+    if(!p||p.id!==e.pointerId||bridgeZoom.scale<=1)return;
+    const dx=e.clientX-p.x,dy=e.clientY-p.y;
+    if(Math.hypot(dx,dy)>6)p.moved=true;
+    if(p.moved){
+      bridgeZoom.x=p.startX+dx;bridgeZoom.y=p.startY+dy;
+      zoomSurface.classList.add('is-dragging');applyBridgeZoom();
+    }
+  });
+  zoomSurface.addEventListener('pointerup',e=>{
+    const p=bridgeZoom.pointer;
+    if(!p||p.id!==e.pointerId)return;
+    bridgeZoom.pointer=null;
+    zoomSurface.classList.remove('is-dragging');
+    if(!p.moved)toggleBridgeZoom(e.clientX,e.clientY);
+  });
+  zoomSurface.addEventListener('pointercancel',()=>{bridgeZoom.pointer=null;zoomSurface.classList.remove('is-dragging');});
+  zoomSurface.addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key===' '){e.preventDefault();const r=$('cameraStage').getBoundingClientRect();toggleBridgeZoom(r.left+r.width/2,r.top+r.height/2);}
+    if(bridgeZoom.scale>1&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){
+      e.preventDefault();const step=24;
+      bridgeZoom.x+=e.key==='ArrowLeft'?step:e.key==='ArrowRight'?-step:0;
+      bridgeZoom.y+=e.key==='ArrowUp'?step:e.key==='ArrowDown'?-step:0;
+      applyBridgeZoom();
+    }
+    if(e.key==='Escape'&&bridgeZoom.scale>1){e.stopPropagation();resetBridgeZoom();}
+  });
+  window.addEventListener('resize',()=>{if(bridgeZoom.scale>1)applyBridgeZoom();});
   $('settingsButton').addEventListener('click',openSettings);
   $('closeSettings').addEventListener('click',()=>$('settingsDialog').close());
   $('settingsForm').addEventListener('submit',e=>{e.preventDefault();prefs.favorites.us=$('preferredUs').value;prefs.favorites.ca=$('preferredCa').value;prefs.nexus=$('nexusInput').checked;
@@ -241,7 +330,7 @@
   $('copyLink').addEventListener('click',async()=>{routeOrigin=$('originRoute').value.trim().slice(0,180);const dest=$('destinationRoute').value.trim().slice(0,180);if(prefs.destinationChoice==='custom')customDestination=dest;else prefs.destinations[prefs.destinationChoice]=dest;
     const link=buildShareUrl();try{await navigator.clipboard.writeText(link);setText('copyLink','Copied');}catch{window.prompt('Copy this trip link:',link);}setTimeout(()=>setText('copyLink','Copy trip link'),1700);});
   $('closeCamera').addEventListener('click',closeCamera);
-  $('cameraContinue').addEventListener('click',()=>activateCamera(cameraIndex));
+  $('cameraReload').addEventListener('click',()=>activateCamera(cameraIndex));
   $('cameraDialog').addEventListener('close',()=>{unloadCamera();camera=null;});
   for(const id of ['settingsDialog','routeDialog','cameraDialog'])$(id).addEventListener('click',e=>{if(e.target===$(id))$(id).close();});
   if(matchMedia('(prefers-color-scheme: dark)').addEventListener)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(prefs.theme==='system')applyTheme();});

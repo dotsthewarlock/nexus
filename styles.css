@@ -21,3 +21,16 @@ body[data-theme="dark"] {color-scheme:dark; --bg:#101a24; --surface:#182633; --s
 .direction button{min-height:48px}
 .location-button{width:48px;height:48px}
 .trip-select{min-height:44px}
+
+/* RC1.4.1 camera interaction: bridge frames are zoomed as a whole because the feed is cross-origin. */
+.camera-modal{width:min(690px,calc(100% - 20px))}
+.camera-stage iframe{transform-origin:50% 50%;will-change:transform}
+.camera-zoom-surface{position:absolute;inset:0;z-index:2;cursor:zoom-in;touch-action:none;user-select:none;-webkit-user-select:none}
+.camera-zoom-surface.is-zoomed{cursor:grab}
+.camera-zoom-surface.is-dragging{cursor:grabbing}
+.camera-zoom-surface:focus-visible{outline:3px solid #a6c9ff;outline-offset:-4px}
+.camera-zoom-hint{position:absolute;bottom:9px;left:50%;transform:translateX(-50%);z-index:3;display:flex;align-items:center;gap:6px;white-space:nowrap;border-radius:999px;padding:5px 10px;background:rgba(7,19,32,.86);color:#f2f7fd;font-size:12px;pointer-events:none}
+.camera-zoom-hint .icon{width:15px;height:15px}
+.camera-reload{border:1px solid var(--border);background:var(--soft);border-radius:8px;min-height:40px;padding:7px 10px;font-size:12px;font-weight:680;display:inline-flex;gap:5px;align-items:center;justify-content:center}
+.camera-reload .icon{width:15px;height:15px}
+@media(max-width:410px){.camera-content{padding:12px 12px 16px}.camera-links{align-items:flex-start}}

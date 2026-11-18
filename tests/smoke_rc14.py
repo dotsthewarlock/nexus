@@ -67,11 +67,35 @@ def main():
   assert page.locator('#cameraViews button').count()==2
   page.locator('#cameraViews button').nth(1).click()
   assert '5408b5c3' in page.locator('#cameraFrame').get_attribute('src')
+  assert page.locator('#cameraZoomSurface').is_hidden(), 'Tunnel player must remain interactive'
+  assert page.locator('#cameraReload').is_visible(), 'Tunnel needs manual reload fallback'
+  assert page.locator('#cameraFallback').is_hidden(), 'Do not cover playing video'
+  page.locator('#cameraReload').click()
+  assert '5408b5c3' in page.locator('#cameraFrame').get_attribute('src')
   page.screenshot(path=str(OUT/'rc14-camera.png'))
   page.locator('#closeCamera').click()
   assert page.locator('#cameraFrame').get_attribute('src') is None
   page.locator('#alternatives button[data-crossing="ambassador"]').click()
   assert page.locator('#crossingRole').inner_text()=='SELECTED FOR THIS TRIP'
+  page.locator('#heroCamera').click()
+  assert 'cam1.html' in page.locator('#cameraFrame').get_attribute('src'), 'Canada-bound bridge camera'
+  zoom=page.locator('#cameraZoomSurface')
+  assert zoom.is_visible() and zoom.get_attribute('aria-pressed')=='false'
+  zoom.click(position={'x':75,'y':65})
+  assert zoom.get_attribute('aria-pressed')=='true'
+  assert 'scale(2)' in page.locator('#cameraFrame').get_attribute('style')
+  bbox=zoom.bounding_box()
+  x,y=bbox['x']+bbox['width']/2,bbox['y']+bbox['height']/2
+  before=page.locator('#cameraFrame').get_attribute('style')
+  page.mouse.move(x,y);page.mouse.down();page.mouse.move(x-42,y+24,steps=6);page.mouse.up()
+  after=page.locator('#cameraFrame').get_attribute('style')
+  assert after!=before, 'Drag should pan zoomed camera'
+  zoom.click()
+  assert zoom.get_attribute('aria-pressed')=='false' and page.locator('#cameraFrame').evaluate('(el)=>getComputedStyle(el).transform')=='none', 'Tap resets zoom'
+  zoom.focus();zoom.press('Enter')
+  assert zoom.get_attribute('aria-pressed')=='true', 'Keyboard zoom'
+  page.locator('#closeCamera').click()
+  assert zoom.is_hidden(), 'Zoom overlay must reset after close'
   page.locator('#resetTrip').click()
   assert page.locator('#heroName').inner_text()=='Detroit–Windsor Tunnel'
   page.locator('#navigateButton').click()
@@ -89,5 +113,5 @@ def main():
   desktop.close()
   assert not errors,errors
   browser.close()
- print('RC1.4 browser smoke passed: 390px light/dark, 320px, 1440px, camera switching and cleanup, settings, direction, trip override, route setup.')
+ print('RC1.4.1 camera smoke passed: bridge tap-to-zoom, drag pan, keyboard zoom, tunnel reload, camera switching and cleanup, 320/390/1440px.')
 if __name__=='__main__': main()
