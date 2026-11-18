@@ -35,7 +35,7 @@ jobs:
       - name: Decision engine tests
         run: node tests/decision.test.cjs
       - name: Camera source regression tests
-        run: node tests/camera_rc144.test.cjs
+        run: node tests/camera_rc145.test.cjs
       - name: Collect official data
         env:
           ONTARIO_511_KEY: ${{ secrets.ONTARIO_511_KEY }}

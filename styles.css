@@ -87,3 +87,13 @@ body[data-theme="dark"] {color-scheme:dark; --bg:#101a24; --surface:#182633; --s
   .camera-modal.camera-modal--bridge .camera-tabs{padding:6px 10px 0}
   .camera-modal.camera-modal--bridge .camera-links{padding:5px 10px 7px}
 }
+
+/* RC1.4.5: touch-friendly 4x option and opt-in DWT playback. */
+.camera-watch-button{
+  border:1px solid rgba(255,255,255,.25);border-radius:10px;
+  padding:12px 20px;min-height:48px;background:#276bac;color:#fff;
+  font-weight:750;font-size:14px;touch-action:manipulation;
+}
+.camera-watch-button:focus-visible{outline:3px solid #d1e6ff;outline-offset:3px}
+.camera-zoom-controls button{min-width:39px;min-height:44px;padding:8px 6px}
+@media(max-width:360px){.camera-zoom-controls{right:6px;top:6px;gap:1px;padding:3px}.camera-zoom-controls button{min-width:38px;font-size:13px}}

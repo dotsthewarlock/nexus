@@ -10,9 +10,9 @@
     gordie: {waypoint:'Gordie Howe International Bridge'}
   };
   const CBSA_HOURS_URL = 'https://www.cbsa-asfc.gc.ca/data/cbsa-offices-services-bureaux-asfc-en.json';
-  // RC1.4 Tunnel player configuration restored without changing the Dacast URLs
-  // or attempting to bypass any provider restrictions. Third-party playback
-  // must be confirmed on the user's Android Chrome after deployment.
+  // Source URLs come from the operator's public camera page. The Tunnel player
+  // is loaded only after a user's Watch Live tap. This does not override a
+  // publisher's domain restrictions; official website fallback stays visible.
   const DACAST_ROOT='https://iframe.dacast.com/live/8b2b630f-b7c1-262d-f343-118f510224a0/';
   const CAMERAS = {
     tunnel:{us:{provider:'Detroit–Windsor Tunnel',official:'https://www.dwtunnel.com/',views:[{title:'Windsor inspection',embed:DACAST_ROOT+'4aea1c45-d402-3690-afae-fe635942da82',limit:15}]},
@@ -37,6 +37,10 @@
   let prefs=load(), tripOverride=null, customDestination='', routeOrigin='', data=null, lastClientFetch='', loadError='', busy=false;
   let camera=null, cameraIndex=0, cameraTimeout=null, manuallySelectedDirection=false;
   // The camera is a cross-origin iframe; zoom/pan the visible bridge frame, never its internal DOM.
+  const BRIDGE_DEFAULT_ZOOM=4;
+  // Viewport shifts toward the TOP and LEFT of the camera image. Values are
+  // proportions of the legal positive pan distance, NOT pixel measurements.
+  const BRIDGE_DEFAULT_FRAMING={left:0.20,up:0.50};
   const bridgeZoom={scale:1,x:0,y:0,pointer:null};
   const urlParams=new URLSearchParams(location.search);
   const explicitDirection=urlParams.has('direction');
@@ -165,7 +169,7 @@
   }
   function renderDiagnostics(){
     const sources=data?.sources||{};
-    $('diagnosticText').innerHTML=[`<p>Build: RC1.4.4 · Schema: ${esc(data?.schema||'No snapshot')}</p>`,`<p>Generated: ${esc(data?.generated_at||'Unavailable')} · Browser fetch: ${esc(lastClientFetch||'Not yet')}</p>`,...Object.entries(sources).map(([k,v])=>`<p><strong>${esc(k.toUpperCase())}</strong> · ${esc(v.status||'?')} · ${esc(v.coverage===undefined?'':v.coverage+' records')} · Retrieved ${esc(v.retrieved_at||'unknown')}${v.error?' · '+esc(v.error):''}<br><a href="${esc(v.url||'#')}" target="_blank" rel="noopener noreferrer">Official source</a></p>`),
+    $('diagnosticText').innerHTML=[`<p>Build: RC1.4.5 · Schema: ${esc(data?.schema||'No snapshot')}</p>`,`<p>Generated: ${esc(data?.generated_at||'Unavailable')} · Browser fetch: ${esc(lastClientFetch||'Not yet')}</p>`,...Object.entries(sources).map(([k,v])=>`<p><strong>${esc(k.toUpperCase())}</strong> · ${esc(v.status||'?')} · ${esc(v.coverage===undefined?'':v.coverage+' records')} · Retrieved ${esc(v.retrieved_at||'unknown')}${v.error?' · '+esc(v.error):''}<br><a href="${esc(v.url||'#')}" target="_blank" rel="noopener noreferrer">Official source</a></p>`),
     '<p>MDOT RIDE requires MiLogin for Business. Ontario 511 event ingestion requires a developer key. Supplemental feed failure never fabricates a delay or closure.</p>'].join('');
   }
   async function refresh(){
@@ -224,18 +228,23 @@
     const surface=$('cameraZoomSurface');
     surface.classList.toggle('is-zoomed',zoomed);
     surface.setAttribute('aria-pressed',String(zoomed));
-    surface.setAttribute('aria-label',zoomed?'Drag to pan bridge camera; tap to fit':'Tap to zoom bridge camera to 3 times');
+    surface.setAttribute('aria-label',zoomed?'Drag to pan bridge camera; tap to fit':'Tap to zoom bridge camera to 4 times');
     for(const btn of $('cameraZoomControls').querySelectorAll('button')){
       const selected=Number(btn.dataset.scale)===scale;
       btn.setAttribute('aria-pressed',String(selected));
       btn.setAttribute('aria-current',selected?'true':'false');
     }
-    setText('cameraZoomHintText',zoomed?'Drag to pan · Tap for Fit':'Tap to zoom 3×');
+    setText('cameraZoomHintText',zoomed?'Drag to pan · Tap for Fit':'Tap to zoom 4×');
   }
   function setBridgeScale(scale){
-    if(![1,2,3].includes(scale)||$('cameraZoomSurface').hidden)return;
+    if(![1,2,3,4].includes(scale)||$('cameraZoomSurface').hidden)return;
     bridgeZoom.scale=scale;
-    bridgeZoom.x=0;bridgeZoom.y=0;bridgeZoom.pointer=null;
+    bridgeZoom.pointer=null;
+    // At higher magnifications, start over the upper-left inspection approach.
+    // Positive image translation reveals the left/top of the operator image.
+    const limit=bridgePanLimits();
+    bridgeZoom.x=scale===1?0:limit.x*BRIDGE_DEFAULT_FRAMING.left;
+    bridgeZoom.y=scale===1?0:limit.y*BRIDGE_DEFAULT_FRAMING.up;
     applyBridgeZoom();
   }
   function showBridgeZoom(enable){
@@ -243,11 +252,21 @@
     $('cameraFrame').style.transform='';
     $('cameraZoomSurface').classList.remove('is-zoomed','is-dragging');
     for(const id of ['cameraZoomSurface','cameraZoomHint','cameraZoomControls'])$(id).hidden=!enable;
-    if(enable)setBridgeScale(3); // Approved camera default, including reopening or switching views.
+    if(enable){
+      setBridgeScale(BRIDGE_DEFAULT_ZOOM);
+      // Dialog and iframe dimensions may not be laid out until the next frame.
+      // Recalculate before first paint so default framing is not left centered.
+      const expectedCamera=camera, expectedIndex=cameraIndex;
+      requestAnimationFrame(()=>{
+        if(camera===expectedCamera && cameraIndex===expectedIndex &&
+           !$('cameraZoomSurface').hidden && bridgeZoom.scale===BRIDGE_DEFAULT_ZOOM)
+          setBridgeScale(BRIDGE_DEFAULT_ZOOM);
+      });
+    }
   }
   function toggleBridgeZoom(){
     if($('cameraZoomSurface').hidden)return;
-    setBridgeScale(bridgeZoom.scale===1?3:1);
+    setBridgeScale(bridgeZoom.scale===1?BRIDGE_DEFAULT_ZOOM:1);
   }
   function unloadCamera(){
     cancelCameraTimer();
@@ -266,24 +285,46 @@
     const view=camera.views[index];
     $('cameraViews').querySelectorAll('button').forEach((b,i)=>b.setAttribute('aria-pressed',String(i===index)));
     $('cameraContinue').hidden=true;
+    $('cameraWatch').hidden=true;
     if(!view){
       $('cameraFallback').hidden=false;
       setText('cameraFallbackText','No verified embeddable inspection camera. Open the official approach-camera map.');
       $('cameraReload').hidden=true;
       return;
     }
-    $('cameraFallback').hidden=true;
-    $('cameraFrame').hidden=false;
-    $('cameraFrame').src=view.embed;
     const isBridge=camera.kind==='bridge';
     showBridgeZoom(isBridge);
     $('cameraReload').hidden=!isBridge;
-    if(isBridge)$('cameraReload').lastChild.textContent=' Reload camera';
-    if(camera.kind==='video'&&view.limit){
-      // This 15-second viewing interval matches RC1.4's original behaviour.
-      // It is an app-side duration, not a claim about provider authorization.
+    if(isBridge){
+      $('cameraFallback').hidden=true;
+      $('cameraFrame').hidden=false;
+      $('cameraFrame').src=view.embed;
+      $('cameraReload').lastChild.textContent=' Reload camera';
+      return;
+    }
+    // A manual gesture creates the Dacast iframe, like the operator's Watch Live
+    // button. Do not presume autoplay; browser/provider may require Play too.
+    $('cameraFrame').hidden=true;
+    $('cameraFallback').hidden=false;
+    $('cameraWatch').hidden=false;
+    setText('cameraFallbackText','Try the official Tunnel video inside Nexus. If blocked, open the official camera page below.');
+  }
+  function startTunnelVideo(){
+    if(camera?.kind!=='video')return;
+    const view=camera.views[cameraIndex];
+    if(!view)return;
+    cancelCameraTimer();
+    $('cameraFallback').hidden=true;
+    $('cameraWatch').hidden=true;
+    $('cameraContinue').hidden=true;
+    $('cameraFrame').hidden=false;
+    $('cameraFrame').src=view.embed;
+    if(view.limit){
+      // Use operator's published viewing interval, starting at Watch Live, not
+      // when the modal is opened. Actual provider playback remains unverified.
       cameraTimeout=setTimeout(()=>{
-        unloadCamera();$('cameraFallback').hidden=false;
+        unloadCamera();
+        $('cameraFallback').hidden=false;
         setText('cameraFallbackText','Viewing interval complete');
         $('cameraContinue').hidden=false;
       },view.limit*1000);
@@ -359,7 +400,8 @@
     const link=buildShareUrl();try{await navigator.clipboard.writeText(link);setText('copyLink','Copied');}catch{window.prompt('Copy this trip link:',link);}setTimeout(()=>setText('copyLink','Copy trip link'),1700);});
   $('closeCamera').addEventListener('click',closeCamera);
   $('cameraReload').addEventListener('click',()=>activateCamera(cameraIndex));
-  $('cameraContinue').addEventListener('click',()=>activateCamera(cameraIndex));
+  $('cameraContinue').addEventListener('click',startTunnelVideo);
+  $('cameraWatch').addEventListener('click',startTunnelVideo);
   $('cameraDialog').addEventListener('close',()=>{unloadCamera();camera=null;$('cameraDialog').classList.remove('camera-modal--bridge');});
   for(const id of ['settingsDialog','routeDialog','cameraDialog'])$(id).addEventListener('click',e=>{if(e.target===$(id))$(id).close();});
   if(matchMedia('(prefers-color-scheme: dark)').addEventListener)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(prefs.theme==='system')applyTheme();});

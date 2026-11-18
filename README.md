@@ -1,6 +1,6 @@
-# Nexus RC1.4.4 — commuter decision dashboard
+# Nexus RC1.4.5 — commuter decision dashboard
 
-**Status:** RC1.4.4 camera regression fix and mobile zoom improvements; deployment is managed by GitHub Actions. The publishing workflow generates a fresh `data/live.json` from official sources.
+**Status:** RC1.4.5 camera regression fix and mobile zoom improvements; deployment is managed by GitHub Actions. The publishing workflow generates a fresh `data/live.json` from official sources.
 
 ## What's included
 
@@ -8,7 +8,7 @@
 - Persistent preferences for each travel direction, NEXUS, Home/Work, appearance, and recommendation sensitivity. Existing `nexus-prototype-v1` browser storage key is retained.
 - One-trip crossing override does not overwrite saved preference.
 - Deterministic `decision.js`: official closure/notice checks, lane status, source freshness, conservative/balanced/information-only comparison. Conservative minimum difference is 20 minutes of **comparable inspection wait**; balanced minimum is 10 minutes. Neither is a full-trip saving estimate.
-- Ambassador Bridge directional camera iframe opens at **3×**, with Fit/2×/3× controls, drag-to-pan, keyboard access and a compact ~90dvh modal. Camera framing is applied only to the cross-origin iframe rectangle; its internal player/image is never accessed. Detroit–Windsor Tunnel embeds use the **original RC1.4 Dacast URLs, iframe permissions and 15-second Continue watching cycle**, with the official DWT website as fallback. External playback is browser/provider-dependent and still requires Android Chrome validation. Closing or switching cameras unloads the prior iframe.
+- Ambassador Bridge camera opens at **4×**, framed 50% toward the top and 20% toward the left of its permitted pan, with Fit / 2× / 3× / 4× controls, drag-to-pan and a compact 90dvh modal. Camera framing applies only to the cross-origin iframe rectangle; internal content is never accessed. Detroit–Windsor Tunnel offers **Watch Live** to load the operator's original Dacast iframe only after a tap, followed by the 15-second viewing cycle and **Continue watching**. The official DWT website is always linked. In-app playback remains browser/provider-dependent and requires Android Chrome validation.
 - Expanded official data collection: CBP regular/NEXUS/Ready/FAST/commercial/pedestrian categories, lane counts and maximums; CBSA traveller and commercial waits; CBSA dedicated Canada-bound NEXUS schedules; Detroit–Windsor Tunnel operator lane counts and reported coarse travel-time category; optional Ontario 511 Windsor-Essex road advisories.
 - Observation and source retrieval times remain distinct; stale operator data are suppressed. Missing values are not converted to zero.
 - GitHub Actions publishes a static site and archives each normalized snapshot as an Actions artifact for **30 days**. This is bounded archival, not permanent history storage or a forecast service.
@@ -68,7 +68,7 @@ The GitHub workflow reads the secret only in the server-side collection step. Wi
 | DWT operator | `https://api.dwtunnel.com/api/traffic/conditionspublic` | Captured in user-supplied XHR; parser implemented; backend availability, permissions and update cadence remain to validate |
 | Ontario 511 | `https://511on.ca/api/v2/get/event` | Optional developer-key integration, coarse Windsor–Essex vicinity filtering only |
 | MDOT RIDE | `https://www.michigan.gov/mdot/travel/safety/efforts/its/its-data` | MiLogin for Business needed; linked only, no simulated API |
-| Official cameras | Operator-site links and player iframes | Ambassador Bridge embed attempted; Tunnel is an authorized external-site link because Dacast blocks third-party playback |
+| Official cameras | Operator-site links and player iframes | Ambassador Bridge embedded; Tunnel opt-in Dacast experiment with external-site fallback. Playback may be blocked by the provider |
 
 **Important constraints**
 
@@ -81,13 +81,16 @@ The GitHub workflow reads the secret only in the server-side collection step. Wi
 - This build is not connected to a permanent time-series database or historical prediction engine. The 30-day Actions archive is temporary and only accessible to authorized workflow users.
 - Static page hosting requires network connectivity for up-to-date snapshots. If the scheduled fetch fails, stale/unknown source states are displayed.
 
-## Publication
+## Publication and known limitations
 
-RC1.4.4 restores RC1.4's original DWT in-app iframe implementation in response to reported successful playback on Android Chrome. This is a controlled compatibility rollback, **not a guarantee** of provider permission or functionality. If Dacast returns an embedding error, use the visible official camera page link; no proxying or referrer circumvention is attempted. The app-side 15-second interval matches RC1.4 and provides Continue watching. Validate actual video, image framing and routing on real devices. Earlier identified recommendation-engine issues (schedule day specificity, routine notices, and comparison-age consistency) are **not changed by this camera-only patch**.
+Deploy this release as one GitHub Pages commit via the existing workflow. GitHub Pages serves the latest available official snapshot. Testing the UI with synthetic data does **not** establish stream availability. The Dacast publisher may block embedding on Nexus even after a Watch Live tap. If so, use **Official camera page**; no proxying, domain spoofing, or referrer circumvention is implemented.
 
-## RC1.4.4 camera updates
+The 15-second viewing interval starts when Watch Live is tapped. This is a page-level viewing limit based on the operator's publicly visible page code, not a guarantee of any media-provider limit. It may interrupt playback if the player takes time to load.
 
-- **Tunnel video rollback**: RC1.4's three original Dacast URLs, direction-specific camera tabs, iframe permissions, and 15-second Continue watching cycle are restored. Official site fallback remains available; video cannot be fully verified without the actual Android Chrome browser and provider access.
-- **Bridge default 3×**: every opening and camera switch defaults to 3×. Fit / 2× / 3× explicit controls, tap-to-Fit/tap-to-3×, keyboard access, bounded drag-to-pan. The 4:3 iframe viewing surface is centered in a dark 90dvh modal with narrow margins, reducing the large white space caused by stretching the entire embedded operator document to full height.
-- **Assets**: versioned CSS and JavaScript URLs prevent stale mixed releases. No dashboard or decision logic changes.
+Known RC1.4.x decision-engine correctness issues (weekday/weekend schedule applicability, routine notices, and reading-age comparability) are not included in this camera-only release.
 
+## RC1.4.5 camera changes
+
+- Tunnel: opt-in Watch Live for each of the original three directional streams; camera switching unloads the prior player; 15-second Continue watching action; official camera-page fallback.
+- Bridge: 4× default, upward framing offset 50% of available vertical pan, leftward framing offset 20% of available horizontal pan; Fit / 2× / 3× / 4×, pointer/keyboard panning, and responsive mobile modal.
+- Tests: `python3 -m unittest discover -s tests`, `node tests/decision.test.cjs`, `node tests/camera_rc145.test.cjs`, and `python3 tests/smoke_rc14.py` locally. The GitHub Action runs the Python and Node tests before publishing.

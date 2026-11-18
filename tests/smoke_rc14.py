@@ -61,8 +61,8 @@ def main():
   assert '4' in page.locator('#primaryValue').inner_text()
   assert '2 NEXUS lanes listed' in page.locator('#operatorLine').inner_text()
   page.screenshot(path=str(OUT/'rc14-mobile-dark.png'),full_page=True)
-  # RC1.4 DWT source URLs + 15-second continue cycle, restored in RC1.4.4.
-  # Playback itself is cross-origin and requires a physical-device check.
+  # RC1.4.5 DWT: Watch Live gesture loads the embed, and viewing timer starts
+  # on that gesture, not when the modal is opened. Provider playback requires QA.
   page.evaluate('''() => {
     const original=window.setTimeout.bind(window);
     window.setTimeout=(cb,delay,...args)=>delay===15000
@@ -73,10 +73,19 @@ def main():
   page.locator('#heroCamera').click()
   assert page.locator('#cameraDialog').evaluate('(x)=>x.open')
   assert page.locator('#cameraViews button').count()==2
-  assert '794566d4' in page.locator('#cameraFrame').get_attribute('src')
+  assert page.locator('#cameraFrame').get_attribute('src') is None, 'No DWT request before Watch Live'
+  assert page.locator('#cameraWatch').is_visible(), 'Explicit opt-in video action'
+  page.screenshot(path=str(OUT/'rc145-tunnel-watch-live.png'))
+  assert page.evaluate('typeof window.__cameraLimit')=='undefined', 'Timer must not start on opening'
   assert page.locator('#cameraZoomControls').is_hidden()
   assert page.locator('#cameraReload').is_hidden()
+  page.locator('#cameraWatch').click()
+  assert '794566d4' in page.locator('#cameraFrame').get_attribute('src')
+  assert page.evaluate('typeof window.__cameraLimit')=='function', 'Timer must start on Watch Live'
   page.locator('#cameraViews button').nth(1).click()
+  assert page.locator('#cameraFrame').get_attribute('src') is None, 'Switch unloads prior player'
+  assert page.locator('#cameraWatch').is_visible()
+  page.locator('#cameraWatch').click()
   assert '5408b5c3' in page.locator('#cameraFrame').get_attribute('src')
   page.evaluate('window.__cameraLimit()')
   assert page.locator('#cameraFrame').get_attribute('src') is None
@@ -88,6 +97,8 @@ def main():
   assert page.locator('#cameraFrame').get_attribute('src') is None
   page.locator('#toUS').click()
   page.locator('#heroCamera').click()
+  assert page.locator('#cameraFrame').get_attribute('src') is None
+  page.locator('#cameraWatch').click()
   assert '4aea1c45' in page.locator('#cameraFrame').get_attribute('src')
   assert page.locator('#cameraViews').is_hidden()
   page.locator('#closeCamera').click()
@@ -101,9 +112,9 @@ def main():
   zoom_controls=page.locator('#cameraZoomControls')
   assert page.locator('#cameraDialog').evaluate('(x)=>x.classList.contains("camera-modal--bridge")')
   assert zoom.is_visible() and zoom_controls.is_visible()
-  assert zoom_controls.locator('button').count()==3
-  assert zoom_controls.locator('button[data-scale="3"]').get_attribute('aria-pressed')=='true'
-  assert 'scale(3)' in page.locator('#cameraFrame').get_attribute('style'), '3x on open'
+  assert zoom_controls.locator('button').count()==4
+  assert zoom_controls.locator('button[data-scale="4"]').get_attribute('aria-pressed')=='true'
+  assert 'scale(4)' in page.locator('#cameraFrame').get_attribute('style'), '4x on open'
   stage=page.locator('#cameraStage').bounding_box()
   vp=page.evaluate('({width:innerWidth,height:innerHeight})')
   dialog=page.locator('#cameraDialog').bounding_box()
@@ -111,25 +122,44 @@ def main():
   assert vp['height']*.88 <= dialog['height'] <= vp['height']*.91, '90vh camera modal'
   assert vp['width']-dialog['width']>=12 and vp['width']-dialog['width']<=18, 'Modal margins'
   assert page.locator('#cameraFrame').evaluate('(el)=>Math.abs(el.offsetHeight/el.offsetWidth - .75)<.03'), '4:3 camera viewport'
-  page.screenshot(path=str(OUT/'rc144-bridge-default.png'))
+  page.wait_for_function("document.querySelector('#cameraFrame').style.transform.includes('scale(4)') && !document.querySelector('#cameraFrame').style.transform.includes('translate(0px, 0px)')")
+  frame_style=page.locator('#cameraFrame').get_attribute('style')
+  import re as _re
+  pan=_re.search(r'translate\(([-\d.]+)px,\s*([-\d.]+)px\) scale\(4\)',frame_style)
+  assert pan, f'Missing expected 4x pan transform: {frame_style}'
+  xpan,ypan=map(float,pan.groups())
+  max_pan=page.locator('#cameraFrame').evaluate("""(el)=>{
+    const stage=document.querySelector('#cameraStage');
+    return {x:Math.max(0,(el.offsetWidth*4-stage.clientWidth)/2),
+            y:Math.max(0,(el.offsetHeight*4-stage.clientHeight)/2)};
+  }""")
+  assert max_pan['x']>0 and max_pan['y']>0, 'Zoom permits pans on both axes'
+  assert abs(xpan/max_pan['x']-0.20)<.02, f'Left framing pan differs: {xpan}/{max_pan}'
+  assert abs(ypan/max_pan['y']-0.50)<.02, f'Upward framing pan differs: {ypan}/{max_pan}'
+  page.screenshot(path=str(OUT/'rc145-bridge-default.png'))
   zoom_controls.locator('button[data-scale="1"]').click()
   assert page.locator('#cameraFrame').evaluate('(el)=>getComputedStyle(el).transform')=='none', 'Fit'
   zoom_controls.locator('button[data-scale="2"]').click()
   assert 'scale(2)' in page.locator('#cameraFrame').get_attribute('style')
   zoom_controls.locator('button[data-scale="3"]').click()
   assert 'scale(3)' in page.locator('#cameraFrame').get_attribute('style')
+  zoom_controls.locator('button[data-scale="4"]').click()
+  assert 'scale(4)' in page.locator('#cameraFrame').get_attribute('style')
   bbox=zoom.bounding_box()
   x,y=bbox['x']+bbox['width']/2,bbox['y']+bbox['height']/2
   before=page.locator('#cameraFrame').get_attribute('style')
   page.mouse.move(x,y);page.mouse.down();page.mouse.move(x-42,y+24,steps=6);page.mouse.up()
   after=page.locator('#cameraFrame').get_attribute('style')
-  assert after!=before, 'Drag pans 3x camera'
+  assert after!=before, 'Drag pans 4x camera'
   zoom.click(position={'x':75,'y':65})
   assert zoom_controls.locator('button[data-scale="1"]').get_attribute('aria-pressed')=='true', 'Tap fits'
   zoom.focus();zoom.press('Enter')
-  assert zoom_controls.locator('button[data-scale="3"]').get_attribute('aria-pressed')=='true', 'Keyboard zooms'
+  assert zoom_controls.locator('button[data-scale="4"]').get_attribute('aria-pressed')=='true', 'Keyboard zooms'
   page.locator('#closeCamera').click()
   assert zoom.is_hidden(), 'Zoom overlay must reset after close'
+  page.locator('#heroCamera').click()
+  assert zoom_controls.locator('button[data-scale="4"]').get_attribute('aria-pressed')=='true', '4x restores on reopen'
+  page.locator('#closeCamera').click()
   page.locator('#resetTrip').click()
   assert page.locator('#heroName').inner_text()=='Detroit–Windsor Tunnel'
   page.locator('#navigateButton').click()
@@ -155,5 +185,5 @@ def main():
   desktop.close()
   assert not errors,errors
   browser.close()
- print('RC1.4.4 camera smoke passed: DWT restored embed/15s continue, 3x bridge default, Fit/2x/3x and pan, 320/390/1440px.')
+ print('RC1.4.5 camera smoke passed: DWT Watch Live/15s continue; 4x bridge default with 20% left, 50% up; 320/390/1440px.')
 if __name__=='__main__': main()
