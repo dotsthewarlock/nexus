@@ -1,56 +1,86 @@
-# Nexus RC1.3 — published release
+# Nexus RC1.4 — commuter decision dashboard
 
-A static Windsor–Detroit commuter dashboard. Includes **existing RC1.2 live CBP/CBSA data integration** and NEXUS-first behavior, refreshed civic theme, single external `styles.css`, and official camera modal.
+**Status:** locally built and tested, **not published**. Based on the published RC1.3 source. No live official feed values are bundled as real-time data. `data/live.json` in this package is intentionally a placeholder; the publishing workflow replaces it with freshly collected observations.
 
-## Scope delivered
+## What's included
 
-- Blue/navy/red **government-inspired, non-official** styling with tokenized light and dark modes.
-- One stylesheet (`styles.css`) organized into semantic design tokens and functional components. No CSS framework or build step.
-- Every crossing shows regular / NEXUS reported waits and available lane counts. Canada-bound gaps remain explicit.
-- NEXUS preference ON by default for new users; local saved settings retained.
-- NEXUS-first US-bound wait sorting with explicit regular fallback.
-- Optional location direction detection correctly maps current country to *opposite* travel destination; no automatic permission prompt.
-- Native camera `<dialog>` on all three crossing cards. Six direction-aware official links:
-  - Ambassador Bridge: operator pages, and **user-initiated** iframe preview using operator's own embedded camera URLs. Whether third-party embedding is permitted and operational requires testing after deployment; official page link always available.
-  - Detroit–Windsor Tunnel: operator home live camera views, no unverified iframe stream.
-  - Gordie Howe: government road approach maps (Ontario 511 and MDOT). These are **not** verified bridge/plaza cameras.
-- Closing a camera modal removes the iframe URL to stop network/media playback.
-- GitHub Pages workflow stages `styles.css` alongside HTML and freshly collected JSON.
+- Rebuilt mobile-first dashboard: preferred crossing, objective findings, compact alternatives, optional details, one primary route action.
+- Persistent preferences for each travel direction, NEXUS, Home/Work, appearance, and recommendation sensitivity. Existing `nexus-prototype-v1` browser storage key is retained.
+- One-trip crossing override does not overwrite saved preference.
+- Deterministic `decision.js`: official closure/notice checks, lane status, source freshness, conservative/balanced/information-only comparison. Conservative minimum difference is 20 minutes of **comparable inspection wait**; balanced minimum is 10 minutes. Neither is a full-trip saving estimate.
+- Direct camera iframe attempt upon modal opening: Ambassador Bridge directional operator embeds and three DWT Dacast views. DWT views respect the operator page's 15-second watching interval and offer an explicit restart. Close unloads iframe.
+- Expanded official data collection: CBP regular/NEXUS/Ready/FAST/commercial/pedestrian categories, lane counts and maximums; CBSA traveller and commercial waits; CBSA dedicated Canada-bound NEXUS schedules; Detroit–Windsor Tunnel operator lane counts and reported coarse travel-time category; optional Ontario 511 Windsor-Essex road advisories.
+- Observation and source retrieval times remain distinct; stale operator data are suppressed. Missing values are not converted to zero.
+- GitHub Actions publishes a static site and archives each normalized snapshot as an Actions artifact for **30 days**. This is bounded archival, not permanent history storage or a forecast service.
+- SVG icon sprites, responsive theme, no runtime JavaScript/CSS framework and no mandatory login.
 
-## Live-data policy
+## Project layout
 
-- Official CBP: `https://bwt.cbp.gov/api/waittimes`
-- Official CBSA: `https://www.cbsa-asfc.gc.ca/bwt-taf/bwt-eng.csv` (fallback official HTML)
-- Do not equate missing readings with zero wait. Published NEXUS hours do not guarantee actual lanes are open.
-- Wait times are inspection estimates only; approach traffic and total trip times are separate.
+| File | Purpose |
+|---|---|
+| `index.html` | Semantic dashboard and native modal markup |
+| `styles.css` | Responsive colors, spacing, typography and interaction styles |
+| `app.js` | Preference state, rendering, navigation and camera interactions |
+| `decision.js` | Pure, testable source-aware crossing evaluation |
+| `scripts/fetch_live.py` | Official source adapters and normalized `nexus-live-v2` JSON |
+| `.github/workflows/publish.yml` | Scheduled collection, tests, snapshot archive, GitHub Pages deployment |
+| `tests/` | Collector, decision logic and browser smoke tests |
+| `previews/` | Synthetic-data layout QA only (never actual live conditions) |
 
-## Run locally (no live release)
+## Test locally
 
 ```bash
 python3 -m http.server 8000
-# open http://localhost:8000/
+# Visit http://localhost:8000/
 ```
 
-When opened as `file://`, browser security may block `./data/live.json`. `index.html` should be served over HTTP(S) to verify the live snapshot.
-
-## Verify
+The local placeholder displays an **unavailable** state until you run the collector with network access. For tests without network:
 
 ```bash
 python3 -m unittest discover -s tests -v
-python3 tests/smoke_rc13.py  # optional: Chromium and Playwright installed
+node tests/decision.test.cjs
+python3 tests/smoke_rc14.py
 ```
 
-The script `scripts/fetch_live.py` is unchanged from RC1.2. Only the GitHub Action run can verify outgoing feeds and the final deployed `data/live.json`.
+The browser test uses synthetic, time-controlled fixture data and Chromium. It does not verify remote camera playback or external API uptime. It uses injected HTML/scripts rather than localhost navigation in restricted environments.
 
-## Deployment
+To fetch real data **from a network-enabled environment**:
 
-The GitHub Actions workflow deploys `index.html`, `styles.css`, and the newly collected `data/live.json`. Do not commit locally generated snapshots as authoritative live readings.
+```bash
+python3 scripts/fetch_live.py --output data/live.json
+```
 
-## Pending validation / limitations
+If any feed is unavailable, the collector emits the other sources independently and marks the failed source with a status. It does not publish synthetic wait estimates.
 
-1. Test Ambassador camera iframe on Android/iOS; the provider may reject third-party framing. External links must always be visible.
-2. Ask the tunnel operator for an approved embeddable player URL before attempting in-app video.
-3. Substitute direct official Gordie Howe cameras only if operator publishes public feeds and confirms access rights.
-4. Validate current hardcoded Canada-bound CBSA NEXUS hours against changing published schedules and holiday rules.
-5. Verify Android/iOS maps routing and border-side geolocation in real world; automatic location is approximate and optional.
-6. Test CSS contrast and layout at mobile sizes after deployment.
+## Optional Ontario 511 credential
+
+Ontario 511 requires a developer account and key. Create an authorized key at `https://511on.ca/developers/doc` and set `ONTARIO_511_KEY` as a **GitHub Actions repository secret**. Do not put the key in HTML, query strings committed to the repo, or browser preferences.
+
+The GitHub workflow reads the secret only in the server-side collection step. Without a key, Ontario 511 advisories are marked `not_configured` and the dashboard remains functional using CBP/CBSA data.
+
+## Supported sources and limitations
+
+| Source | Endpoint | Status |
+|---|---|---|
+| CBP | `https://bwt.cbp.gov/api/waittimes` | Parser implemented and fixture-tested; external GH-run verification required |
+| CBSA waits | `https://www.cbsa-asfc.gc.ca/bwt-taf/bwt-eng.csv` | Parser implemented; official HTML fallback retained |
+| CBSA NEXUS schedules | `https://www.cbsa-asfc.gc.ca/data/cbsa-offices-services-bureaux-asfc-en.json` | Structured parser implemented; schedules cannot establish live availability |
+| DWT operator | `https://api.dwtunnel.com/api/traffic/conditionspublic` | Captured in user-supplied XHR; parser implemented; backend availability, permissions and update cadence remain to validate |
+| Ontario 511 | `https://511on.ca/api/v2/get/event` | Optional developer-key integration, coarse Windsor–Essex vicinity filtering only |
+| MDOT RIDE | `https://www.michigan.gov/mdot/travel/safety/efforts/its/its-data` | MiLogin for Business needed; linked only, no simulated API |
+| Official cameras | Operator-site links and player iframes | Autoload attempted; origin authorization/autoplay on actual devices still unverified |
+
+**Important constraints**
+
+- A DWT `NexusLaneCount` is labeled as an **operator-listed lane count**, not an independently verified open inspection lane and not a NEXUS wait estimate.
+- CBSA does not provide a separate Canada-bound NEXUS inspection wait in the current feed; it remains unknown. Published schedule windows only establish possible times, not that a lane is physically operating.
+- Ontario 511 events are geographic vicinity context. The app does not claim a particular commute is obstructed without routing validation.
+- MDOT RIDE data, additional operator notice APIs, a verified weather alert feed, holidays/school breaks and venue events are not silently fabricated; they require separate access and relevance validation.
+- The Google Maps waypoint is a *preview*. Neither Android nor iOS crossing enforcement is claimed as reliable until tested in both directions at all crossings.
+- Camera embedding/redistribution rights and playback must be checked before public production release. The official-source link is always retained.
+- This build is not connected to a permanent time-series database or historical prediction engine. The 30-day Actions archive is temporary and only accessible to authorized workflow users.
+- Static page hosting requires network connectivity for up-to-date snapshots. If the scheduled fetch fails, stale/unknown source states are displayed.
+
+## Publication
+
+This package has **not** been pushed to the GitHub repository. After explicit publication authorization, apply these files to `dotsthewarlock/nexus` and let the existing GitHub Pages workflow run. Verify the Actions job, the deployed `data/live.json` schema and source statuses, camera playback on real devices, and crossing-specific navigation before labeling the release production-ready.

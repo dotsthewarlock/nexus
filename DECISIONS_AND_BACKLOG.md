@@ -69,3 +69,30 @@
 - CA-bound published NEXUS schedule details are included as a provisional transcription of the CBSA office directory. Re-verify before public operational reliance; schedule is not proof lanes are open.
 - US-bound separate published NEXUS hours are not verified and not guessed.
 - Future: automate schedule extraction and holiday-aware filtering, validate hours for each direction, test accessibility, and decide whether to retain NEXUS user preference for ranking.
+
+---
+
+# RC1.4 decision log (November 18, 2026)
+
+## User-approved UX choices
+- Preferred crossing is the primary dashboard focus, alternatives are compact and always available.
+- Conditional recommendations (default) only when verified significant evidence warrants reconsideration; neutral objective wording, not personalized exhortations.
+- More recommendation behaviour settings are exposed under Preferences: conservative, balanced and information only.
+- One-tap camera modal initiates relevant operator playback automatically where embedding works, one active feed at a time, unloading on close.
+- Mobile-first visual overhaul: information hierarchy and actionable dense layout, restrained inline SVG, large touch targets, progressive disclosure.
+
+## RC1.4 technical implementation proposals (built locally, not published)
+- CBP/CBSA/DWT adapters plus optional Ontario 511 event adapter and CBSA directory schedule parser.
+- `nexus-live-v2` snapshot schema, category-specific provenance, per-reading source observation and retrieval timestamps.
+- Separate pure, conservative recommendation rules with explicit 20/10-minute *inspection-only* thresholds; no route-based savings inferred.
+- History is temporarily archived as 30-day workflow artifacts, not as a permanent queryable database.
+
+## Unverified external dependencies
+- Operator camera permission/cross-origin autoplay; DWT API access and update cadence.
+- Ontario 511 access requires registered API key; MDOT RIDE requires MiLogin for Business.
+- Routing waypoint enforcement across both directions/all three crossings; true approach ETA.
+- Live holiday rules and real-world operational changes may supersede CBSA office directory's published NEXUS schedules.
+
+## Deferred
+- Road-based automated crossing detours until routes and incident geofences are validated.
+- Permanent historical warehouse, predictive wait model, weather/holiday/event integrations and toll-based optimization.

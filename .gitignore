@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+previews/
+site/
+.env
+.DS_Store

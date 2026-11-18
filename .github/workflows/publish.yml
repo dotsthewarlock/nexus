@@ -1,4 +1,4 @@
-name: Publish Nexus RC1 live snapshot
+name: Publish Nexus live snapshot
 
 on:
   push:
@@ -19,42 +19,42 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
-
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-
-      - name: Run unit tests
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Python collector tests
         run: python -m unittest discover -s tests -v
-
-      - name: Fetch official CBP and CBSA data
+      - name: Decision engine tests
+        run: node tests/decision.test.cjs
+      - name: Collect official data
+        env:
+          ONTARIO_511_KEY: ${{ secrets.ONTARIO_511_KEY }}
         run: python scripts/fetch_live.py --output data/live.json
-
-      - name: Prepare website
+      - name: Archive snapshot (rolling 30-day retention)
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexus-snapshot-${{ github.run_id }}-${{ github.run_attempt }}
+          path: data/live.json
+          retention-days: 30
+          compression-level: 9
+      - name: Stage static website
         run: |
           mkdir -p site/data
-          cp index.html site/index.html
-          cp styles.css site/styles.css
+          cp index.html styles.css app.js decision.js site/
           cp data/live.json site/data/live.json
           touch site/.nojekyll
-
-      - name: Configure GitHub Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload website
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: site
-
-      - name: Deploy website
+      - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4

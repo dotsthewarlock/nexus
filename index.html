@@ -3,583 +3,81 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#142b40">
-  <meta name="description" content="Nexus commuter: official CBP and CBSA border wait reports for three Windsor–Detroit crossings.">
-  <title>Nexus RC1.3 | Windsor–Detroit border commuter</title>
+  <meta name="theme-color" content="#f5f7fa">
+  <meta name="description" content="Nexus: a clear, source-aware Windsor–Detroit crossing comparison for everyday commuters.">
+  <title>Nexus RC1.4 · Border commuter</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
-<div class="page">
-  <header class="topbar">
-    <div class="brand" aria-label="Nexus commuter app">
-      <span class="brand-mark" aria-hidden="true">N</span>
-      <div><div class="brand-name">nexus</div><div class="brand-subtitle">border companion</div></div>
-    </div>
-    <div class="utility-actions"><span class="tiny-tag">RC 1.3</span><button id="settingsButton" class="icon-btn" type="button" aria-label="Open settings" title="Settings">⚙</button></div>
+<svg aria-hidden="true" class="sprite" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-bridge" viewBox="0 0 32 32"><path d="M2 25h28M6 25V9l10 10L26 9v16M6 9 16 4 26 9"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2"/><circle cx="16" cy="17" r="2"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M5.5 9A7 7 0 0 1 18 6l2 6M4 12l2 6a7 7 0 0 0 12.5-3"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-7-7 7 7-7 7"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><path d="m5 21 2-6m0 0 4-5c2-2-1-4-3-2L5 11M19 3l-2 6m0 0-5 5c-2 2 1 4 3 2l4-3"/><circle cx="5" cy="21" r="1"/><circle cx="19" cy="3" r="1"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.8 6 6.6.8-4.8 4.7 1.2 6.5-5.8-3.2-5.8 3.2 1.2-6.5-4.8-4.7L9.2 9z"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 21h20zM12 9v5m0 3v.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.5"/></symbol>
+  <symbol id="i-location" viewBox="0 0 24 24"><path d="M12 22s7-7 7-12a7 7 0 0 0-14 0c0 5 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M13 4h7v7M20 4l-10 10M19 13v6H5V5h6"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M5 5 19 19M19 5 5 19"/></symbol>
+</svg>
+<div class="app-shell">
+  <header class="app-header">
+    <a class="brand" href="./" aria-label="Nexus home"><span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#i-bridge"/></svg></span><span class="brand-copy"><strong>nexus</strong><small>border commuter</small></span></a>
+    <div class="header-actions"><button class="icon-button" id="refreshButton" type="button" aria-label="Refresh conditions" title="Refresh conditions"><svg class="icon"><use href="#i-refresh"/></svg></button><button class="icon-button" id="settingsButton" type="button" aria-label="Open settings" title="Settings"><svg class="icon"><use href="#i-settings"/></svg></button></div>
   </header>
-
   <main>
-    <section class="intro" aria-labelledby="title">
-      <div><p class="eyebrow">Windsor ↔ Detroit</p><h1 id="title">Your crossing, at a glance.</h1><p>Compare your options. Choose a route. Get moving.</p></div>
-      <div class="current-date" id="todayLabel"></div>
+    <section class="trip-bar" aria-label="Current trip">
+      <div class="trip-top"><div><span class="eyebrow">YOUR TRIP</span><label class="visually-hidden" for="tripSelect">Destination preset</label><select id="tripSelect" class="trip-select"><option value="work">Work</option><option value="home">Home</option><option value="custom">Other destination</option></select></div><div class="trip-time">Leave now</div></div>
+      <div class="trip-bottom"><div class="direction" role="group" aria-label="Travel direction"><button type="button" id="toUS" aria-pressed="true">Canada <svg class="icon"><use href="#i-arrow"/></svg> USA</button><button type="button" id="toCA" aria-pressed="false">USA <svg class="icon"><use href="#i-arrow"/></svg> Canada</button></div><button id="locateDirection" type="button" class="icon-button location-button" title="Detect direction from device location" aria-label="Detect direction from location"><svg class="icon"><use href="#i-location"/></svg></button></div>
+      <p id="locationStatus" class="location-status" role="status"></p>
+    </section>
+    <div class="data-bar" id="dataBar" role="status"><span class="small-indicator"></span><span id="dataStatus">Checking official sources…</span><button type="button" id="dataDetailsButton">Sources</button></div>
+
+    <section class="main-card" aria-labelledby="heroName">
+      <div class="hero-eyebrow"><span id="crossingRole">PREFERRED CROSSING</span><span class="starline"><svg class="icon"><use href="#i-star"/></svg><span id="preferredLabel">Your default</span></span></div>
+      <h1 id="heroName">Detroit–Windsor Tunnel</h1>
+      <div class="metrics">
+        <div class="metric primary-metric"><span class="metric-label" id="primaryLabel">NEXUS · CBP</span><div class="metric-value"><span id="primaryValue">—</span><span class="unit" id="primaryUnit"></span></div><span class="metric-note" id="primaryNote">Waiting for official report</span></div>
+        <div class="metric"><span class="metric-label" id="regularLabel">Regular · CBP</span><div class="metric-value"><span id="regularValue">—</span><span class="unit" id="regularUnit"></span></div><span class="metric-note" id="regularNote">Wait unavailable</span></div>
+      </div>
+      <div id="operatorLine" class="operator-line" hidden></div>
+      <div id="finding" class="finding" data-level="unknown"><svg class="icon" id="findingIcon"><use href="#i-info"/></svg><div><strong id="findingHeading">Checking conditions</strong><p id="findingDetail">Loading data from official sources.</p></div></div>
+      <div class="hero-actions"><button class="primary-button" id="navigateButton" type="button"><svg class="icon"><use href="#i-route"/></svg><span id="navigateText">Set destination</span></button><button class="secondary-button camera-button" id="heroCamera" type="button"><svg class="icon"><use href="#i-camera"/></svg>Camera</button></div>
+      <div class="hero-secondary"><button id="heroDetails" type="button" class="text-button">Crossing details <svg class="icon"><use href="#i-chevron"/></svg></button><button id="resetTrip" type="button" class="text-button" hidden>Use preferred crossing</button></div>
+      <div class="hero-footnote"><svg class="icon"><use href="#i-clock"/></svg><span id="heroFreshness">Reading time unavailable</span></div>
     </section>
 
-    <section class="demo-banner" id="dataBanner" data-state="neutral" aria-live="polite">
-      <span class="symbol" aria-hidden="true">i</span>
-      <div class="banner-copy"><strong id="demoHeading">Loading official border reports…</strong><span id="demoMessage">Checking source availability and timestamps.</span></div>
-      <button id="refreshButton" class="text-action" type="button">Refresh</button>
-    </section>
-
-    <section aria-label="Travel direction">
-      <div class="toolbar"><div class="toolbar-label">Travel direction <button type="button" id="locateDirection" class="location-btn" title="Detect border side from your device location">Use my location</button><span id="locationStatus" class="location-status" role="status"></span></div><div class="segmented" role="group" aria-label="Choose direction"><button type="button" id="toUS" aria-pressed="true">Canada → USA</button><button type="button" id="toCA" aria-pressed="false">USA → Canada</button></div></div>
-    </section>
-
-    <section aria-labelledby="crossing-heading">
-      <div class="section-heading"><h2 id="crossing-heading">Border crossings</h2><p id="sortNote">Pinned first · Reported inspection waits</p></div>
-      <div class="cards" id="cards" aria-live="polite"></div>
-    </section>
-
-    <section class="journey" aria-labelledby="journey-title">
-      <div><div class="journey-title" id="journey-title">Plan a crossing</div><div class="journey-detail">Use your current position or set an origin. Addresses stay on this device unless you share a link.</div><div class="dest-tabs" role="group" aria-label="Choose saved destination"><button type="button" id="destHome" class="dest-tab">Home</button><button type="button" id="destWork" class="dest-tab">Work</button></div><div class="route-inputs"><label for="originRoute">Origin <span>(optional)</span></label><input id="originRoute" type="text" autocomplete="off" placeholder="Current position in Maps"><label for="destinationRoute">Destination</label><input id="destinationRoute" type="text" autocomplete="off" placeholder="Address or place"></div></div>
-      <div class="selected-route" aria-live="polite"><div class="route-name">Selected crossing<strong id="selectedCrossing">Detroit–Windsor Tunnel</strong></div>Destination<strong id="selectedDestination">Not configured</strong></div>
-      <div class="journey-action"><button type="button" class="primary-btn" id="navigateButton">Set destination</button><button type="button" class="link-btn" id="copyLink">Copy commute link</button><div class="route-warning">Google Maps preview only. Selected crossing is not guaranteed; verify the route before travelling.</div></div>
-    </section>
-
-    <footer class="footer"><p><strong>Sources:</strong> U.S.-bound passenger and NEXUS lane reports from CBP; Canada-bound traveller waits from CBSA. Canada-bound NEXUS waits and live lane counts are not published by CBSA. NEXUS hours are published schedules, not confirmation that a lane is operating. Approach-road traffic is not available in this release. Official estimates may be delayed or incomplete. Contains information licensed under the Open Government Licence – Canada.</p><nav class="source-links" aria-label="Official border wait sources"><a href="https://bwt.cbp.gov/" target="_blank" rel="noopener noreferrer">CBP US-bound ↗</a><a href="https://www.cbsa-asfc.gc.ca/bwt-taf/menu-eng.html" target="_blank" rel="noopener noreferrer">CBSA Canada-bound ↗</a></nav></footer>
+    <section class="alternatives-section" aria-labelledby="alternativesTitle"><div class="section-head"><h2 id="alternativesTitle">Other crossings</h2><button type="button" class="text-button" id="compareButton">Compare details</button></div><div id="alternatives" class="alternatives"></div></section>
+    <section class="alerts-section" id="alertsSection" hidden><div class="section-head"><h2>Regional advisories</h2><a href="https://511on.ca/" target="_blank" rel="noopener noreferrer">Ontario 511 <svg class="icon"><use href="#i-external"/></svg></a></div><div id="advisories"></div><p class="subtle">Regional advisories are not verified delays on a selected route.</p></section>
+    <details id="allConditions" class="all-conditions"><summary>Full conditions &amp; source details <svg class="icon"><use href="#i-chevron"/></svg></summary><div id="detailsBody" class="details-body"></div></details>
+    <p class="route-disclaimer">Border wait estimates exclude approach traffic. Navigation is a route preview; verify the selected crossing in Maps.</p>
+    <footer><span>Nexus RC1.4</span><span>Independent commuter tool · Not affiliated with border agencies</span></footer>
   </main>
 </div>
 
-<dialog id="settingsDialog" aria-labelledby="settingsTitle">
-  <form id="settingsForm" method="dialog" novalidate>
-    <div class="dialog-head"><div><h2 id="settingsTitle">Your settings</h2><p>Stored locally in your browser. No sign-in.</p></div><button type="button" id="closeSettings" class="close-btn" aria-label="Close settings">×</button></div>
-    <div class="dialog-body">
-      <div class="field"><label for="homeInput">Home destination</label><input type="text" id="homeInput" placeholder="Street address or place" autocomplete="street-address"><div class="help">Used only to build a Google Maps link when you choose Home.</div></div>
-      <div class="field"><label for="workInput">Work destination</label><input type="text" id="workInput" placeholder="Street address or place"><div class="help">Use a destination that your map application can find reliably.</div></div>
-      <div class="field"><label for="themeInput">Appearance</label><select id="themeInput"><option value="system">Follow device</option><option value="light">Always light</option><option value="dark">Always dark</option></select></div>
-      <div class="switch-row"><div><strong>I use NEXUS</strong><p>Both regular and NEXUS waits always display. This preference prioritizes reported NEXUS waits for US-bound comparisons; Canada-bound NEXUS waits are unavailable.</p></div><input id="nexusInput" aria-label="I use NEXUS" type="checkbox" role="switch"></div>
-      <div class="small-heading">Build diagnostics</div>
-      <div class="field"><div class="help" id="diagnosticText">Waiting for official feed snapshots.</div><div class="help">Feed snapshots are published on a schedule, not directly polled from your device. CBSA does not supply separate Canada-bound NEXUS waits. Incidents and route-through-crossing are not yet validated.</div></div>
-    </div>
-    <div class="dialog-footer"><button id="saveSettings" class="save-btn" type="submit">Save settings</button></div>
-  </form>
-</dialog>
+<dialog id="settingsDialog" class="modal" aria-labelledby="settingsTitle"><form id="settingsForm" method="dialog" novalidate>
+  <div class="modal-header"><div><h2 id="settingsTitle">Preferences</h2><p>Saved on this device. No account required.</p></div><button class="icon-button close-modal" id="closeSettings" type="button" aria-label="Close settings"><svg class="icon"><use href="#i-close"/></svg></button></div>
+  <div class="modal-scroll">
+    <div class="settings-group"><h3>Crossings</h3><div class="form-row"><label for="preferredUs">Preferred · Canada → USA</label><select id="preferredUs"><option value="tunnel">Detroit–Windsor Tunnel</option><option value="ambassador">Ambassador Bridge</option><option value="gordie">Gordie Howe Bridge</option></select></div><div class="form-row"><label for="preferredCa">Preferred · USA → Canada</label><select id="preferredCa"><option value="tunnel">Detroit–Windsor Tunnel</option><option value="ambassador">Ambassador Bridge</option><option value="gordie">Gordie Howe Bridge</option></select></div><label class="check-row"><span><strong>Use NEXUS</strong><small>Prioritize reported NEXUS waits where available</small></span><input id="nexusInput" type="checkbox"></label></div>
+    <div class="settings-group"><h3>Recommendation behaviour</h3><div class="form-row"><label for="recommendationInput">Sensitivity</label><select id="recommendationInput"><option value="conservative">Conservative · Default</option><option value="balanced">Balanced · Highlight smaller differences</option><option value="information">Information only · No suggestions</option></select><small>Differences are in inspection waits only, not verified total-trip savings.</small></div></div>
+    <div class="settings-group"><h3>Saved destinations</h3><div class="form-row"><label for="homeInput">Home</label><input id="homeInput" type="text" placeholder="Street address or place" maxlength="180" autocomplete="street-address"></div><div class="form-row"><label for="workInput">Work</label><input id="workInput" type="text" placeholder="Street address or place" maxlength="180"></div><div class="form-row"><label for="themeInput">Appearance</label><select id="themeInput"><option value="system">Follow device</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div>
+    <details class="diagnostics"><summary>Technical diagnostics</summary><div id="diagnosticText" class="diagnostic-content">Not yet loaded</div></details>
+  </div><div class="modal-footer"><button type="submit" class="primary-button">Save preferences</button></div>
+</form></dialog>
 
+<dialog id="routeDialog" class="modal" aria-labelledby="routeTitle"><form id="routeForm" method="dialog">
+  <div class="modal-header"><div><h2 id="routeTitle">Plan route</h2><p>Verify the crossing in your navigation app.</p></div><button class="icon-button close-modal" id="closeRoute" type="button" aria-label="Close route planner"><svg class="icon"><use href="#i-close"/></svg></button></div>
+  <div class="modal-scroll"><div class="form-row"><label for="originRoute">Origin (optional)</label><input id="originRoute" type="text" placeholder="Current location in Maps" maxlength="180"></div><div class="form-row"><label for="destinationRoute">Destination</label><input id="destinationRoute" type="text" required placeholder="Address or place" maxlength="180"></div><p class="subtle" id="routeCrossingLabel"></p><p class="subtle">Google Maps may choose a different crossing despite the waypoint. Review the route before departure.</p></div>
+  <div class="modal-footer route-footer"><button class="secondary-button" id="copyLink" type="button">Copy trip link</button><button class="primary-button" type="submit">Preview in Maps <svg class="icon"><use href="#i-external"/></svg></button></div>
+</form></dialog>
 
-<dialog id="cameraDialog" class="camera-dialog" aria-labelledby="cameraTitle" aria-describedby="cameraDescription">
-  <div class="dialog-head">
-    <div><h2 id="cameraTitle">Crossing camera</h2><p id="cameraDescription">Official operator camera and approach views</p></div>
-    <button id="closeCamera" class="close-btn" type="button" aria-label="Close camera preview">×</button>
-  </div>
-  <div class="camera-body">
-    <div class="camera-stage" aria-label="Camera preview area">
-      <div id="cameraEmpty" class="camera-empty">
-        <span class="camera-icon" aria-hidden="true">▣</span>
-        <strong id="cameraEmptyTitle">Official source</strong>
-        <p id="cameraEmptyText">Preview loads only when requested.</p>
-        <button id="cameraTry" class="camera-try" type="button" hidden>Try live preview</button>
-      </div>
-      <iframe id="cameraFrame" title="Official crossing camera preview" referrerpolicy="no-referrer-when-downgrade" sandbox="allow-scripts allow-same-origin" allow="fullscreen" hidden></iframe>
-    </div>
-    <div class="camera-meta"><span id="cameraProvider">Source: crossing operator</span><span id="cameraNote">Live availability varies</span></div>
-    <div class="camera-controls">
-      <a id="cameraOfficial" class="camera-open" target="_blank" rel="noopener noreferrer">Open official camera page ↗</a>
-      <a id="cameraSecondary" class="camera-secondary" target="_blank" rel="noopener noreferrer" hidden>Other approach cameras ↗</a>
-    </div>
-    <p class="camera-disclaimer" id="cameraDisclaimer">Cameras are supplemental. They do not measure border inspection wait time.</p>
-  </div>
-</dialog>
-
-<script>
-(() => {
-  'use strict';
-  const BUILD_VERSION = 'RC1.3';
-  const STORAGE_KEY = 'nexus-prototype-v1'; // Keep RC1 compatible with Prototype 01 preferences.
-  const CROSSINGS = [
-    { id: 'ambassador', name: 'Ambassador Bridge', short: 'Bridge crossing', waypoint: 'Ambassador Bridge, Windsor Detroit border' },
-    { id: 'tunnel', name: 'Detroit–Windsor Tunnel', short: 'Downtown connection', waypoint: 'Detroit Windsor Tunnel' },
-    { id: 'gordie', name: 'Gordie Howe International Bridge', short: 'Highway connection', waypoint: 'Gordie Howe International Bridge' }
-  ];
-  const defaults = {
-    direction: 'us', favorites: { us: null, ca: null }, selected: { us: 'tunnel', ca: 'gordie' },
-    destinations: { home: '', work: '' }, destinationChoice: 'work', theme: 'system', nexus: true
-  };
-  const $ = id => document.getElementById(id);
-  const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
-  const safeText = v => String(v ?? '').slice(0, 300);
-  const formatTime = time => {
-    const d = new Date(time);
-    return Number.isFinite(d.getTime()) ? new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Toronto', hour: 'numeric', minute: '2-digit', hour12: true
-    }).format(d) : 'Unknown';
-  };
-  const ageMinutes = time => {
-    const n = Date.parse(time);
-    return Number.isFinite(n) ? Math.max(0, Math.round((Date.now() - n) / 60000)) : Infinity;
-  };
-  function relativeAge(n) {
-    return !Number.isFinite(n) ? 'time unknown' : n < 2 ? 'just now' : n < 60 ? `${n}m ago` : `${Math.floor(n / 60)}h ${n % 60}m ago`;
-  }
-  const DATA_AGE_LIMIT_MIN = 150;
-  const GOOD_AGE_LIMIT_MIN = 90;
-  function loadSettings() {
-    try {
-      const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-      return {
-        ...defaults, ...data,
-        favorites: { ...defaults.favorites, ...(data.favorites || {}) },
-        selected: { ...defaults.selected, ...(data.selected || {}) },
-        destinations: { ...defaults.destinations, ...(data.destinations || {}) }
-      };
-    } catch (_) { return { ...defaults, favorites: { ...defaults.favorites }, selected: { ...defaults.selected }, destinations: { ...defaults.destinations } }; }
-  }
-  let state = loadSettings();
-  let routeOrigin = '';
-  let destinationOverride = '';
-  let liveData = null;
-  let loadError = '';
-  let loadInProgress = false;
-  let lastClientFetch = null;
-  function parseIncomingUrl() {
-    const p = new URLSearchParams(location.search);
-    const pick = (key, length = 180) => (p.get(key) || '').trim().slice(0, length);
-    const dir = pick('direction');
-    if (['us', 'ca'].includes(dir)) state.direction = dir;
-    const cross = pick('crossing');
-    const alias = { ghib: 'gordie', gordie: 'gordie', ambassador: 'ambassador', tunnel: 'tunnel' };
-    if (alias[cross]) state.selected[state.direction] = alias[cross];
-    if (pick('mode') === 'nexus') state.nexus = true;
-    if (pick('mode') === 'standard') state.nexus = false;
-    routeOrigin = pick('origin');
-    destinationOverride = pick('destination');
-    if (destinationOverride) state.destinationChoice = 'custom';
-    // URL inputs are session overrides, not writes to saved Home/Work values.
-  }
-  const explicitDirection = new URLSearchParams(location.search).has('direction');
-  let manualDirectionOverride = false;
-  parseIncomingUrl();
-  const currentCrossing = () => CROSSINGS.find(c => c.id === state.selected[state.direction]) || CROSSINGS[0];
-  const chosenDestination = () => destinationOverride || (state.destinations[state.destinationChoice] || '');
-  function save() {
-    try {
-      const { showExamples, ...prefs } = state;
-      // Never persist an unconfigured transient 'custom' tab as the saved default.
-      if (prefs.destinationChoice === 'custom') prefs.destinationChoice = 'work';
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
-    } catch (_) {}
-  }
-  function applyTheme() {
-    const useDark = state.theme === 'dark' || (state.theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.body.dataset.theme = useDark ? 'dark' : 'light';
-    document.querySelector('meta[name="theme-color"]').content = useDark ? '#0c171e' : '#f5f7fa';
-  }
-  function sourceState() { return liveData?.sources?.[state.direction === 'us' ? 'cbp' : 'cbsa']; }
-  function reportFor(id) { return liveData?.directions?.[state.direction]?.[id] || null; }
-  function readingState(reading) {
-    if (!reading || typeof reading !== 'object') return { kind: 'unavailable', message: 'No official reading' };
-    if (reading.status === 'closed') {
-      return ageMinutes(liveData?.generated_at) <= DATA_AGE_LIMIT_MIN
-        ? { kind: 'closed', message: 'Lane reported closed by agency' }
-        : { kind: 'stale', message: 'Lane status stale · recheck official source' };
-    }
-    if (reading.status !== 'reported' || !Number.isInteger(reading.minutes) || reading.minutes < 0) {
-      return { kind: 'unavailable', message: 'Wait not reported' };
-    }
-    const stampAge = ageMinutes(reading.observation_at);
-    const snapshotAge = ageMinutes(liveData?.generated_at);
-    if (!Number.isFinite(stampAge)) return { kind: 'unavailable', message: 'Observation time unknown' };
-    if (stampAge > DATA_AGE_LIMIT_MIN || snapshotAge > DATA_AGE_LIMIT_MIN) {
-      return { kind: 'stale', message: `Stale · ${relativeAge(stampAge)}` };
-    }
-    if (stampAge > GOOD_AGE_LIMIT_MIN) return { kind: 'delayed', message: `Older reading · ${relativeAge(stampAge)}` };
-    return { kind: 'current', message: `Reported ${relativeAge(stampAge)} · ${formatTime(reading.observation_at)}` };
-  }
-  function primaryWait(id) {
-    const port = reportFor(id);
-    return port?.standard || null;
-  }
-  function sortableWait(id) {
-    const port = reportFor(id);
-    if (!port || (canonicalStatus(port.port_status) === 'closed' && ageMinutes(liveData?.generated_at) <= DATA_AGE_LIMIT_MIN))
-      return { priority: 9, minutes: Infinity };
-    // NEXUS priority is meaningful only where CBP publishes NEXUS waits.
-    if (state.nexus && state.direction === 'us') {
-      const ns = readingState(port.nexus);
-      if (ns.kind === 'current' || ns.kind === 'delayed')
-        return { priority: 0, minutes: port.nexus.minutes };
-      // An explicitly closed NEXUS lane is not a zero-minute wait. Show a
-      // standard-lane fallback; never rank missing NEXUS as an open lane.
-      const ss = readingState(port.standard);
-      if (ss.kind === 'current' || ss.kind === 'delayed')
-        return { priority: ns.kind === 'closed' ? 1 : 2, minutes: port.standard.minutes };
-      return { priority: 9, minutes: Infinity };
-    }
-    const ss = readingState(port.standard);
-    return ss.kind === 'current' || ss.kind === 'delayed'
-      ? { priority: 0, minutes: port.standard.minutes } : { priority: 9, minutes: Infinity };
-  }
-  function canonicalStatus(status) { return String(status || '').toLowerCase(); }
-  // Published hours are intentionally distinguished from live operational status.
-  // These CA-bound times require periodic comparison with CBSA's office directory.
-  const NEXUS_HOURS_CA = {
-    ambassador: ['Lane 1: weekdays (except holidays) 7am-midnight', 'Lane 1: weekends/holidays 8am-10pm', 'Lane 2: weekdays (except holidays) 2-9pm', 'Lane 3: weekdays (except holidays) 3-7pm'],
-    tunnel: ['Weekdays (except holidays) 7am-10pm', 'Weekends/holidays 11am-7pm'],
-    gordie: ['Weekdays 6am-11pm', 'Weekends/holidays 8am-10pm']
-  };
-  const NEXUS_HOURS_SOURCE = 'https://www.cbsa-asfc.gc.ca/data/cbsa-offices-services-bureaux-asfc-en.json';
-  function laneCount(reading, state, isClosed) {
-    if (isClosed) return 'Port closed';
-    if (state.kind === 'closed') return '0 lanes reported open';
-    if (['current','delayed'].includes(state.kind) && Number.isInteger(reading?.lanes_open) && reading.lanes_open >= 0)
-      return reading.lanes_open + (reading.lanes_open === 1 ? ' lane reported open' : ' lanes reported open');
-    return 'Open lanes not reported';
-  }
-  function renderCards() {
-    const favorite = state.favorites[state.direction];
-    const ranked = [...CROSSINGS].sort((a, b) => {
-      const snapshotRecent = ageMinutes(liveData?.generated_at) <= DATA_AGE_LIMIT_MIN;
-      const closedA = snapshotRecent && canonicalStatus(reportFor(a.id)?.port_status) === 'closed';
-      const closedB = snapshotRecent && canonicalStatus(reportFor(b.id)?.port_status) === 'closed';
-      if (closedA !== closedB) return closedA ? 1 : -1;
-      if (a.id === favorite && b.id !== favorite) return -1;
-      if (b.id === favorite && a.id !== favorite) return 1;
-      const waitA = sortableWait(a.id);
-      const waitB = sortableWait(b.id);
-      if (waitA.priority !== waitB.priority) return waitA.priority - waitB.priority;
-      if (waitA.minutes !== waitB.minutes) return waitA.minutes - waitB.minutes;
-      return CROSSINGS.indexOf(a) - CROSSINGS.indexOf(b);
-    });
-    const cards = $('cards');
-    cards.replaceChildren();
-    ranked.forEach(crossing => {
-      const port = reportFor(crossing.id);
-      const reading = primaryWait(crossing.id);
-      const status = readingState(reading);
-      const isSelected = state.selected[state.direction] === crossing.id;
-      const isFav = favorite === crossing.id;
-      const isClosed = canonicalStatus(port?.port_status) === 'closed' && ageMinutes(liveData?.generated_at) <= DATA_AGE_LIMIT_MIN;
-      const hasWait = (status.kind === 'current' || status.kind === 'delayed') && !isClosed;
-      const waitString = isClosed ? 'Closed' : status.kind === 'closed' ? 'Closed' : hasWait ? String(reading.minutes) : '—';
-      const readNote = isClosed ? 'Port reported closed by CBP' : status.message;
-      const n = state.direction === 'us' ? port?.nexus : null;
-      const ns = readingState(n);
-      const nexusReadable = state.direction === 'us' && ['current','delayed'].includes(ns.kind) && !isClosed;
-      const nexusWait = isClosed ? 'Closed' : state.direction === 'ca' ? '—' : ns.kind === 'closed' ? 'Closed' : nexusReadable ? String(n.minutes) : '—';
-      const nexusLaneText = state.direction === 'ca' ? 'Open lanes not reported' : laneCount(n, ns, isClosed);
-      const standardLaneText = state.direction === 'ca' ? 'Open lanes not reported' : laneCount(reading, status, isClosed);
-      const nexusNote = state.direction === 'ca' ? 'CBSA does not publish separate NEXUS waits' : isClosed ? 'Port reported closed' : ns.message;
-      const hours = state.direction === 'ca' ? NEXUS_HOURS_CA[crossing.id] : null;
-      const publishedHours = hours
-        ? '<div class="posted-hours"><strong>Canada-bound NEXUS hours (published)</strong>' +
-          hours.map(h => '<div class="hours-entry">' + escapeHtml(h) + '</div>').join('') +
-          '<div class="hours-source">Published schedule, not live lane confirmation. <a href="' + NEXUS_HOURS_SOURCE + '" target="_blank" rel="noopener noreferrer">CBSA directory</a>. Check holiday exceptions.</div></div>'
-        : '<div class="posted-hours"><strong>US-bound NEXUS hours</strong><div class="hours-entry">Separate published schedule not verified; consult CBP and current reported lane status above.</div></div>';
-      const sourceLabel = state.direction === 'us' ? 'CBP' : 'CBSA';
-      const stamp = reading?.observation_at ? ` · ${formatTime(reading.observation_at)}` : '';
-      const notice = port?.notice ? `<div class="notice"><strong>Agency notice:</strong> ${escapeHtml(safeText(port.notice))}</div>` : '';
-      const card = document.createElement('article');
-      card.className = `crossing-card${isSelected ? ' selected' : ''}${hasWait ? '' : ' unavailable'}`;
-      card.innerHTML = `
-        <div class="card-top"><div><h3 class="crossing-title">${crossing.name}</h3><div class="crossing-short">${crossing.short}</div></div><button class="star-btn ${isFav ? 'is-fav' : ''}" type="button" aria-pressed="${isFav}" aria-label="${isFav ? 'Remove favourite' : 'Pin favourite'}: ${crossing.name}" title="Pin favourite">${isFav ? '★' : '☆'}</button></div>
-        <div class="wait-grid" aria-label="Regular and NEXUS wait times">
-          <div class="wait-block"><div class="reading-label">Regular <span class="source-agency ${state.direction === 'us' ? 'cbp' : 'cbsa'}">${sourceLabel}</span></div>
-            <div class="reading-main"><span class="reading-number ${waitString === 'Closed' ? 'reading-closed' : ''}">${waitString}</span>${hasWait ? '<span class="reading-unit">min</span>' : ''}</div>
-            <div class="wait-lanes">${escapeHtml(standardLaneText)}</div>
-            <div class="reading-note">${escapeHtml(readNote)}</div>
-          </div>
-          <div class="wait-block ${state.nexus ? 'nexus-preferred' : ''}"><div class="reading-label">NEXUS${state.nexus ? ' · Preferred' : ''}</div>
-            <div class="reading-main"><span class="reading-number ${nexusWait === 'Closed' ? 'reading-closed' : ''}">${nexusWait}</span>${nexusReadable ? '<span class="reading-unit">min</span>' : ''}</div>
-            <div class="wait-lanes">${escapeHtml(nexusLaneText)}</div>
-            <div class="reading-note">${escapeHtml(nexusNote)}</div>
-          </div>
-        </div>
-        ${publishedHours}
-        <div class="card-meta"><div class="meta-row"><span>Data state</span><strong>${escapeHtml(isClosed ? 'Port closed' : status.kind === 'current' ? 'Current' : status.kind === 'delayed' ? 'Aging' : status.kind === 'stale' ? 'Stale · hidden' : status.kind === 'closed' ? 'Lane closed' : 'Unavailable')}${escapeHtml(stamp && hasWait ? stamp : '')}</strong></div></div>
-        ${notice}
-        <div class="card-bottom"><button class="pick-btn ${isSelected ? 'current' : ''}" type="button" aria-pressed="${isSelected}">${isSelected ? '✓ Selected crossing' : 'Select crossing'}</button><button class="camera-btn" type="button" aria-label="Open camera for ${crossing.name}">${crossing.id === 'gordie' ? 'Approach cameras' : 'Camera'}</button></div>`;
-      card.querySelector('.camera-btn').addEventListener('click', () => openCamera(crossing));
-      card.querySelector('.star-btn').addEventListener('click', () => {
-        state.favorites[state.direction] = isFav ? null : crossing.id;
-        save(); render();
-      });
-      card.querySelector('.pick-btn').addEventListener('click', () => {
-        state.selected[state.direction] = crossing.id;
-        save(); render();
-      });
-      cards.appendChild(card);
-    });
-  }
-  function renderDataBanner() {
-    const source = sourceState();
-    const sourceName = state.direction === 'us' ? 'CBP' : 'CBSA';
-    const snapshotAge = ageMinutes(liveData?.generated_at);
-    const sourceOk = source?.status === 'ok' && snapshotAge <= DATA_AGE_LIMIT_MIN;
-    const reports = CROSSINGS.map(c => readingState(primaryWait(c.id)));
-    const supported = reports.filter(s => s.kind === 'current' || s.kind === 'delayed').length;
-    let heading, detail, variant;
-    if (loadInProgress && !liveData) {
-      heading = 'Loading official border reports…'; detail = 'Checking the most recently published source snapshot.'; variant = 'neutral';
-    } else if (sourceOk && supported === 3) {
-      heading = `${sourceName} official wait times · ${state.direction === 'us' ? 'Into the USA' : 'Into Canada'}`;
-      detail = `Three crossings reported · Snapshot ${relativeAge(snapshotAge)}. Inspection waits exclude approach roads.`;
-      variant = 'healthy';
-    } else if (sourceOk && supported > 0) {
-      heading = `Partial ${sourceName} coverage`;
-      detail = `${supported}/3 crossings have usable recent readings. Missing or stale numbers are hidden.`; variant = 'caution';
-    } else {
-      heading = 'Official data currently unavailable';
-      detail = loadError || `${sourceName} feed is missing, outdated, or has no validated observations. Open the official source before travelling.`;
-      variant = 'caution';
-    }
-    $('dataBanner').dataset.state = variant;
-    $('demoHeading').textContent = heading;
-    $('demoMessage').textContent = detail;
-    $('sortNote').textContent = state.nexus && state.direction === 'us' ? 'Pinned first · reported NEXUS waits; regular fallback' : 'Pinned first · reported regular waits';
-    $('refreshButton').disabled = loadInProgress;
-    $('refreshButton').textContent = loadInProgress ? 'Refreshing…' : 'Refresh';
-    const diagnostics = [];
-    for (const [name, info] of Object.entries(liveData?.sources || {})) {
-      diagnostics.push(`${name.toUpperCase()}: ${info.status}; ${info.coverage ?? 0}/3 ports; fetched ${info.retrieved_at ? formatTime(info.retrieved_at) : 'unknown'}; ${info.error || 'no ingestion error'}`);
-    }
-    $('diagnosticText').textContent = diagnostics.join(' | ') || loadError || 'No source snapshot loaded.';
-  }
-  function render() {
-    applyTheme();
-    $('todayLabel').textContent = new Intl.DateTimeFormat('en-CA', {
-      weekday:'long', month:'short', day:'numeric', timeZone:'America/Toronto'
-    }).format(new Date());
-    [['toUS','us'],['toCA','ca']].forEach(([id, direction]) => {
-      const active = state.direction === direction;
-      $(id).classList.toggle('active', active);
-      $(id).setAttribute('aria-pressed', String(active));
-    });
-    $('selectedCrossing').textContent = currentCrossing().name;
-    const chosen = chosenDestination().trim();
-    $('selectedDestination').textContent = chosen || 'Not configured';
-    $('originRoute').value = routeOrigin;
-    if (document.activeElement !== $('destinationRoute')) $('destinationRoute').value = chosen;
-    [['destHome','home'],['destWork','work']].forEach(([id, value]) => {
-      const active = state.destinationChoice === value && !destinationOverride;
-      $(id).classList.toggle('active', active);
-      $(id).setAttribute('aria-pressed', String(active));
-    });
-    $('navigateButton').textContent = chosen ? 'Preview Google Maps ↗' : 'Set destination';
-    renderDataBanner();
-    renderCards();
-  }
-  function setDestChoice(value) {
-    state.destinationChoice = value;
-    destinationOverride = '';
-    save(); render();
-  }
-  function openSettings() {
-    $('homeInput').value = state.destinations.home;
-    $('workInput').value = state.destinations.work;
-    $('themeInput').value = state.theme;
-    $('nexusInput').checked = state.nexus;
-    $('settingsDialog').showModal();
-  }
-  function buildShareUrl() {
-    const url = new URL(window.location.href);
-    url.search = '';
-    url.hash = '';
-    url.searchParams.set('direction', state.direction);
-    url.searchParams.set('crossing', currentCrossing().id);
-    if (routeOrigin) url.searchParams.set('origin', routeOrigin);
-    if (chosenDestination()) url.searchParams.set('destination', chosenDestination());
-    url.searchParams.set('mode', state.nexus ? 'nexus' : 'standard');
-    return url.toString();
-  }
-  async function refresh() {
-    if (loadInProgress) return;
-    loadInProgress = true;
-    loadError = '';
-    renderDataBanner();
-    const controller = new AbortController();
-    const kill = setTimeout(() => controller.abort(), 14000);
-    try {
-      const response = await fetch(`./data/live.json?ts=${Date.now()}`, { cache: 'no-store', signal: controller.signal });
-      if (!response.ok) throw new Error(`Snapshot HTTP ${response.status}`);
-      const json = await response.json();
-      if (json.schema !== 'nexus-live-v1' || !json.sources || !json.directions) throw new Error('Unrecognized data snapshot');
-      liveData = json;
-      lastClientFetch = new Date().toISOString();
-    } catch (err) {
-      loadError = `Data retrieval failed (${safeText(err.message || String(err))}).`;
-      // Keep an already loaded snapshot; its original observation timestamps still age normally.
-    } finally {
-      clearTimeout(kill);
-      loadInProgress = false;
-      render();
-    }
-  }
-  // Optional, local-only coarse direction detector. Deliberately refuses
-  // ambiguous waterfront coordinates rather than guessing the country.
-  function borderSide(latitude, longitude) {
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-    // Far from the local commuter region: preserve saved selection.
-    if (latitude < 42.08 || latitude > 42.8 || longitude < -83.9 || longitude > -82.55) return null;
-    if (longitude < -83.18) return 'us'; // Detroit metro, west of Windsor
-    if (latitude > 42.43 && longitude < -82.92) return 'us'; // Northern Detroit suburbs
-    if (longitude > -82.90 && latitude < 42.34) return 'ca'; // East of Windsor
-    // Approximate centreline of Detroit River, used only away from its banks.
-    const points = [[-83.18,42.19],[-83.12,42.255],[-83.08,42.302],[-83.04,42.327],[-82.99,42.355],[-82.93,42.386],[-82.90,42.405]];
-    for (let i=1; i<points.length; i++) {
-      const [lon1,lat1]=points[i-1], [lon2,lat2]=points[i];
-      if (longitude >= lon1 && longitude <= lon2) {
-        const borderLatitude = lat1 + ((longitude-lon1)/(lon2-lon1))*(lat2-lat1);
-        if (latitude > borderLatitude + .012) return 'us';
-        if (latitude < borderLatitude - .012) return 'ca';
-        return null;
-      }
-    }
-    return null;
-  }
-  function locationFeedback(message) { $('locationStatus').textContent = message; }
-  function detectDirection(requestPermission) {
-    if (!navigator.geolocation || manualDirectionOverride) return;
-    const b = $('locateDirection');
-    b.disabled = true;
-    navigator.geolocation.getCurrentPosition(position => {
-      b.disabled = false;
-      const side = borderSide(position.coords.latitude, position.coords.longitude);
-      if (!side) { locationFeedback('Location near border or outside coverage; direction unchanged'); return; }
-      state.direction = side === 'ca' ? 'us' : 'ca';
-      save(); render();
-      locationFeedback(side === 'ca' ? 'In Canada · travel to USA' : 'In USA · travel to Canada');
-    }, error => {
-      b.disabled = false;
-      if (requestPermission) locationFeedback(error.code === 1 ? 'Location blocked; select direction manually' : 'Location unavailable');
-    }, { enableHighAccuracy: false, maximumAge: 5*60*1000, timeout: 7000 });
-  }
-  // No automatic permission prompt on first visit. Previously granted access
-  // can be reused on launch; otherwise the user may opt in with one tap.
-  function autoDetectDirectionIfGranted() {
-    if (explicitDirection || !navigator.permissions?.query) return;
-    navigator.permissions.query({name:'geolocation'}).then(result => {
-      if (result.state === 'granted' && !manualDirectionOverride) detectDirection(false);
-    }).catch(() => {});
-  }
-  // Official links only; no third-party proxies or unverified stream scraping.
-  // Ambassador camera iframe URLs come from the operator's own embed pages.
-  const CAMERAS = {
-    ambassador: {
-      us: {provider:'Ambassador Bridge', view:'Toward the United States', url:'https://www.ambassadorbridge.com/into-the-united-states/', embed:'https://ambassador.solutionspal.com/cams/cam2.html'},
-      ca: {provider:'Ambassador Bridge', view:'Toward Canada', url:'https://www.ambassadorbridge.com/into-canada/', embed:'https://ambassador.solutionspal.com/cams/cam1.html'}
-    },
-    tunnel: {
-      us: {provider:'Detroit–Windsor Tunnel', view:'Windsor to Detroit inspection', url:'https://www.dwtunnel.com/'},
-      ca: {provider:'Detroit–Windsor Tunnel', view:'Detroit to Windsor inspection / Randolph Street', url:'https://www.dwtunnel.com/'}
-    },
-    gordie: {
-      us: {provider:'Ontario 511 / MDOT', view:'Ontario Highway 401 approach cameras', url:'https://511on.ca/?SelectedLayers=Cameras', secondary:'https://mdotjboss.state.mi.us/MiDrive/map?cameras=true', secondaryLabel:'Michigan MDOT cameras ↗', approach:true},
-      ca: {provider:'MDOT / Ontario 511', view:'Michigan I-75 approach cameras', url:'https://mdotjboss.state.mi.us/MiDrive/map?cameras=true', secondary:'https://511on.ca/?SelectedLayers=Cameras', secondaryLabel:'Ontario 511 cameras ↗', approach:true}
-    }
-  };
-  let cameraActive = null;
-  function closeCamera() {
-    $('cameraFrame').removeAttribute('src');
-    $('cameraFrame').hidden = true;
-    $('cameraEmpty').hidden = false;
-    cameraActive = null;
-    if ($('cameraDialog').open) $('cameraDialog').close();
-  }
-  function openCamera(crossing) {
-    const view = CAMERAS[crossing.id]?.[state.direction];
-    if (!view) return;
-    cameraActive = view;
-    $('cameraTitle').textContent = crossing.name;
-    $('cameraDescription').textContent = (state.direction === 'us' ? 'Canada → USA' : 'USA → Canada') + ' · ' + view.view;
-    $('cameraProvider').textContent = 'Source: ' + view.provider;
-    $('cameraOfficial').href = view.url;
-    $('cameraOfficial').textContent = view.approach ? 'Open official approach cameras ↗' : 'Open official camera page ↗';
-    $('cameraSecondary').hidden = !view.secondary;
-    if (view.secondary) {
-      $('cameraSecondary').href = view.secondary;
-      $('cameraSecondary').textContent = view.secondaryLabel;
-    } else $('cameraSecondary').removeAttribute('href');
-    $('cameraEmptyTitle').textContent = view.embed ? 'Directional camera' : view.approach ? 'Nearby road cameras' : 'Official tunnel cameras';
-    $('cameraEmptyText').textContent = view.embed ? 'Tap to load the operator-provided preview. Third-party framing may be blocked on some devices.'
-      : view.approach ? 'The bridge operator has not published a verified embeddable crossing view. Open the appropriate government road-camera map.'
-      : 'The tunnel streams are hosted on the official site. A reliable external embed has not been verified.';
-    $('cameraTry').hidden = !view.embed;
-    $('cameraEmpty').hidden = false;
-    $('cameraFrame').hidden = true;
-    $('cameraFrame').removeAttribute('src');
-    $('cameraNote').textContent = view.embed ? 'Preview is opt-in' : 'Official link only';
-    $('cameraDisclaimer').textContent = view.approach ? 'These are nearby highway views, not verified border inspection queue cameras.'
-      : 'A camera view cannot establish inspection wait time, NEXUS lane availability, or a guaranteed route.';
-    $('cameraDialog').showModal();
-  }
-  $('closeCamera').addEventListener('click', closeCamera);
-  $('cameraDialog').addEventListener('close', () => {
-    $('cameraFrame').removeAttribute('src');
-    $('cameraFrame').hidden = true;
-    cameraActive = null;
-  });
-  $('cameraDialog').addEventListener('click', e => { if (e.target === $('cameraDialog')) closeCamera(); });
-  $('cameraTry').addEventListener('click', () => {
-    if (!cameraActive?.embed) return;
-    $('cameraFrame').src = cameraActive.embed;
-    $('cameraFrame').hidden = false;
-    $('cameraEmpty').hidden = true;
-    $('cameraNote').textContent = 'If blank or blocked, open official page';
-  });
-  $('settingsButton').addEventListener('click', openSettings);
-  $('closeSettings').addEventListener('click', () => $('settingsDialog').close());
-  $('settingsDialog').addEventListener('click', e => { if (e.target === $('settingsDialog')) $('settingsDialog').close(); });
-  $('settingsForm').addEventListener('submit', e => {
-    e.preventDefault();
-    state.destinations.home = $('homeInput').value.trim().slice(0, 180);
-    state.destinations.work = $('workInput').value.trim().slice(0, 180);
-    state.theme = $('themeInput').value;
-    state.nexus = $('nexusInput').checked;
-    save(); $('settingsDialog').close(); render();
-  });
-  $('toUS').addEventListener('click', () => { manualDirectionOverride = true; state.direction = 'us'; save(); render(); locationFeedback('Manual direction'); });
-  $('toCA').addEventListener('click', () => { manualDirectionOverride = true; state.direction = 'ca'; save(); render(); locationFeedback('Manual direction'); });
-  $('locateDirection').addEventListener('click', () => { manualDirectionOverride = false; detectDirection(true); });
-  $('destHome').addEventListener('click', () => setDestChoice('home'));
-  $('destWork').addEventListener('click', () => setDestChoice('work'));
-  $('originRoute').addEventListener('input', e => { routeOrigin = e.target.value.slice(0, 180); });
-  $('destinationRoute').addEventListener('input', e => {
-    destinationOverride = e.target.value.slice(0, 180);
-    state.destinationChoice = 'custom';
-    $('selectedDestination').textContent = destinationOverride || 'Not configured';
-    $('navigateButton').textContent = destinationOverride ? 'Preview Google Maps ↗' : 'Set destination';
-    [['destHome','home'], ['destWork','work']].forEach(([id]) => { $(id).classList.remove('active'); $(id).setAttribute('aria-pressed', 'false'); });
-  });
-  $('refreshButton').addEventListener('click', refresh);
-  $('copyLink').addEventListener('click', async () => {
-    const url = buildShareUrl();
-    try { await navigator.clipboard.writeText(url); $('copyLink').textContent = 'Copied ✓'; }
-    catch { window.prompt('Copy this commute link:', url); }
-    setTimeout(() => { $('copyLink').textContent = 'Copy commute link'; }, 1600);
-  });
-  $('navigateButton').addEventListener('click', () => {
-    const destination = chosenDestination().trim();
-    if (!destination) { openSettings(); return; }
-    const crossing = currentCrossing();
-    const port = reportFor(crossing.id);
-    const closed = canonicalStatus(port?.port_status) === 'closed' && ageMinutes(liveData?.generated_at) <= DATA_AGE_LIMIT_MIN;
-    const message = `${closed ? 'WARNING: Official CBP reports this port CLOSED.\n\n' : ''}Google Maps may ignore or reinterpret the crossing waypoint. This is an unverified route preview, not guaranteed crossing-specific navigation. Check the entire route and official closures before travelling.\n\nOpen Maps?`;
-    if (!window.confirm(message)) return;
-    const url = new URL('https://www.google.com/maps/dir/');
-    url.searchParams.set('api', '1');
-    url.searchParams.set('travelmode', 'driving');
-    url.searchParams.set('destination', destination);
-    if (routeOrigin.trim()) url.searchParams.set('origin', routeOrigin.trim()); // No origin means current position in Maps.
-    url.searchParams.set('waypoints', crossing.waypoint);
-    window.open(url.toString(), '_blank', 'noopener,noreferrer');
-  });
-  const media = window.matchMedia('(prefers-color-scheme: dark)');
-  if (media.addEventListener) media.addEventListener('change', () => { if (state.theme === 'system') applyTheme(); });
-  render();
-  autoDetectDirectionIfGranted();
-  refresh();
-  setInterval(() => { if (!document.hidden) { refresh(); } }, 120000);
-  setInterval(() => { if (!document.hidden && !loadInProgress) renderDataBanner(); }, 60000);
-})();
-
-</script>
+<dialog id="cameraDialog" class="modal camera-modal" aria-labelledby="cameraTitle"><div class="modal-header"><div><h2 id="cameraTitle">Crossing camera</h2><p id="cameraDescription">Official operator view</p></div><button class="icon-button close-modal" id="closeCamera" type="button" aria-label="Close camera"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="camera-content"><div class="camera-stage"><iframe id="cameraFrame" title="Live crossing camera" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" hidden></iframe><div id="cameraFallback" class="camera-fallback"><svg class="icon"><use href="#i-camera"/></svg><p id="cameraFallbackText">Official camera unavailable</p><button type="button" id="cameraContinue" class="secondary-button" hidden>Continue watching</button></div></div><div id="cameraViews" class="camera-tabs" role="group" aria-label="Camera view"></div><div class="camera-links"><span id="cameraProvider"></span><a id="cameraOfficial" target="_blank" rel="noopener noreferrer">Official camera page <svg class="icon"><use href="#i-external"/></svg></a></div><p class="subtle">Camera views are supplemental and do not establish inspection waits or NEXUS availability. Playback depends on the operator.</p></div></dialog>
+<script src="./decision.js"></script><script src="./app.js" defer></script>
 </body>
 </html>

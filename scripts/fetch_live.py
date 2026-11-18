@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 import io
 import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -23,6 +24,9 @@ EASTERN = ZoneInfo('America/Toronto')
 CBP_URL = 'https://bwt.cbp.gov/api/waittimes'
 CBSA_CSV_URL = 'https://www.cbsa-asfc.gc.ca/bwt-taf/bwt-eng.csv'
 CBSA_HTML_URL = 'https://www.cbsa-asfc.gc.ca/bwt-taf/menu-eng.html'
+CBSA_HOURS_URL = 'https://www.cbsa-asfc.gc.ca/data/cbsa-offices-services-bureaux-asfc-en.json'
+DWT_URL = 'https://api.dwtunnel.com/api/traffic/conditionspublic'
+ONTARIO_511_URL = 'https://511on.ca/api/v2/get/event'
 CROSSING_NAMES = {
     'ambassador': ('ambassador bridge',),
     'tunnel': ('windsor detroit tunnel', 'detroit windsor tunnel', 'windsor tunnel'),
@@ -45,8 +49,8 @@ def get_text(url):
         'Accept': 'application/json,text/csv,text/html,*/*',
     })
     with urlopen(req, timeout=22) as response:
-        blob = response.read(3_000_001)
-        if len(blob) > 3_000_000:
+        blob = response.read(8_000_001)
+        if len(blob) > 8_000_000:
             raise ValueError('Feed exceeds maximum size')
         return blob.decode('utf-8-sig', 'replace')
 
@@ -141,7 +145,16 @@ def normalize_lane(lane, port):
         status = 'reported'
     else:
         status = 'unavailable'
-    return {'minutes': minutes, 'status': status, 'observation_at': update, 'lanes_open': lanes}
+    return {'minutes': minutes, 'status': status, 'observation_at': update, 'lanes_open': lanes,
+            'reported_status': raw_status or None}
+
+
+def optional_integer(value):
+    try:
+        result = int(value)
+        return result if result >= 0 else None
+    except (TypeError, ValueError):
+        return None
 
 
 def normalize_cbp(text):
@@ -154,10 +167,19 @@ def normalize_cbp(text):
         if key not in CROSSING_NAMES or canonical(port.get('port_name', '')) != 'detroit':
             continue
         passenger = port.get('passenger_vehicle_lanes') or {}
+        commercial = port.get('commercial_vehicle_lanes') or {}
+        pedestrians = port.get('pedestrian_lanes') or {}
         out[key] = {
             'source': 'CBP',
             'standard': normalize_lane(passenger.get('standard_lanes'), port),
             'nexus': normalize_lane(passenger.get('NEXUS_SENTRI_lanes'), port),
+            'ready': normalize_lane(passenger.get('ready_lanes'), port),
+            'commercial': normalize_lane(commercial.get('standard_lanes'), port),
+            'fast': normalize_lane(commercial.get('FAST_lanes'), port),
+            'pedestrian': normalize_lane(pedestrians.get('standard_lanes'), port),
+            'passenger_max_lanes': optional_integer(passenger.get('maximum_lanes')),
+            'commercial_max_lanes': optional_integer(commercial.get('maximum_lanes')),
+            'published_port_hours': str(port.get('hours', '')).strip()[:100] or None,
             'port_status': str(port.get('port_status', '')).strip() or None,
             'notice': str(port.get('construction_notice', '')).strip()[:450] or None,
         }
@@ -227,12 +249,14 @@ def normalize_cbsa_table_rows(rows):
             continue
         # Explicit 4-column table: crossing, commercial, travellers, updated.
         # Some editions put a location in a separate cell, thus use last 3 cells.
-        traveller, stamp = row[-2], row[-1]
+        commercial, traveller, stamp = row[-3], row[-2], row[-1]
         obs = parse_datetime(stamp)
         if obs is None:
             continue  # Reject ambiguous rows; never substitute retrieval time.
         reading = parse_wait(traveller)
+        trucks = parse_wait(commercial)
         out[key] = {'source': 'CBSA', 'standard': {**reading, 'observation_at': iso(obs), 'lanes_open': None},
+                    'commercial': {**trucks, 'observation_at': iso(obs), 'lanes_open': None},
                     'nexus': None, 'port_status': None, 'notice': None}
     if not out:
         raise ValueError('CBSA table has no matching dated Windsor crossings')
@@ -252,17 +276,136 @@ def normalize_cbsa_csv(text):
     return normalize_cbsa_table_rows(lines)
 
 
+def normalize_cbsa_nexus_hours(text):
+    """Official CBSA offices directory: published *Canada-bound* NEXUS hours.
+
+    Raw labels are preserved to avoid assigning unsupported holiday semantics.
+    Published schedules never establish current physical lane availability.
+    """
+    payload = json.loads(text)
+    offices = payload.get('offices') if isinstance(payload, dict) else None
+    if not isinstance(offices, list):
+        raise ValueError('CBSA office directory missing offices')
+    result = {}
+    for office in offices:
+        if not isinstance(office, dict):
+            continue
+        key = port_id(office.get('name', ''))
+        if not key:
+            continue
+        groups = []
+        for group in office.get('hours', []):
+            if not isinstance(group, dict) or 'nexus' not in str(group.get('labelEn', '')).lower():
+                continue
+            rows = []
+            for row in group.get('officeHours', []):
+                if not isinstance(row, dict):
+                    continue
+                rows.append({
+                    'label': str(row.get('labelEn', '')).strip()[:120],
+                    'start': str(row.get('start', '')).strip()[:10] or None,
+                    'end': str(row.get('end', '')).strip()[:10] or None,
+                    'custom': str(row.get('customEn', '')).strip()[:80] or None,
+                })
+            if rows:
+                groups.append({'label': str(group.get('labelEn', ''))[:120], 'rows': rows})
+        if groups:
+            result[key] = {'source': 'CBSA', 'groups': groups}
+    if not result:
+        raise ValueError('No relevant NEXUS hours in CBSA office directory')
+    return result
+
+
+def normalize_dwt(text):
+    """Preserve the operator's lane counts, NOT a claim that lanes are open.
+
+    Source: public traffic conditions endpoint captured from www.dwtunnel.com.
+    No separate NEXUS inspection wait is supplied.
+    """
+    payload = json.loads(text)
+    if not isinstance(payload, list):
+        raise ValueError('DWT payload is not an array')
+    result = {}
+    direction_names = {'detroit to windsor': 'ca', 'windsor to detroit': 'us'}
+    for entry in payload:
+        if not isinstance(entry, dict):
+            continue
+        direction = direction_names.get(canonical(entry.get('Direction')))
+        if not direction:
+            continue
+        raw_date = str(entry.get('DetailsDate', '')).strip()
+        try:
+            observed = datetime.strptime(raw_date, '%m/%d/%Y %I:%M:%S %p').replace(tzinfo=EASTERN)
+            stamp = iso(observed)
+        except ValueError:
+            stamp = None
+        counts = {}
+        for name, field in [('car', 'CarLaneCount'), ('nexus', 'NexusLaneCount'), ('truck', 'TruckLaneCount')]:
+            counts[name] = optional_integer(entry.get(field))
+        result[direction] = {
+            'source': 'DWT', 'observation_at': stamp, 'lane_counts': counts,
+            'travel_time_category': str(entry.get('DetailsTravelTime', '')).strip()[:50] or None,
+        }
+    if not result:
+        raise ValueError('No DWT directional records')
+    return result
+
+
+def normalize_ontario_events(text, observed_at=None):
+    """Only broad Windsor-Essex vicinity alerts; NOT validated route impacts.
+
+    A geographic bounding box may contain unrelated roads, so require
+    401/3/EC Row road names and show 'regional advisory', not detour advice.
+    """
+    payload = json.loads(text)
+    if not isinstance(payload, list):
+        raise ValueError('Ontario 511 events payload is not an array')
+    now = observed_at or datetime.now(UTC)
+    out = []
+    for e in payload:
+        if not isinstance(e, dict):
+            continue
+        try:
+            lat, lon = float(e.get('Latitude')), float(e.get('Longitude'))
+        except (TypeError, ValueError):
+            continue
+        if not (42.08 <= lat <= 42.39 and -83.24 <= lon <= -82.72):
+            continue
+        road = str(e.get('RoadwayName') or '').strip()[:80]
+        road_lc = canonical(road)
+        if not any(word in road_lc for word in ('401', 'highway 3', 'hwy 3', 'ec row', 'e c row')):
+            continue
+        try:
+            begin = int(e['StartDate'])
+            end = int(e['PlannedEndDate'])
+            if (begin > now.timestamp() or end < now.timestamp()):
+                continue
+        except (TypeError, ValueError, KeyError):
+            pass  # No unsupported assumption about a missing end date.
+        out.append({
+            'id': str(e.get('ID') or '')[:40], 'roadway': road,
+            'direction': str(e.get('DirectionOfTravel') or '')[:40],
+            'description': str(e.get('Description') or '')[:280],
+            'type': str(e.get('EventType') or '')[:60],
+            'is_full_closure': e.get('IsFullClosure') is True,
+            'severity': str(e.get('Severity') or '')[:60],
+            'latitude': lat, 'longitude': lon,
+        })
+    return out[:30]
+
+
 def empty_snapshot():
     return {
-        'schema': 'nexus-live-v1',
+        'schema': 'nexus-live-v2',
         'generated_at': now_utc(),
         'sources': {},
+        'supplemental': {'dwt': {}, 'ontario511_events': [], 'cbsa_nexus_hours': {}},
         'directions': {'us': {}, 'ca': {}},
         'disclaimer': 'Official border inspection wait estimates only; road approach delays excluded.',
     }
 
 
-def collect(cbp_text=None, cbsa_text=None, cbsa_format='auto'):
+def collect(cbp_text=None, cbsa_text=None, cbsa_format='auto', dwt_text=None, ontario_events_text=None, cbsa_hours_text=None):
     result = empty_snapshot()
     try:
         cbp = normalize_cbp(cbp_text if cbp_text is not None else get_text(CBP_URL))
@@ -296,6 +439,48 @@ def collect(cbp_text=None, cbsa_text=None, cbsa_format='auto'):
     if 'cbsa' not in result['sources']:
         result['sources']['cbsa'] = {'status': 'error', 'retrieved_at': now_utc(),
                                     'url': CBSA_CSV_URL, 'error': '; '.join(issues)[:300]}
+    # Published CBSA NEXUS schedules are contextual; never claim live access.
+    fixture_mode = cbp_text is not None or cbsa_text is not None
+    try:
+        if cbsa_hours_text is not None or not fixture_mode:
+            hours = normalize_cbsa_nexus_hours(cbsa_hours_text if cbsa_hours_text is not None else get_text(CBSA_HOURS_URL))
+            result['supplemental']['cbsa_nexus_hours'] = hours
+            result['sources']['cbsa_hours'] = {'status': 'ok', 'retrieved_at': now_utc(),
+                                                'url': CBSA_HOURS_URL, 'coverage': len(hours)}
+        else:
+            result['sources']['cbsa_hours'] = {'status': 'not_collected', 'url': CBSA_HOURS_URL}
+    except Exception as exc:
+        result['sources']['cbsa_hours'] = {'status': 'error', 'retrieved_at': now_utc(),
+                                            'url': CBSA_HOURS_URL, 'error': f'{type(exc).__name__}: {str(exc)[:160]}'}
+
+    # DWT is a supplemental operator feed, not a replacement for inspection waits.
+    # Tests with explicit CBP/CBSA fixture inputs never make external requests.
+    fixture_mode = cbp_text is not None or cbsa_text is not None
+    try:
+        if dwt_text is not None or not fixture_mode:
+            result['supplemental']['dwt'] = normalize_dwt(dwt_text if dwt_text is not None else get_text(DWT_URL))
+            result['sources']['dwt'] = {'status': 'ok', 'retrieved_at': now_utc(),
+                                         'url': DWT_URL, 'coverage': len(result['supplemental']['dwt'])}
+        else:
+            result['sources']['dwt'] = {'status': 'not_collected', 'url': DWT_URL}
+    except Exception as exc:
+        result['sources']['dwt'] = {'status': 'error', 'retrieved_at': now_utc(), 'url': DWT_URL,
+                                    'error': f'{type(exc).__name__}: {str(exc)[:160]}'}
+    key = os.getenv('ONTARIO_511_KEY', '').strip()
+    try:
+        if ontario_events_text is not None or (key and not fixture_mode):
+            from urllib.parse import urlencode
+            url = ONTARIO_511_URL + '?' + urlencode({'key': key, 'format': 'json', 'lang': 'en'})
+            raw = ontario_events_text if ontario_events_text is not None else get_text(url)
+            result['supplemental']['ontario511_events'] = normalize_ontario_events(raw)
+            result['sources']['ontario511'] = {'status': 'ok', 'retrieved_at': now_utc(),
+                                                'url': ONTARIO_511_URL, 'coverage': len(result['supplemental']['ontario511_events'])}
+        else:
+            result['sources']['ontario511'] = {'status': 'not_configured' if not key else 'not_collected', 'url': ONTARIO_511_URL}
+    except Exception as exc:
+        # Do not log API keys, response URLs, or credentials.
+        result['sources']['ontario511'] = {'status': 'error', 'retrieved_at': now_utc(), 'url': ONTARIO_511_URL,
+                                            'error': f'{type(exc).__name__}: {str(exc)[:160]}'}
     return result
 
 
@@ -304,16 +489,22 @@ def main():
     ap.add_argument('--output', default='data/live.json')
     ap.add_argument('--cbp-fixture')
     ap.add_argument('--cbsa-fixture')
+    ap.add_argument('--cbsa-hours-fixture')
+    ap.add_argument('--dwt-fixture')
+    ap.add_argument('--ontario-events-fixture')
     ap.add_argument('--cbsa-format', choices=['csv', 'html'], default='csv')
     args = ap.parse_args()
     raw_cbp = Path(args.cbp_fixture).read_text(encoding='utf-8') if args.cbp_fixture else None
     raw_cbsa = Path(args.cbsa_fixture).read_text(encoding='utf-8') if args.cbsa_fixture else None
-    payload = collect(raw_cbp, raw_cbsa, args.cbsa_format)
+    raw_dwt = Path(args.dwt_fixture).read_text(encoding='utf-8') if args.dwt_fixture else None
+    raw_ont = Path(args.ontario_events_fixture).read_text(encoding='utf-8') if args.ontario_events_fixture else None
+    raw_hours = Path(args.cbsa_hours_fixture).read_text(encoding='utf-8') if args.cbsa_hours_fixture else None
+    payload = collect(raw_cbp, raw_cbsa, args.cbsa_format, raw_dwt, raw_ont, raw_hours)
     path = Path(args.output)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
     print(f'Generated {path}: ' + ', '.join(f'{k}: {v["status"]} ({v.get("coverage", 0)}/3)' for k,v in payload['sources'].items()))
-    if any(v['status'] != 'ok' or v.get('coverage') != 3 for v in payload['sources'].values()):
+    if any(payload['sources'].get(k, {}).get('status') != 'ok' or payload['sources'][k].get('coverage') != 3 for k in ('cbp','cbsa')):
         print('WARNING: One or more feeds degraded or incomplete. Missing readings are intentionally not populated.', file=sys.stderr)
 
 
