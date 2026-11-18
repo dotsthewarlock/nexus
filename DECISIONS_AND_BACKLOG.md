@@ -1,5 +1,18 @@
 # Nexus RC1 — Decision log and backlog
 
+## RC1.2 - NEXUS-first changes
+- Default NEXUS enabled for new users; saved preferences preserved.
+- Always show regular and NEXUS waits and available CBP reported lane counts.
+- Rank US-bound by valid NEXUS waits when enabled, falling back to regular if closed or missing without inventing zero waits. Canada-bound uses CBSA regular waits.
+- Canada-bound published NEXUS schedules are distinct from live lane confirmation; US-bound schedule unavailable pending official verification.
+- Optional browser geolocation: prompt only on button click, reuse previously granted permission on later visits; do not override URL/manual choice or guess near ambiguous border.
+
+## Pending cleanup
+- Validate geolocation heuristic on real devices in Windsor/Detroit suburbs; consider accurate local border polygon.
+- Verify US-bound published NEXUS operating schedules and monitor changes to CBSA directory.
+- Validate navigation waypoints for six routes before treating crossing selection as enforced.
+
+
 ## Durable decisions (implemented)
 
 - One standalone HTML page with CSS/JS embedded. No framework or build step.

@@ -120,6 +120,27 @@
     .demo-banner[data-state="neutral"] { background:var(--surface-alt); color:var(--muted); border-color:var(--line); }
     @media (max-width:800px) { .journey { grid-template-columns:1fr 1fr auto; } .journey-action { grid-column:auto; } }
     @media (max-width:560px) { .journey { grid-template-columns:1fr; } .link-btn, .primary-btn { width:100%; } .journey-action { grid-column:auto; } }
+
+    .wait-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px}
+    .wait-block{background:var(--surface-alt);border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
+    .wait-block .reading-label{color:var(--ink);letter-spacing:.4px;font-size:11px}
+    .wait-block .reading-main{margin:8px 0 5px}
+    .wait-block .reading-number{font-size:34px;letter-spacing:-1px}
+    .wait-block .reading-number.reading-closed{font-size:20px;letter-spacing:0}
+    .wait-block .reading-unit{font-size:11px}
+    .wait-block .reading-note{font-size:10px;line-height:1.45;margin-top:6px}
+    .wait-lanes{font-size:11px;font-weight:750;margin-top:8px}
+    .posted-hours{border-top:1px solid var(--line);margin-top:12px;padding-top:11px;font-size:11px;color:var(--muted);line-height:1.45}
+    .posted-hours strong{color:var(--ink)}
+    .posted-hours .hours-entry{margin-top:4px}
+    .posted-hours .hours-source{margin-top:5px;font-size:10px}
+    .posted-hours a{color:var(--accent-ink)}
+    .location-btn{border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--accent-ink);padding:6px 9px;font-size:11px;font-weight:750;text-transform:none;letter-spacing:0;margin-left:8px}
+    .location-btn:disabled{opacity:.65;cursor:wait}
+    .location-status{color:var(--muted);font-size:10px;font-weight:500;text-transform:none;letter-spacing:0;margin-left:7px}
+    .wait-block.nexus-preferred{border-color:var(--accent)}
+    .wait-block.nexus-preferred .reading-label{color:var(--accent-ink)}
+    @media(max-width:380px){.wait-grid{gap:6px}.wait-block{padding:9px 8px}.wait-block .reading-number{font-size:30px}}
 </style>
 </head>
 <body>
@@ -145,7 +166,7 @@
     </section>
 
     <section aria-label="Travel direction">
-      <div class="toolbar"><div class="toolbar-label">Travel direction</div><div class="segmented" role="group" aria-label="Choose direction"><button type="button" id="toUS" aria-pressed="true">Canada → USA</button><button type="button" id="toCA" aria-pressed="false">USA → Canada</button></div></div>
+      <div class="toolbar"><div class="toolbar-label">Travel direction <button type="button" id="locateDirection" class="location-btn" title="Detect border side from device location">Use my location</button><span id="locationStatus" class="location-status" role="status"></span></div><div class="segmented" role="group" aria-label="Choose direction"><button type="button" id="toUS" aria-pressed="true">Canada → USA</button><button type="button" id="toCA" aria-pressed="false">USA → Canada</button></div></div>
     </section>
 
     <section aria-labelledby="crossing-heading">
@@ -159,7 +180,7 @@
       <div class="journey-action"><button type="button" class="primary-btn" id="navigateButton">Set destination</button><button type="button" class="link-btn" id="copyLink">Copy commute link</button><div class="route-warning">Google Maps preview only. Selected crossing is not guaranteed; verify the route before travelling.</div></div>
     </section>
 
-    <footer class="footer"><p><strong>Sources:</strong> U.S.-bound passenger and NEXUS lane reports from CBP; Canada-bound traveller waits from CBSA. Canada-bound NEXUS lane status and approach-road traffic are not available in this release. Official estimates may be delayed or incomplete. Contains information licensed under the Open Government Licence – Canada.</p><nav class="source-links" aria-label="Official border wait sources"><a href="https://bwt.cbp.gov/" target="_blank" rel="noopener noreferrer">CBP US-bound ↗</a><a href="https://www.cbsa-asfc.gc.ca/bwt-taf/menu-eng.html" target="_blank" rel="noopener noreferrer">CBSA Canada-bound ↗</a></nav></footer>
+    <footer class="footer"><p><strong>Sources:</strong> U.S.-bound passenger and NEXUS lane reports from CBP; Canada-bound traveller waits from CBSA. Canada-bound NEXUS waits and live lane counts are not published by CBSA. NEXUS hours are published schedules, not confirmation that a lane is operating. Approach-road traffic is not available in this release. Official estimates may be delayed or incomplete. Contains information licensed under the Open Government Licence – Canada.</p><nav class="source-links" aria-label="Official border wait sources"><a href="https://bwt.cbp.gov/" target="_blank" rel="noopener noreferrer">CBP US-bound ↗</a><a href="https://www.cbsa-asfc.gc.ca/bwt-taf/menu-eng.html" target="_blank" rel="noopener noreferrer">CBSA Canada-bound ↗</a></nav></footer>
   </main>
 </div>
 
@@ -170,7 +191,7 @@
       <div class="field"><label for="homeInput">Home destination</label><input type="text" id="homeInput" placeholder="Street address or place" autocomplete="street-address"><div class="help">Used only to build a Google Maps link when you choose Home.</div></div>
       <div class="field"><label for="workInput">Work destination</label><input type="text" id="workInput" placeholder="Street address or place"><div class="help">Use a destination that your map application can find reliably.</div></div>
       <div class="field"><label for="themeInput">Appearance</label><select id="themeInput"><option value="system">Follow device</option><option value="light">Always light</option><option value="dark">Always dark</option></select></div>
-      <div class="switch-row"><div><strong>I use NEXUS</strong><p>Displays US-bound CBP-reported NEXUS waits where available. Canada-bound lane status remains unverified.</p></div><input id="nexusInput" aria-label="I use NEXUS" type="checkbox" role="switch"></div>
+      <div class="switch-row"><div><strong>I use NEXUS</strong><p>Both waits display. NEXUS preference prioritizes US-bound CBP NEXUS waits; Canada-bound NEXUS waits remain unavailable.</p></div><input id="nexusInput" aria-label="I use NEXUS" type="checkbox" role="switch"></div>
       <div class="small-heading">Build diagnostics</div>
       <div class="field"><div class="help" id="diagnosticText">Waiting for official feed snapshots.</div><div class="help">Feed snapshots are published on a schedule, not directly polled from your device. CBSA does not supply separate Canada-bound NEXUS waits. Incidents and route-through-crossing are not yet validated.</div></div>
     </div>
@@ -189,7 +210,7 @@
   ];
   const defaults = {
     direction: 'us', favorites: { us: null, ca: null }, selected: { us: 'tunnel', ca: 'gordie' },
-    destinations: { home: '', work: '' }, destinationChoice: 'work', theme: 'system', nexus: false
+    destinations: { home: '', work: '' }, destinationChoice: 'work', theme: 'system', nexus: true
   };
   const $ = id => document.getElementById(id);
   const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -242,6 +263,8 @@
     if (destinationOverride) state.destinationChoice = 'custom';
     // URL inputs are session overrides, not writes to saved Home/Work values.
   }
+  const explicitDirection = new URLSearchParams(location.search).has('direction');
+  let manualDirectionOverride = false;
   parseIncomingUrl();
   const currentCrossing = () => CROSSINGS.find(c => c.id === state.selected[state.direction]) || CROSSINGS[0];
   const chosenDestination = () => destinationOverride || (state.destinations[state.destinationChoice] || '');
@@ -283,13 +306,37 @@
     const port = reportFor(id);
     return port?.standard || null;
   }
-  function sortableMinutes(id) {
+  function sortableWait(id) {
     const port = reportFor(id);
-    if (!port || (canonicalStatus(port.port_status) === 'closed' && ageMinutes(liveData?.generated_at) <= DATA_AGE_LIMIT_MIN)) return Infinity;
-    const state = readingState(port.standard);
-    return (state.kind === 'current' || state.kind === 'delayed') ? port.standard.minutes : Infinity;
+    if (!port || (canonicalStatus(port.port_status) === 'closed' && ageMinutes(liveData?.generated_at) <= DATA_AGE_LIMIT_MIN))
+      return { priority: 9, minutes: Infinity };
+    if (state.nexus && state.direction === 'us') {
+      const ns = readingState(port.nexus);
+      if (ns.kind === 'current' || ns.kind === 'delayed') return { priority: 0, minutes: port.nexus.minutes };
+      const ss = readingState(port.standard);
+      if (ss.kind === 'current' || ss.kind === 'delayed')
+        return { priority: ns.kind === 'closed' ? 1 : 2, minutes: port.standard.minutes };
+      return { priority: 9, minutes: Infinity };
+    }
+    const ss = readingState(port.standard);
+    return ss.kind === 'current' || ss.kind === 'delayed'
+      ? { priority: 0, minutes: port.standard.minutes } : { priority: 9, minutes: Infinity };
   }
   function canonicalStatus(status) { return String(status || '').toLowerCase(); }
+  // CBSA's published Canada-bound NEXUS schedules. Not live lane confirmation.
+  const NEXUS_HOURS_CA = {
+    ambassador: ['Lane 1: weekdays (except holidays) 7am-midnight','Lane 1: weekends/holidays 8am-10pm','Lane 2: weekdays (except holidays) 2-9pm','Lane 3: weekdays (except holidays) 3-7pm'],
+    tunnel: ['Weekdays (except holidays) 7am-10pm','Weekends/holidays 11am-7pm'],
+    gordie: ['Weekdays 6am-11pm','Weekends/holidays 8am-10pm']
+  };
+  const NEXUS_HOURS_SOURCE = 'https://www.cbsa-asfc.gc.ca/data/cbsa-offices-services-bureaux-asfc-en.json';
+  function laneCount(reading, status, portClosed) {
+    if (portClosed) return 'Port closed';
+    if (status.kind === 'closed') return '0 lanes reported open';
+    if (['current','delayed'].includes(status.kind) && Number.isInteger(reading?.lanes_open) && reading.lanes_open >= 0)
+      return reading.lanes_open + (reading.lanes_open === 1 ? ' lane reported open' : ' lanes reported open');
+    return 'Open lanes not reported';
+  }
   function renderCards() {
     const favorite = state.favorites[state.direction];
     const ranked = [...CROSSINGS].sort((a, b) => {
@@ -299,9 +346,10 @@
       if (closedA !== closedB) return closedA ? 1 : -1;
       if (a.id === favorite && b.id !== favorite) return -1;
       if (b.id === favorite && a.id !== favorite) return 1;
-      const waitA = sortableMinutes(a.id);
-      const waitB = sortableMinutes(b.id);
-      if (waitA !== waitB) return waitA - waitB;
+      const waitA = sortableWait(a.id);
+      const waitB = sortableWait(b.id);
+      if (waitA.priority !== waitB.priority) return waitA.priority - waitB.priority;
+      if (waitA.minutes !== waitB.minutes) return waitA.minutes - waitB.minutes;
       return CROSSINGS.indexOf(a) - CROSSINGS.indexOf(b);
     });
     const cards = $('cards');
@@ -316,14 +364,21 @@
       const hasWait = (status.kind === 'current' || status.kind === 'delayed') && !isClosed;
       const waitString = isClosed ? 'Closed' : status.kind === 'closed' ? 'Closed' : hasWait ? String(reading.minutes) : '—';
       const readNote = isClosed ? 'Port reported closed by CBP' : status.message;
-      let nexusText = 'Not reported by CBSA';
-      if (state.direction === 'us') {
-        const n = port?.nexus;
-        const ns = readingState(n);
-        nexusText = ns.kind === 'closed' ? 'Reported closed' :
-          ['current', 'delayed'].includes(ns.kind) ? `${n.minutes} min · ${relativeAge(ageMinutes(n.observation_at))}` :
-          ns.kind === 'stale' ? 'Stale reading' : 'Unconfirmed';
-      }
+      const n = state.direction === 'us' ? port?.nexus : null;
+      const ns = readingState(n);
+      const nexusReadable = state.direction === 'us' && ['current','delayed'].includes(ns.kind) && !isClosed;
+      const nexusWait = isClosed ? 'Closed' : state.direction === 'ca' ? '—' : ns.kind === 'closed' ? 'Closed'
+        : nexusReadable ? String(n.minutes) : '—';
+      const standardLaneText = state.direction === 'ca' ? 'Open lanes not reported' : laneCount(reading,status,isClosed);
+      const nexusLaneText = state.direction === 'ca' ? 'Open lanes not reported' : laneCount(n,ns,isClosed);
+      const nexusNote = state.direction === 'ca' ? 'CBSA does not publish separate NEXUS waits'
+        : isClosed ? 'Port reported closed' : ns.message;
+      const hours = state.direction === 'ca' ? NEXUS_HOURS_CA[crossing.id] : null;
+      const publishedHours = hours ?
+        '<div class="posted-hours"><strong>Canada-bound NEXUS hours (published)</strong>' +
+        hours.map(h=>'<div class="hours-entry">'+escapeHtml(h)+'</div>').join('') +
+        '<div class="hours-source">Published schedule; not live lane confirmation. <a href="'+NEXUS_HOURS_SOURCE+'" target="_blank" rel="noopener noreferrer">CBSA office directory</a>. Check holiday exceptions.</div></div>'
+        : '<div class="posted-hours"><strong>US-bound NEXUS hours</strong><div class="hours-entry">Separate published schedule not verified; use CBP-reported lane status above.</div></div>';
       const sourceLabel = state.direction === 'us' ? 'CBP' : 'CBSA';
       const stamp = reading?.observation_at ? ` · ${formatTime(reading.observation_at)}` : '';
       const notice = port?.notice ? `<div class="notice"><strong>Agency notice:</strong> ${escapeHtml(safeText(port.notice))}</div>` : '';
@@ -331,8 +386,21 @@
       card.className = `crossing-card${isSelected ? ' selected' : ''}${hasWait ? '' : ' unavailable'}`;
       card.innerHTML = `
         <div class="card-top"><div><h3 class="crossing-title">${crossing.name}</h3><div class="crossing-short">${crossing.short}</div></div><button class="star-btn ${isFav ? 'is-fav' : ''}" type="button" aria-pressed="${isFav}" aria-label="${isFav ? 'Remove favourite' : 'Pin favourite'}: ${crossing.name}" title="Pin favourite">${isFav ? '★' : '☆'}</button></div>
-        <div class="reading"><div class="reading-label">${sourceLabel} · Standard passenger wait</div><div class="reading-main"><span class="reading-number ${waitString === 'Closed' ? 'reading-closed' : ''}">${waitString}</span>${hasWait ? '<span class="reading-unit">min</span>' : ''}</div><div class="reading-note ${status.kind === 'stale' || status.kind === 'closed' ? 'caution' : ''}">${escapeHtml(readNote)}</div></div>
-        <div class="card-meta"><div class="meta-row"><span>NEXUS / trusted lane</span><strong>${escapeHtml(nexusText)}</strong></div><div class="meta-row"><span>Data state</span><strong>${escapeHtml(isClosed ? 'Port closed' : status.kind === 'current' ? 'Current' : status.kind === 'delayed' ? 'Aging' : status.kind === 'stale' ? 'Stale · hidden' : status.kind === 'closed' ? 'Lane closed' : 'Unavailable')}${escapeHtml(stamp && hasWait ? stamp : '')}</strong></div></div>
+
+        <div class="wait-grid" aria-label="Regular and NEXUS wait times">
+          <div class="wait-block"><div class="reading-label">Regular · ${sourceLabel}</div>
+            <div class="reading-main"><span class="reading-number ${waitString === 'Closed' ? 'reading-closed' : ''}">${waitString}</span>${hasWait ? '<span class="reading-unit">min</span>' : ''}</div>
+            <div class="wait-lanes">${escapeHtml(standardLaneText)}</div>
+            <div class="reading-note">${escapeHtml(readNote)}</div>
+          </div>
+          <div class="wait-block ${state.nexus ? 'nexus-preferred' : ''}"><div class="reading-label">NEXUS${state.nexus ? ' · Preferred' : ''}</div>
+            <div class="reading-main"><span class="reading-number ${nexusWait === 'Closed' ? 'reading-closed' : ''}">${nexusWait}</span>${nexusReadable ? '<span class="reading-unit">min</span>' : ''}</div>
+            <div class="wait-lanes">${escapeHtml(nexusLaneText)}</div>
+            <div class="reading-note">${escapeHtml(nexusNote)}</div>
+          </div>
+        </div>
+        ${publishedHours}
+        <div class="card-meta"><div class="meta-row"><span>Data state</span><strong>${escapeHtml(isClosed ? 'Port closed' : status.kind === 'current' ? 'Current' : status.kind === 'delayed' ? 'Aging' : status.kind === 'stale' ? 'Stale · hidden' : status.kind === 'closed' ? 'Lane closed' : 'Unavailable')}${escapeHtml(stamp && hasWait ? stamp : '')}</strong></div></div>
         ${notice}
         <div class="card-bottom"><button class="pick-btn ${isSelected ? 'current' : ''}" type="button" aria-pressed="${isSelected}">${isSelected ? '✓ Selected crossing' : 'Select crossing'}</button></div>`;
       card.querySelector('.star-btn').addEventListener('click', () => {
@@ -371,7 +439,7 @@
     $('dataBanner').dataset.state = variant;
     $('demoHeading').textContent = heading;
     $('demoMessage').textContent = detail;
-    $('sortNote').textContent = 'Pinned first · then reported inspection waits';
+    $('sortNote').textContent = state.nexus && state.direction === 'us' ? 'Pinned first · NEXUS wait ranking; regular fallback' : 'Pinned first · reported regular waits';
     $('refreshButton').disabled = loadInProgress;
     $('refreshButton').textContent = loadInProgress ? 'Refreshing…' : 'Refresh';
     const diagnostics = [];
@@ -450,6 +518,46 @@
       render();
     }
   }
+  // Local-only, conservative approximation: refuse uncertain riverside coordinates.
+  function borderSide(latitude, longitude) {
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+    if (latitude < 42.08 || latitude > 42.8 || longitude < -83.9 || longitude > -82.55) return null;
+    if (longitude < -83.18) return 'us';
+    if (latitude > 42.43 && longitude < -82.92) return 'us';
+    if (longitude > -82.90 && latitude < 42.34) return 'ca';
+    const points=[[-83.18,42.19],[-83.12,42.255],[-83.08,42.302],[-83.04,42.327],[-82.99,42.355],[-82.93,42.386],[-82.90,42.405]];
+    for(let i=1;i<points.length;i++){
+      const [lon1,lat1]=points[i-1],[lon2,lat2]=points[i];
+      if(longitude>=lon1 && longitude<=lon2){
+        const borderLatitude=lat1+(longitude-lon1)/(lon2-lon1)*(lat2-lat1);
+        if(latitude>borderLatitude+.012)return 'us';
+        if(latitude<borderLatitude-.012)return 'ca';
+        return null;
+      }
+    }
+    return null;
+  }
+  function locationFeedback(message){ $('locationStatus').textContent=message; }
+  function detectDirection(){
+    if(!navigator.geolocation || manualDirectionOverride)return;
+    const button=$('locateDirection');button.disabled=true;
+    navigator.geolocation.getCurrentPosition(p=>{
+      button.disabled=false;
+      const side=borderSide(p.coords.latitude,p.coords.longitude);
+      if(!side){locationFeedback('Location uncertain; direction unchanged');return;}
+      state.direction=side;save();render();
+      locationFeedback(side==='us'?'Detected: travel to USA':'Detected: travel to Canada');
+    },err=>{
+      button.disabled=false;
+      locationFeedback(err.code===1?'Location blocked; select direction manually':'Location unavailable');
+    },{enableHighAccuracy:false,maximumAge:300000,timeout:7000});
+  }
+  function autoDetectDirectionIfGranted(){
+    if(explicitDirection || !navigator.permissions?.query)return;
+    navigator.permissions.query({name:'geolocation'}).then(p=>{
+      if(p.state==='granted' && !manualDirectionOverride)detectDirection();
+    }).catch(()=>{});
+  }
   $('settingsButton').addEventListener('click', openSettings);
   $('closeSettings').addEventListener('click', () => $('settingsDialog').close());
   $('settingsDialog').addEventListener('click', e => { if (e.target === $('settingsDialog')) $('settingsDialog').close(); });
@@ -461,8 +569,9 @@
     state.nexus = $('nexusInput').checked;
     save(); $('settingsDialog').close(); render();
   });
-  $('toUS').addEventListener('click', () => { state.direction = 'us'; save(); render(); });
-  $('toCA').addEventListener('click', () => { state.direction = 'ca'; save(); render(); });
+  $('toUS').addEventListener('click', () => { manualDirectionOverride = true; state.direction = 'us'; save(); render(); locationFeedback('Manual direction'); });
+  $('toCA').addEventListener('click', () => { manualDirectionOverride = true; state.direction = 'ca'; save(); render(); locationFeedback('Manual direction'); });
+  $('locateDirection').addEventListener('click', () => { manualDirectionOverride = false; detectDirection(); });
   $('destHome').addEventListener('click', () => setDestChoice('home'));
   $('destWork').addEventListener('click', () => setDestChoice('work'));
   $('originRoute').addEventListener('input', e => { routeOrigin = e.target.value.slice(0, 180); });
@@ -499,6 +608,7 @@
   const media = window.matchMedia('(prefers-color-scheme: dark)');
   if (media.addEventListener) media.addEventListener('change', () => { if (state.theme === 'system') applyTheme(); });
   render();
+  autoDetectDirectionIfGranted();
   refresh();
   setInterval(() => { if (!document.hidden) { refresh(); } }, 120000);
   setInterval(() => { if (!document.hidden && !loadInProgress) renderDataBanner(); }, 60000);
