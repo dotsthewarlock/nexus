@@ -37,8 +37,8 @@ def main():
   fixture=sample()
   def boot(page):
    html=(ROOT/'index.html').read_text()
-   html=html.replace('<link rel="stylesheet" href="./styles.css">','')
-   html=re.sub(r'<script src="\./(?:decision|app)\.js"(?: defer)?></script>','',html)
+   html=re.sub(r'<link rel="stylesheet" href="\./styles\.css(?:\?[^"]*)?">','',html)
+   html=re.sub(r'<script src="\./(?:decision|app)\.js(?:\?[^"]*)?"(?: defer)?></script>','',html)
    page.set_content(html,wait_until='domcontentloaded')
    page.add_style_tag(content=(ROOT/'styles.css').read_text())
    page.evaluate('(payload)=>{window.fetch=()=>Promise.resolve({ok:true,json:()=>Promise.resolve(payload)});}',fixture)
@@ -81,7 +81,15 @@ def main():
   page.locator('#heroCamera').click()
   assert 'cam1.html' in page.locator('#cameraFrame').get_attribute('src'), 'Canada-bound bridge camera'
   zoom=page.locator('#cameraZoomSurface')
-  assert zoom.is_visible() and zoom.get_attribute('aria-pressed')=='false'
+  zoom_button=page.locator('#cameraZoomButton')
+  assert page.locator('#cameraDialog').evaluate('(x)=>x.classList.contains("camera-modal--bridge")')
+  assert zoom.is_visible() and zoom_button.is_visible() and zoom.get_attribute('aria-pressed')=='false'
+  assert zoom_button.inner_text()=='Zoom 2×'
+  stage=page.locator('#cameraStage').bounding_box()
+  vp=page.evaluate('({width:innerWidth,height:innerHeight})')
+  assert stage['height']>=vp['height']*.65, f'Camera stage not near full screen: {stage} {vp}'
+  assert abs(page.locator('#cameraDialog').bounding_box()['width']-vp['width'])<=2, 'Bridge modal not edge to edge on mobile'
+  page.screenshot(path=str(OUT/'rc143-bridge-fullscreen.png'))
   zoom.click(position={'x':75,'y':65})
   assert zoom.get_attribute('aria-pressed')=='true'
   assert 'scale(2)' in page.locator('#cameraFrame').get_attribute('style')
@@ -91,8 +99,9 @@ def main():
   page.mouse.move(x,y);page.mouse.down();page.mouse.move(x-42,y+24,steps=6);page.mouse.up()
   after=page.locator('#cameraFrame').get_attribute('style')
   assert after!=before, 'Drag should pan zoomed camera'
-  zoom.click()
-  assert zoom.get_attribute('aria-pressed')=='false' and page.locator('#cameraFrame').evaluate('(el)=>getComputedStyle(el).transform')=='none', 'Tap resets zoom'
+  zoom_button.click()
+  assert zoom.get_attribute('aria-pressed')=='false' and page.locator('#cameraFrame').evaluate('(el)=>getComputedStyle(el).transform')=='none', 'Button resets zoom'
+  assert zoom_button.inner_text()=='Zoom 2×'
   zoom.focus();zoom.press('Enter')
   assert zoom.get_attribute('aria-pressed')=='true', 'Keyboard zoom'
   page.locator('#closeCamera').click()
@@ -107,6 +116,14 @@ def main():
   pg=narrow.new_page();boot(pg)
   assert pg.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1'),'320px horizontal overflow'
   pg.screenshot(path=str(OUT/'rc14-mobile-320.png'),full_page=True)
+  pg.locator('#alternatives button[data-crossing="ambassador"]').click()
+  pg.locator('#heroCamera').click()
+  assert pg.locator('#cameraZoomButton').is_visible(), '320px zoom toggle visible'
+  stage320=pg.locator('#cameraStage').bounding_box()
+  assert stage320['height']>425 and pg.locator('#cameraDialog').bounding_box()['width']>=319, '320px camera fills available viewport'
+  pg.locator('#cameraZoomButton').click()
+  assert pg.locator('#cameraZoomButtonText').inner_text()=='Reset zoom'
+  pg.locator('#closeCamera').click()
   narrow.close()
   desktop=browser.new_context(viewport={'width':1440,'height':900},device_scale_factor=1)
   d=desktop.new_page();boot(d)
@@ -114,5 +131,5 @@ def main():
   desktop.close()
   assert not errors,errors
   browser.close()
- print('RC1.4.2 camera smoke passed: bridge zoom/pan, Tunnel one-tap operator link both directions, 320/390/1440px.')
+ print('RC1.4.3 camera smoke passed: full-height bridge modal, visible zoom/reset control, pan, Tunnel external, 320/390/1440px.')
 if __name__=='__main__': main()

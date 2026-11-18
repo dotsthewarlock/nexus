@@ -1,6 +1,6 @@
-# Nexus RC1.4.2 — commuter decision dashboard
+# Nexus RC1.4.3 — commuter decision dashboard
 
-**Status:** RC1.4.2 camera-access correction; deployment is managed by GitHub Actions. The publishing workflow generates a fresh `data/live.json` from official sources.
+**Status:** RC1.4.3 mobile camera-viewer improvement; deployment is managed by GitHub Actions. The publishing workflow generates a fresh `data/live.json` from official sources.
 
 ## What's included
 
@@ -84,3 +84,7 @@ The GitHub workflow reads the secret only in the server-side collection step. Wi
 ## Publication
 
 The RC1.4.2 Tunnel correction opens `https://www.dwtunnel.com/` directly on camera tap. The operator controls its own Watch Live buttons and viewing durations. Restoring embedded Tunnel video requires explicit permission/authorization for the Nexus domain; changing referrers or proxying streams is not supported. Validate bridge camera imagery and routing on real devices. Earlier identified recommendation-engine issues (schedule day specificity, routine notices, and comparison-age consistency) are **not changed by this camera-only patch**.
+
+## RC1.4.3 bridge camera improvements
+
+On mobile, Ambassador Bridge views open as a near-full-screen native dialog, with a clearly labeled Zoom 2× / Reset zoom control. Tapping the image also zooms, and dragging pans the magnified frame. The operator page is embedded unchanged, so its actual camera-image sizing remains under operator control. Asset URLs carry a release version to avoid cached old interactions. Tunnel cameras remain one-tap official website links.

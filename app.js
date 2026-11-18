@@ -208,12 +208,16 @@
     $('cameraZoomSurface').classList.remove('is-zoomed','is-dragging');
     $('cameraZoomSurface').setAttribute('aria-pressed','false');
     $('cameraZoomSurface').setAttribute('aria-label','Zoom bridge camera');
-    setText('cameraZoomHintText','Tap to zoom');
+    $('cameraZoomButton').setAttribute('aria-pressed','false');
+    $('cameraZoomButton').setAttribute('aria-label','Zoom bridge camera to two times');
+    setText('cameraZoomButtonText','Zoom 2×');
+    setText('cameraZoomHintText','Tap image to zoom');
   }
   function showBridgeZoom(enable){
     resetBridgeZoom();
     $('cameraZoomSurface').hidden=!enable;
     $('cameraZoomHint').hidden=!enable;
+    $('cameraZoomButton').hidden=!enable;
   }
   function clampBridgePan(){
     const stage=$('cameraStage');
@@ -229,7 +233,10 @@
     $('cameraZoomSurface').classList.toggle('is-zoomed',zoomed);
     $('cameraZoomSurface').setAttribute('aria-pressed',String(zoomed));
     $('cameraZoomSurface').setAttribute('aria-label',zoomed?'Pan zoomed bridge camera; tap to reset':'Zoom bridge camera');
-    setText('cameraZoomHintText',zoomed?'Drag to pan · Tap to reset':'Tap to zoom');
+    $('cameraZoomButton').setAttribute('aria-pressed',String(zoomed));
+    $('cameraZoomButton').setAttribute('aria-label',zoomed?'Reset bridge camera zoom':'Zoom bridge camera to two times');
+    setText('cameraZoomButtonText',zoomed?'Reset zoom':'Zoom 2×');
+    setText('cameraZoomHintText',zoomed?'Drag to pan · Tap to reset':'Tap image to zoom');
   }
   function toggleBridgeZoom(clientX,clientY){
     if($('cameraZoomSurface').hidden)return;
@@ -245,7 +252,7 @@
     $('cameraFrame').removeAttribute('src');
     $('cameraFrame').hidden=true;
   }
-  function closeCamera(){unloadCamera();camera=null;if($('cameraDialog').open)$('cameraDialog').close();}
+  function closeCamera(){unloadCamera();camera=null;$('cameraDialog').classList.remove('camera-modal--bridge');if($('cameraDialog').open)$('cameraDialog').close();}
   function activateCamera(index){
     if(!camera)return;
     cameraIndex=index;unloadCamera();
@@ -278,6 +285,7 @@
     }
     closeCamera();camera=config;
     camera.kind=id==='ambassador'?'bridge':id==='tunnel'?'video':'links';
+    $('cameraDialog').classList.toggle('camera-modal--bridge',camera.kind==='bridge');
     setText('cameraTitle',NAMES[id]);setText('cameraDescription',`${prefs.direction==='us'?'Canada → USA':'USA → Canada'} · Official camera view`);
     setText('cameraProvider',camera.provider);$('cameraOfficial').href=camera.official;
     $('cameraViews').innerHTML=camera.views.map((v,i)=>`<button type="button" data-index="${i}" aria-pressed="${i===0}">${esc(v.title)}</button>`).join('');
@@ -285,6 +293,7 @@
     $('cameraViews').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>activateCamera(Number(b.dataset.index))));
     $('cameraDialog').showModal();activateCamera(0);
   }
+  $('cameraZoomButton').addEventListener('click',()=>{const r=$('cameraStage').getBoundingClientRect();toggleBridgeZoom(r.left+r.width/2,r.top+r.height/2);});
   const zoomSurface=$('cameraZoomSurface');
   zoomSurface.addEventListener('pointerdown',e=>{
     if(e.button!==0||zoomSurface.hidden)return;
@@ -343,7 +352,7 @@
     const link=buildShareUrl();try{await navigator.clipboard.writeText(link);setText('copyLink','Copied');}catch{window.prompt('Copy this trip link:',link);}setTimeout(()=>setText('copyLink','Copy trip link'),1700);});
   $('closeCamera').addEventListener('click',closeCamera);
   $('cameraReload').addEventListener('click',()=>activateCamera(cameraIndex));
-  $('cameraDialog').addEventListener('close',()=>{unloadCamera();camera=null;});
+  $('cameraDialog').addEventListener('close',()=>{unloadCamera();camera=null;$('cameraDialog').classList.remove('camera-modal--bridge');});
   for(const id of ['settingsDialog','routeDialog','cameraDialog'])$(id).addEventListener('click',e=>{if(e.target===$(id))$(id).close();});
   if(matchMedia('(prefers-color-scheme: dark)').addEventListener)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(prefs.theme==='system')applyTheme();});
   render();autoLocation();refresh();
