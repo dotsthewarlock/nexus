@@ -54,3 +54,36 @@ body[data-theme="dark"] {color-scheme:dark; --bg:#101a24; --surface:#182633; --s
   .camera-modal.camera-modal--bridge .camera-reload{min-height:38px}
   .camera-modal.camera-modal--bridge .camera-content>.subtle{display:none}
 }
+
+/* RC1.4.4: the bridge iframe is a 4:3 viewing surface, not a full-height white document.
+   We do not read or manipulate cross-origin content. It remains an official operator iframe. */
+.camera-modal--bridge .camera-stage{background:#071523;display:grid;place-items:center;aspect-ratio:4/3}
+.camera-modal--bridge .camera-stage iframe{
+  position:relative;inset:auto;width:100%;height:auto;aspect-ratio:4/3;
+  background:transparent;border:0;transform-origin:center center;display:block;
+}
+.camera-zoom-controls{
+  position:absolute;top:10px;right:10px;z-index:4;display:flex;gap:3px;
+  border-radius:12px;padding:4px;background:rgba(6,22,36,.93);
+  border:1px solid rgba(255,255,255,.25);box-shadow:0 2px 9px rgba(0,0,0,.25)
+}
+.camera-zoom-controls button{
+  min-width:43px;min-height:42px;padding:8px;border:0;border-radius:8px;
+  background:transparent;color:#e4ecf6;font-size:14px;font-weight:750;
+  touch-action:manipulation
+}
+.camera-zoom-controls button[aria-pressed="true"]{background:#cee4ff;color:#0c2b46}
+.camera-zoom-controls button:focus-visible{outline:2px solid #cee4ff;outline-offset:2px}
+.camera-zoom-hint{bottom:9px}
+.camera-modal--bridge .camera-fallback{background:#071523}
+@media(max-width:700px){
+  .camera-modal.camera-modal--bridge[open]{
+    inset:0;margin:auto;width:calc(100vw - 14px);height:90dvh;max-width:none;
+    max-height:90dvh;border:1px solid var(--border);border-radius:16px;
+  }
+  .camera-modal.camera-modal--bridge .camera-stage{min-height:0;flex:1;overflow:hidden}
+  .camera-modal.camera-modal--bridge .camera-content{padding:0}
+  .camera-modal.camera-modal--bridge .camera-zoom-hint{bottom:8px;font-size:11px}
+  .camera-modal.camera-modal--bridge .camera-tabs{padding:6px 10px 0}
+  .camera-modal.camera-modal--bridge .camera-links{padding:5px 10px 7px}
+}

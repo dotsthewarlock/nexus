@@ -61,19 +61,36 @@ def main():
   assert '4' in page.locator('#primaryValue').inner_text()
   assert '2 NEXUS lanes listed' in page.locator('#operatorLine').inner_text()
   page.screenshot(path=str(OUT/'rc14-mobile-dark.png'),full_page=True)
-  # Dacast blocks video from github.io. Both Tunnel directions must instead
-  # reach the operator's authorized player in one tap, without a broken modal.
-  page.evaluate('() => {window.__cameraOpens=[]; window.open=(...args)=>window.__cameraOpens.push(args);}')
-  assert page.locator('#heroCameraText').inner_text()=='Cameras ↗'
+  # RC1.4 DWT source URLs + 15-second continue cycle, restored in RC1.4.4.
+  # Playback itself is cross-origin and requires a physical-device check.
+  page.evaluate('''() => {
+    const original=window.setTimeout.bind(window);
+    window.setTimeout=(cb,delay,...args)=>delay===15000
+      ?(window.__cameraLimit=()=>cb(...args),999999)
+      :original(cb,delay,...args);
+  }''')
+  assert page.locator('#heroCameraText').inner_text()=='Cameras'
   page.locator('#heroCamera').click()
-  assert page.evaluate('window.__cameraOpens.length')==1
-  assert page.evaluate('window.__cameraOpens[0]')==['https://www.dwtunnel.com/','_blank','noopener,noreferrer']
-  assert not page.locator('#cameraDialog').evaluate('(x)=>x.open')
+  assert page.locator('#cameraDialog').evaluate('(x)=>x.open')
+  assert page.locator('#cameraViews button').count()==2
+  assert '794566d4' in page.locator('#cameraFrame').get_attribute('src')
+  assert page.locator('#cameraZoomControls').is_hidden()
+  assert page.locator('#cameraReload').is_hidden()
+  page.locator('#cameraViews button').nth(1).click()
+  assert '5408b5c3' in page.locator('#cameraFrame').get_attribute('src')
+  page.evaluate('window.__cameraLimit()')
+  assert page.locator('#cameraFrame').get_attribute('src') is None
+  assert page.locator('#cameraContinue').is_visible()
+  assert 'Viewing interval complete' in page.locator('#cameraFallbackText').inner_text()
+  page.locator('#cameraContinue').click()
+  assert '5408b5c3' in page.locator('#cameraFrame').get_attribute('src')
+  page.locator('#closeCamera').click()
   assert page.locator('#cameraFrame').get_attribute('src') is None
   page.locator('#toUS').click()
   page.locator('#heroCamera').click()
-  assert page.evaluate('window.__cameraOpens.length')==2
-  assert page.evaluate('window.__cameraOpens[1][0]')=='https://www.dwtunnel.com/'
+  assert '4aea1c45' in page.locator('#cameraFrame').get_attribute('src')
+  assert page.locator('#cameraViews').is_hidden()
+  page.locator('#closeCamera').click()
   page.locator('#toCA').click()
   page.locator('#alternatives button[data-crossing="ambassador"]').click()
   assert page.locator('#crossingRole').inner_text()=='SELECTED FOR THIS TRIP'
@@ -81,29 +98,36 @@ def main():
   page.locator('#heroCamera').click()
   assert 'cam1.html' in page.locator('#cameraFrame').get_attribute('src'), 'Canada-bound bridge camera'
   zoom=page.locator('#cameraZoomSurface')
-  zoom_button=page.locator('#cameraZoomButton')
+  zoom_controls=page.locator('#cameraZoomControls')
   assert page.locator('#cameraDialog').evaluate('(x)=>x.classList.contains("camera-modal--bridge")')
-  assert zoom.is_visible() and zoom_button.is_visible() and zoom.get_attribute('aria-pressed')=='false'
-  assert zoom_button.inner_text()=='Zoom 2×'
+  assert zoom.is_visible() and zoom_controls.is_visible()
+  assert zoom_controls.locator('button').count()==3
+  assert zoom_controls.locator('button[data-scale="3"]').get_attribute('aria-pressed')=='true'
+  assert 'scale(3)' in page.locator('#cameraFrame').get_attribute('style'), '3x on open'
   stage=page.locator('#cameraStage').bounding_box()
   vp=page.evaluate('({width:innerWidth,height:innerHeight})')
-  assert stage['height']>=vp['height']*.65, f'Camera stage not near full screen: {stage} {vp}'
-  assert abs(page.locator('#cameraDialog').bounding_box()['width']-vp['width'])<=2, 'Bridge modal not edge to edge on mobile'
-  page.screenshot(path=str(OUT/'rc143-bridge-fullscreen.png'))
-  zoom.click(position={'x':75,'y':65})
-  assert zoom.get_attribute('aria-pressed')=='true'
+  dialog=page.locator('#cameraDialog').bounding_box()
+  assert stage['height']>=vp['height']*.56, f'Camera stage unexpectedly short: {stage} {vp}'
+  assert vp['height']*.88 <= dialog['height'] <= vp['height']*.91, '90vh camera modal'
+  assert vp['width']-dialog['width']>=12 and vp['width']-dialog['width']<=18, 'Modal margins'
+  assert page.locator('#cameraFrame').evaluate('(el)=>Math.abs(el.offsetHeight/el.offsetWidth - .75)<.03'), '4:3 camera viewport'
+  page.screenshot(path=str(OUT/'rc144-bridge-default.png'))
+  zoom_controls.locator('button[data-scale="1"]').click()
+  assert page.locator('#cameraFrame').evaluate('(el)=>getComputedStyle(el).transform')=='none', 'Fit'
+  zoom_controls.locator('button[data-scale="2"]').click()
   assert 'scale(2)' in page.locator('#cameraFrame').get_attribute('style')
+  zoom_controls.locator('button[data-scale="3"]').click()
+  assert 'scale(3)' in page.locator('#cameraFrame').get_attribute('style')
   bbox=zoom.bounding_box()
   x,y=bbox['x']+bbox['width']/2,bbox['y']+bbox['height']/2
   before=page.locator('#cameraFrame').get_attribute('style')
   page.mouse.move(x,y);page.mouse.down();page.mouse.move(x-42,y+24,steps=6);page.mouse.up()
   after=page.locator('#cameraFrame').get_attribute('style')
-  assert after!=before, 'Drag should pan zoomed camera'
-  zoom_button.click()
-  assert zoom.get_attribute('aria-pressed')=='false' and page.locator('#cameraFrame').evaluate('(el)=>getComputedStyle(el).transform')=='none', 'Button resets zoom'
-  assert zoom_button.inner_text()=='Zoom 2×'
+  assert after!=before, 'Drag pans 3x camera'
+  zoom.click(position={'x':75,'y':65})
+  assert zoom_controls.locator('button[data-scale="1"]').get_attribute('aria-pressed')=='true', 'Tap fits'
   zoom.focus();zoom.press('Enter')
-  assert zoom.get_attribute('aria-pressed')=='true', 'Keyboard zoom'
+  assert zoom_controls.locator('button[data-scale="3"]').get_attribute('aria-pressed')=='true', 'Keyboard zooms'
   page.locator('#closeCamera').click()
   assert zoom.is_hidden(), 'Zoom overlay must reset after close'
   page.locator('#resetTrip').click()
@@ -118,11 +142,11 @@ def main():
   pg.screenshot(path=str(OUT/'rc14-mobile-320.png'),full_page=True)
   pg.locator('#alternatives button[data-crossing="ambassador"]').click()
   pg.locator('#heroCamera').click()
-  assert pg.locator('#cameraZoomButton').is_visible(), '320px zoom toggle visible'
+  assert pg.locator('#cameraZoomControls').is_visible(), '320px zoom options visible'
   stage320=pg.locator('#cameraStage').bounding_box()
-  assert stage320['height']>425 and pg.locator('#cameraDialog').bounding_box()['width']>=319, '320px camera fills available viewport'
-  pg.locator('#cameraZoomButton').click()
-  assert pg.locator('#cameraZoomButtonText').inner_text()=='Reset zoom'
+  assert stage320['height']>300 and pg.locator('#cameraDialog').bounding_box()['width']>=303, '320px camera fills most of viewport'
+  pg.locator('#cameraZoomControls button[data-scale="1"]').click()
+  assert pg.locator('#cameraZoomControls button[data-scale="1"]').get_attribute('aria-pressed')=='true'
   pg.locator('#closeCamera').click()
   narrow.close()
   desktop=browser.new_context(viewport={'width':1440,'height':900},device_scale_factor=1)
@@ -131,5 +155,5 @@ def main():
   desktop.close()
   assert not errors,errors
   browser.close()
- print('RC1.4.3 camera smoke passed: full-height bridge modal, visible zoom/reset control, pan, Tunnel external, 320/390/1440px.')
+ print('RC1.4.4 camera smoke passed: DWT restored embed/15s continue, 3x bridge default, Fit/2x/3x and pan, 320/390/1440px.')
 if __name__=='__main__': main()

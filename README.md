@@ -1,6 +1,6 @@
-# Nexus RC1.4.3 — commuter decision dashboard
+# Nexus RC1.4.4 — commuter decision dashboard
 
-**Status:** RC1.4.3 mobile camera-viewer improvement; deployment is managed by GitHub Actions. The publishing workflow generates a fresh `data/live.json` from official sources.
+**Status:** RC1.4.4 camera regression fix and mobile zoom improvements; deployment is managed by GitHub Actions. The publishing workflow generates a fresh `data/live.json` from official sources.
 
 ## What's included
 
@@ -8,7 +8,7 @@
 - Persistent preferences for each travel direction, NEXUS, Home/Work, appearance, and recommendation sensitivity. Existing `nexus-prototype-v1` browser storage key is retained.
 - One-trip crossing override does not overwrite saved preference.
 - Deterministic `decision.js`: official closure/notice checks, lane status, source freshness, conservative/balanced/information-only comparison. Conservative minimum difference is 20 minutes of **comparable inspection wait**; balanced minimum is 10 minutes. Neither is a full-trip saving estimate.
-- Ambassador Bridge directional camera iframe supports tap-to-zoom (2×), drag-to-pan, keyboard access and tap-to-reset. Tunnel camera button opens the official DWT camera website in a new tab, because Nexus-hosted Dacast iframe playback is blocked on the github.io domain. No attempt is made to bypass publisher restrictions. Closing or switching bridge cameras unloads the previous iframe.
+- Ambassador Bridge directional camera iframe opens at **3×**, with Fit/2×/3× controls, drag-to-pan, keyboard access and a compact ~90dvh modal. Camera framing is applied only to the cross-origin iframe rectangle; its internal player/image is never accessed. Detroit–Windsor Tunnel embeds use the **original RC1.4 Dacast URLs, iframe permissions and 15-second Continue watching cycle**, with the official DWT website as fallback. External playback is browser/provider-dependent and still requires Android Chrome validation. Closing or switching cameras unloads the prior iframe.
 - Expanded official data collection: CBP regular/NEXUS/Ready/FAST/commercial/pedestrian categories, lane counts and maximums; CBSA traveller and commercial waits; CBSA dedicated Canada-bound NEXUS schedules; Detroit–Windsor Tunnel operator lane counts and reported coarse travel-time category; optional Ontario 511 Windsor-Essex road advisories.
 - Observation and source retrieval times remain distinct; stale operator data are suppressed. Missing values are not converted to zero.
 - GitHub Actions publishes a static site and archives each normalized snapshot as an Actions artifact for **30 days**. This is bounded archival, not permanent history storage or a forecast service.
@@ -83,8 +83,11 @@ The GitHub workflow reads the secret only in the server-side collection step. Wi
 
 ## Publication
 
-The RC1.4.2 Tunnel correction opens `https://www.dwtunnel.com/` directly on camera tap. The operator controls its own Watch Live buttons and viewing durations. Restoring embedded Tunnel video requires explicit permission/authorization for the Nexus domain; changing referrers or proxying streams is not supported. Validate bridge camera imagery and routing on real devices. Earlier identified recommendation-engine issues (schedule day specificity, routine notices, and comparison-age consistency) are **not changed by this camera-only patch**.
+RC1.4.4 restores RC1.4's original DWT in-app iframe implementation in response to reported successful playback on Android Chrome. This is a controlled compatibility rollback, **not a guarantee** of provider permission or functionality. If Dacast returns an embedding error, use the visible official camera page link; no proxying or referrer circumvention is attempted. The app-side 15-second interval matches RC1.4 and provides Continue watching. Validate actual video, image framing and routing on real devices. Earlier identified recommendation-engine issues (schedule day specificity, routine notices, and comparison-age consistency) are **not changed by this camera-only patch**.
 
-## RC1.4.3 bridge camera improvements
+## RC1.4.4 camera updates
 
-On mobile, Ambassador Bridge views open as a near-full-screen native dialog, with a clearly labeled Zoom 2× / Reset zoom control. Tapping the image also zooms, and dragging pans the magnified frame. The operator page is embedded unchanged, so its actual camera-image sizing remains under operator control. Asset URLs carry a release version to avoid cached old interactions. Tunnel cameras remain one-tap official website links.
+- **Tunnel video rollback**: RC1.4's three original Dacast URLs, direction-specific camera tabs, iframe permissions, and 15-second Continue watching cycle are restored. Official site fallback remains available; video cannot be fully verified without the actual Android Chrome browser and provider access.
+- **Bridge default 3×**: every opening and camera switch defaults to 3×. Fit / 2× / 3× explicit controls, tap-to-Fit/tap-to-3×, keyboard access, bounded drag-to-pan. The 4:3 iframe viewing surface is centered in a dark 90dvh modal with narrow margins, reducing the large white space caused by stretching the entire embedded operator document to full height.
+- **Assets**: versioned CSS and JavaScript URLs prevent stale mixed releases. No dashboard or decision logic changes.
+
