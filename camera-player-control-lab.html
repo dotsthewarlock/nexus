@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111f2c">
+<title>Nexus · DWT playback control lab</title>
+<style>
+:root{color-scheme:dark;background:#101a25;color:#edf4fb;font:16px/1.48 system-ui,-apple-system,Segoe UI,sans-serif}
+*{box-sizing:border-box}
+body{max-width:760px;margin:auto;padding:16px 14px 58px}
+header{display:flex;gap:12px;align-items:center;justify-content:space-between}
+h1{font-size:1.52rem;line-height:1.2;margin:13px 0}h2{font-size:1.08rem;margin:0 0 9px}
+p{margin:8px 0 12px}small,.muted{color:#bfd0df}a{color:#9dd3ff}
+.card{background:#1a2b3a;border:1px solid #465d72;border-radius:12px;padding:15px;margin:14px 0}
+.note{border-left:3px solid #e8bf6d;padding-left:12px}
+.good{border-left:3px solid #71d2b0;padding-left:12px}
+label{font-weight:600;display:block;margin:10px 0 5px}
+button,.action{display:block;width:100%;padding:12px 10px;margin:9px 0;background:#185f97;color:white;border:1px solid #7dbce8;border-radius:9px;text-align:center;text-decoration:none;font:inherit;font-weight:650;cursor:pointer}
+button.secondary,.action.secondary{background:#294051;border-color:#8294a7}
+button:disabled{opacity:.55;cursor:default}
+button:focus-visible,a:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #ffda7e;outline-offset:3px}
+select,textarea{background:#112333;color:white;font:inherit;border:1px solid #8198aa;border-radius:8px;padding:10px;width:100%}
+textarea{min-height:72px;resize:vertical}
+small{display:block}
+.fine{font-size:.86rem;color:#c0d0df}
+.grid{display:grid;grid-template-columns:1fr;gap:9px}
+table{border-collapse:collapse;width:100%;font-size:.85rem}td,th{border-bottom:1px solid #465d72;padding:9px 5px;text-align:left;vertical-align:top}
+pre{background:#0b1620;color:#dce9f5;border-radius:8px;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:420px;overflow:auto;font:12px/1.46 ui-monospace,monospace}
+dialog{background:#132434;color:#ecf4fb;border:1px solid #718ba0;border-radius:13px;padding:14px;width:min(calc(100vw - 14px),820px);max-height:96dvh;overflow:auto;box-shadow:0 8px 40px #000b}
+dialog::backdrop{background:#000d}
+.top{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.top h2{margin:0}.top button{width:auto;padding:8px 13px;margin:0}
+.stage{position:relative;aspect-ratio:16/9;background:#050911;border-radius:8px;overflow:hidden;margin:12px 0}
+.stage>iframe,.stage>.api-player{position:absolute;inset:0;width:100%;height:100%;border:0}
+#apiPlayerMount iframe,#apiPlayerMount video{max-width:100%;max-height:100%}
+@media(min-width:600px){.grid{grid-template-columns:1fr 1fr}h1{font-size:1.76rem}}
+</style>
+</head>
+<body>
+<header><strong>Nexus · camera research</strong><a href="./">Return to Nexus</a></header>
+<h1>DWT · Player Control &amp; Synthetic Click Lab</h1>
+<p class="good">Working baseline: a <strong>no-referrer native modal iframe plays after a manual in-player tap</strong>. All six previous autoplay/mute URL query variants had no observable effect. Production Nexus and the successful modal lab are unchanged.</p>
+<p class="note">This lab attempts the remaining <strong>permitted controls</strong>, not a browser security bypass. A parent page cannot reach a cross-origin Dacast video element; programmatic clicks are untrusted and do not reproduce a human tap inside it. The Dacast JavaScript Player API is documented but may be blocked for these camera streams.</p>
+
+<section class="card">
+<h2>1. Choose camera and control path</h2>
+<label for="camera">Camera</label>
+<select id="camera">
+<option value="4aea1c45-d402-3690-afae-fe635942da82">Canada → USA · Windsor inspection</option>
+<option value="794566d4-a75e-3cd1-6f95-2d60e54f2fdb">USA → Canada · Detroit inspection</option>
+<option value="5408b5c3-f8d1-f34b-a18a-9943047905b6">USA → Canada · Randolph Street</option>
+</select>
+<label for="case">Test</label>
+<select id="case"></select>
+<p id="description" class="fine"></p>
+<button id="open" type="button">Open modal · run selected test</button>
+<p class="fine">After the modal opens, <strong>do not press Play inside the video</strong> for 5–10 seconds. Record whether the moving live feed starts itself. For iframe controls, the normal manual Play button remains available to verify the original baseline.</p>
+</section>
+
+<section class="card">
+<h2>2. Manually record observed playback</h2>
+<label for="outcome">What actually happened?</label>
+<select id="outcome">
+<option value="untested">Not tested</option>
+<option value="auto_muted">Live feed auto-started muted</option>
+<option value="auto_sound">Live feed auto-started with audio</option>
+<option value="auto_unknown">Live feed auto-started; audio unknown</option>
+<option value="tap_required">Only plays after manual tap inside player</option>
+<option value="api_button">Only plays after Nexus API Play button</option>
+<option value="blocked">Content blocked on this website</option>
+<option value="idle">Player appears but does not play</option>
+<option value="blank">Blank / loading indefinitely</option>
+<option value="other">Other result</option>
+</select>
+<label for="notes">Notes (optional)</label>
+<textarea id="notes" maxlength="600" placeholder="Browser/device, visible result, exact blocked text, whether API ready/play events fired"></textarea>
+<div class="grid">
+<button id="next" type="button" class="secondary">Save &amp; next test</button>
+<button id="copy" type="button">Copy complete diagnostic report</button>
+</div>
+<p id="status" class="fine" role="status"></p>
+</section>
+
+<section class="card">
+<h2>3. Results</h2>
+<table><thead><tr><th>Test</th><th>Observed result</th></tr></thead><tbody id="results"></tbody></table>
+<button id="reset" type="button" class="secondary">Reset selected camera's results</button>
+<p class="fine">These results are entered manually and kept in this tab. Even a Dacast <code>onPlay</code> event is not a substitute for visually verifying a live moving picture.</p>
+<pre id="report"></pre>
+</section>
+
+<section class="card">
+<h2>Technical limits and interpretation</h2>
+<p><strong>Iframe API:</strong> <code>allow="autoplay"</code> delegates permission but does not command a third-party player to start. Synthetic clicks on the iframe DOM node do not target the embedded Play button. Access to <code>contentWindow.document</code> should be rejected by same-origin restrictions.</p>
+<p><strong>Dacast JS API:</strong> Its documented <code>onReady()</code>, <code>muteOn()</code>, <code>play()</code> and <code>onPlay()</code> methods offer a genuine control route if the operator permits this embedding mode. If initialization is blocked, no browser-side workaround is implied.</p>
+<p><strong>Not attempted:</strong> stream extraction, relaying, forged referrers, hidden browser automation, guessed private <code>postMessage</code> commands or bypassing Dacast publisher restrictions.</p>
+<p class="fine">Sources: <a href="https://docs.dacast.com/docs/dacast-player-js-api" target="_blank" rel="noopener noreferrer">Dacast Player JS API</a> · <a href="https://www.dacast.com/support/knowledgebase/autoplay-walkthrough/" target="_blank" rel="noopener noreferrer">Dacast autoplay guide</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Same-origin_policy" target="_blank" rel="noopener noreferrer">Same-origin policy</a></p>
+</section>
+
+<dialog id="dialog" aria-labelledby="dialogTitle">
+<div class="top">
+<h2 id="dialogTitle">DWT · control test</h2>
+<button id="close" type="button" class="secondary">Close</button>
+</div>
+<p id="caption" class="muted"></p>
+<div id="stage" class="stage"></div>
+<p id="videoState" role="status" class="fine">Player not loaded.</p>
+<button id="apiPlay" type="button" class="secondary" disabled hidden>Try documented Dacast API play() with this tap</button>
+<a id="direct" class="action secondary" href="https://www.dwtunnel.com/" target="_blank" rel="noopener noreferrer">Open original camera externally</a>
+<p class="fine">The external link opens the unmodified camera URL; it is not an autoplay result. Closing the modal removes the iframe or disposes of the API player.</p>
+</dialog>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const ROOT='8b2b630f-b7c1-262d-f343-118f510224a0';
+const CAMERAS={
+ '4aea1c45-d402-3690-afae-fe635942da82':'Canada → USA · Windsor inspection',
+ '794566d4-a75e-3cd1-6f95-2d60e54f2fdb':'USA → Canada · Detroit inspection',
+ '5408b5c3-f8d1-f34b-a18a-9943047905b6':'USA → Canada · Randolph Street'
+};
+const TESTS=[
+ {id:'A',name:'Known-working M1 control',type:'iframe',desc:'Original M1: open native modal and append no-referrer iframe. No synthetic input, no autoplay URL parameters.'},
+ {id:'B',name:'Construct iframe before showModal()',type:'preinsert',desc:'Construct and append the no-referrer iframe before the native modal becomes visible, within the same trusted tap. Tests initialization ordering.'},
+ {id:'C',name:'Iframe focus + synthetic click/key events',type:'synthetic',desc:'On iframe load, focus the frame and dispatch synthetic pointer/mouse/key events on its OUTER element. These events cannot access the inner Play control and are not trusted; this is an explicit negative control.'},
+ {id:'D',name:'Direct access to inner video element',type:'access',desc:'On iframe load, attempt to find the cross-origin inner video and invoke play(). Expected: browser SecurityError; records the actual restriction without bypass attempts.'},
+ {id:'E',name:'Dacast JS API · onReady() mute then play',type:'api_muted',desc:'Load the documented Dacast JS Player API; onReady, call muteOn() and play(). Watch the live image and note any error/onPlay event.'},
+ {id:'F',name:'Dacast JS API · onReady() play with audio',type:'api_sound',desc:'Load the documented Dacast JS Player API; onReady, call play(). Sound may be blocked by autoplay policy. Optional Nexus API Play button tests a new, trusted tap.'}
+];
+const OUTCOMES={
+ untested:'Not tested',auto_muted:'Autostart muted',auto_sound:'Autostart with sound',auto_unknown:'Autostart; sound unknown',
+ tap_required:'In-player tap required',api_button:'Nexus API button required',blocked:'Content blocked',
+ idle:'Visible but idle',blank:'Blank / loading',other:'Other'
+};
+const STORE='nexus-dwt-control-lab-v1';
+let saved={};
+try{const obj=JSON.parse(sessionStorage.getItem(STORE)||'{}');if(obj&&typeof obj==='object')saved=obj;}catch{}
+let records=saved.records&&typeof saved.records==='object'?saved.records:{};
+let events=[],generation=0,activePlayer=null,playerReady=false,scriptPromise=null;
+const dlg=$('dialog');
+for(const t of TESTS){
+ const option=document.createElement('option');
+ option.value=t.id;option.textContent=t.id+' · '+t.name;$('case').appendChild(option);
+}
+if(Object.hasOwn(CAMERAS,saved.camera))$('camera').value=saved.camera;
+if(TESTS.some(t=>t.id===saved.test))$('case').value=saved.test;
+function current(){return TESTS.find(x=>x.id===$('case').value)||TESTS[0];}
+function directUrl(){return 'https://iframe.dacast.com/live/'+ROOT+'/'+$('camera').value;}
+function contentId(){return ROOT+'-live-'+$('camera').value;}
+function record(){return records[$('camera').value]?.[$('case').value]||{};}
+function persist(){
+ try{sessionStorage.setItem(STORE,JSON.stringify({camera:$('camera').value,test:$('case').value,records}));}catch{}
+}
+function save(){
+ if(!records[$('camera').value]||typeof records[$('camera').value]!=='object')records[$('camera').value]={};
+ records[$('camera').value][current().id]={
+  outcome:Object.hasOwn(OUTCOMES,$('outcome').value)?$('outcome').value:'untested',
+  notes:$('notes').value.slice(0,600)
+ };
+ persist();render();
+}
+function load(){
+ const r=record();
+ $('description').textContent=current().desc;
+ $('outcome').value=Object.hasOwn(OUTCOMES,r.outcome)?r.outcome:'untested';
+ $('notes').value=typeof r.notes==='string'?r.notes.slice(0,600):'';
+ $('direct').href=directUrl();
+ persist();render();
+}
+function log(message){
+ events.push(new Date().toISOString()+' '+message);
+ events=events.slice(-35);render();
+}
+function report(){
+ const lines=[
+  'Nexus DWT Player Control Lab — manual results',
+  'UTC: '+new Date().toISOString(),
+  'Origin: '+location.origin,
+  'Camera: '+CAMERAS[$('camera').value],
+  'Goal: no second in-player tap after opening modal.',
+  'Observations are manual; iframe load and JS script load are NOT proof of video playback.'
+ ];
+ for(const t of TESTS){
+  const r=records[$('camera').value]?.[t.id]||{};
+  lines.push(t.id+' | '+t.name+': '+(OUTCOMES[r.outcome]||OUTCOMES.untested)+(r.notes?' | '+r.notes:''));
+ }
+ lines.push('Events:',...(events.length?events:['No events yet.']));
+ return lines.join('\n');
+}
+function render(){
+ const body=$('results');body.replaceChildren();
+ for(const t of TESTS){
+  const r=records[$('camera').value]?.[t.id]||{};
+  const tr=document.createElement('tr'),name=document.createElement('td'),result=document.createElement('td');
+  name.textContent=t.id+' · '+t.name;result.textContent=OUTCOMES[r.outcome]||OUTCOMES.untested;
+  tr.append(name,result);body.appendChild(tr);
+ }
+ $('report').textContent=report();
+}
+function onFrameLoad(frame,t,token){
+ if(token!==generation)return;
+ log(t.id+': iframe document loaded (NOT playback confirmation).');
+ if(t.type==='synthetic'){
+  try{
+   frame.focus();frame.contentWindow.focus();
+   let trusted='no synthetic event observed';
+   frame.addEventListener('click',event=>{trusted='click isTrusted='+event.isTrusted;log(t.id+': '+trusted);},{once:true});
+   for(const type of ['pointerdown','mousedown','mouseup','click']){
+    const ev=type==='pointerdown'
+     ?new PointerEvent(type,{bubbles:true,cancelable:true,pointerType:'touch'})
+     :new MouseEvent(type,{bubbles:true,cancelable:true,button:0});
+    frame.dispatchEvent(ev);
+   }
+   frame.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+   log(t.id+': focused iframe and dispatched events only to OUTER iframe DOM node; '+trusted+'; no access to inner Play button.');
+  }catch(e){log(t.id+': synthetic event probe error '+String(e?.name||'Error'));}
+ }else if(t.type==='access'){
+  try{
+   const video=frame.contentWindow.document.querySelector('video');
+   log(t.id+': cross-origin DOM unexpectedly readable; video present='+Boolean(video)+'. Do not use this without permission.');
+  }catch(e){
+   log(t.id+': inner document denied by browser: '+String(e?.name||'Error'));
+  }
+ }
+}
+function makeFrame(t,token){
+ const frame=document.createElement('iframe');
+ frame.title=CAMERAS[$('camera').value]+' · '+t.name;
+ frame.referrerPolicy='no-referrer';
+ frame.allow='autoplay; encrypted-media; fullscreen; picture-in-picture';
+ frame.allowFullscreen=true;
+ frame.loading='eager';
+ frame.addEventListener('load',()=>onFrameLoad(frame,t,token));
+ frame.addEventListener('error',()=>log(t.id+': iframe element error (no access to provider internals).'));
+ frame.src=directUrl();
+ return frame;
+}
+function ensureScript(){
+ if(typeof window.dacast==='function')return Promise.resolve();
+ if(scriptPromise)return scriptPromise;
+ scriptPromise=new Promise((resolve,reject)=>{
+  const script=document.createElement('script');
+  script.src='https://prod-player.dacast.com/js/player.js';
+  script.async=true;
+  script.onload=()=>{
+   if(typeof window.dacast==='function')resolve();
+   else reject(new Error('Script loaded, but documented window.dacast() is unavailable'));
+  };
+  script.onerror=()=>reject(new Error('Dacast JS library failed to load'));
+  document.head.appendChild(script);
+ }).catch(error=>{scriptPromise=null;throw error;});
+ return scriptPromise;
+}
+async function setupApi(t,token){
+ $('videoState').textContent='Loading Dacast JS library, then initializing player. No playback confirmed.';
+ try{
+  await ensureScript();
+  if(token!==generation||!dlg.open)return;
+  log(t.id+': Dacast library loaded; not playback confirmation.');
+  const mount=document.createElement('div');
+  mount.id='apiPlayerMount';mount.className='api-player';
+  $('stage').appendChild(mount);
+  const player=window.dacast(contentId(),mount.id,{width:'100%',height:'100%'});
+  if(!player||typeof player.onReady!=='function'){
+   log(t.id+': no player object with documented onReady() method.');return;
+  }
+  activePlayer=player;
+  if(typeof player.onError==='function')player.onError(error=>{
+   if(token===generation)log(t.id+': Dacast onError: '+String(error?.message||error?.code||error?.name||'unknown').slice(0,160));
+  });
+  if(typeof player.onPlay==='function')player.onPlay(()=>{
+   if(token===generation)log(t.id+': Dacast onPlay event fired (visually confirm moving live video).');
+  });
+  player.onReady(()=>{
+   if(token!==generation||!dlg.open)return;
+   playerReady=true;$('apiPlay').hidden=false;$('apiPlay').disabled=false;
+   log(t.id+': Dacast onReady() fired; calling documented player methods.');
+   try{
+    if(t.type==='api_muted'){
+     if(typeof player.muteOn==='function'){player.muteOn();log(t.id+': muteOn() invoked (not confirmation of mute).');}
+     else log(t.id+': documented muteOn() absent.');
+    }
+    if(typeof player.play==='function'){
+     player.play();log(t.id+': play() invoked on ready (NOT proof of playback).');
+    }else log(t.id+': documented play() absent.');
+    $('videoState').textContent='onReady and play() invoked. Verify whether live video actually started.';
+   }catch(e){log(t.id+': player API invocation error '+String(e?.name||'Error'));}
+  });
+  log(t.id+': dacast(contentId, mountId, options) initialized; waiting for onReady().');
+ }catch(e){
+  if(token===generation){
+   log(t.id+': JS API setup failed: '+String(e?.message||e?.name||'Error').slice(0,160));
+   $('videoState').textContent='JS API unavailable or initialization failed. See report log.';
+  }
+ }
+}
+function cleanup(){
+ generation++;
+ $('stage').replaceChildren();
+ if(activePlayer&&typeof activePlayer.dispose==='function'){
+  try{activePlayer.dispose();}catch(e){log('Player dispose failed: '+String(e?.name||'Error'));}
+ }
+ activePlayer=null;playerReady=false;
+ $('apiPlay').hidden=true;$('apiPlay').disabled=true;
+ $('camera').disabled=false;$('case').disabled=false;
+ $('videoState').textContent='Player unloaded.';
+}
+$('camera').addEventListener('change',()=>{events=[];load();log('Changed camera; previous camera results preserved separately.');});
+$('case').addEventListener('change',load);
+$('outcome').addEventListener('change',save);
+$('notes').addEventListener('input',save);
+$('open').addEventListener('click',()=>{
+ if(typeof dlg.showModal!=='function'){
+  $('status').textContent='This browser does not support native HTML modal dialogs.';return;
+ }
+ cleanup();
+ const t=current(),token=generation;
+ $('camera').disabled=true;$('case').disabled=true;
+ $('caption').textContent=CAMERAS[$('camera').value]+' · '+t.id+' · '+t.name;
+ $('direct').href=directUrl();
+ $('videoState').textContent='Observe 5–10 seconds without pressing Play.';
+ try{
+  if(t.type==='preinsert')$('stage').appendChild(makeFrame(t,token));
+  dlg.showModal();
+  if(['api_muted','api_sound'].includes(t.type)){
+   setupApi(t,token);
+  }else if(t.type!=='preinsert'){
+   $('stage').appendChild(makeFrame(t,token));
+  }
+  log(t.id+': modal opened; '+t.type+' launched following a genuine user tap.');
+ }catch(e){
+  log(t.id+': modal launch error '+String(e?.name||'Error'));
+  if(dlg.open)dlg.close();
+  else cleanup();
+ }
+});
+$('apiPlay').addEventListener('click',()=>{
+ if(!playerReady||!activePlayer){log('API Play button tapped before player ready.');return;}
+ try{
+  activePlayer.play();
+  log('User tapped Nexus API Play button; documented play() invoked in trusted gesture. Verify visible video.');
+ }catch(e){log('API Play gesture error: '+String(e?.name||'Error'));}
+});
+$('close').addEventListener('click',()=>{if(dlg.open)dlg.close();});
+dlg.addEventListener('close',()=>{cleanup();log('Modal closed and playback session discarded.');});
+$('next').addEventListener('click',()=>{
+ save();$('case').selectedIndex=($('case').selectedIndex+1)%TESTS.length;load();
+ $('status').textContent='Saved; next test selected.';
+});
+$('copy').addEventListener('click',async()=>{
+ save();
+ try{await navigator.clipboard.writeText(report());$('status').textContent='Report copied. Paste it into the Nexus conversation.';}
+ catch{$('status').textContent='Clipboard unavailable: manually select report text below.';}
+});
+$('reset').addEventListener('click',()=>{
+ delete records[$('camera').value];events=[];load();$('status').textContent='Selected camera results reset.';
+});
+window.addEventListener('error',e=>log('Parent JavaScript error: '+String(e.message||'unknown').slice(0,140)));
+window.addEventListener('unhandledrejection',e=>log('Parent rejected promise: '+String(e.reason?.message||'unknown').slice(0,140)));
+window.addEventListener('securitypolicyviolation',e=>log('Parent CSP report: '+String(e.violatedDirective||'unknown').slice(0,90)));
+load();log('Ready; no camera loaded before explicit test.');
+})();
+</script>
+</body>
+</html>
