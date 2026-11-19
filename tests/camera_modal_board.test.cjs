@@ -45,6 +45,16 @@ hours=D.nextNexusSchedule(schedule([
 ]),'ambassador','ca',base);
 assert.equal(hours.kind,'within');
 assert.match(hours.next,/Today 8:00/i,'merged availability should persist to 8 PM');
+// Reproduce the official Ambassador Bridge weekday configuration: three
+// dedicated lanes with different end times; service lasts until Lane One ends.
+hours=D.nextNexusSchedule(schedule([
+ {label:'Lane One\nMonday to Friday\n(except Holidays)',start:'07:00',end:'00:00'},
+ {label:'Lane One\nWeekends and Holidays',start:'08:00',end:'22:00'},
+ {label:'Lane Two\nMonday to Friday\n(except holidays)',start:'14:00',end:'21:00'},
+ {label:'Lane Three\nMonday to Friday\n(except holidays)',start:'15:00',end:'19:00'}
+]),'ambassador','ca',base);
+assert.equal(hours.kind,'within');
+assert.match(hours.next,/Tomorrow 12:00/i,'last lane closes at midnight, not 7 or 9 PM');
 hours=D.nextNexusSchedule(schedule([{label:'Special circumstances',start:'07:00',end:'22:00'}]),'ambassador','ca',base);
 assert.equal(hours.kind,'unknown');
 hours=D.nextNexusSchedule(schedule(weekdays),'ambassador','us',base);
