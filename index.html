@@ -1,96 +1,98 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f5f7fa">
-<meta name="description" content="Nexus border wait times and reported lane counts for the three Windsor–Detroit crossings.">
-<title>Nexus · Border Status</title>
-<link rel="stylesheet" href="./board.css?v=board7">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f7f9fb">
+  <meta name="description" content="Nexus Windsor–Detroit border inspection waits, both directions and three crossings.">
+  <title>Nexus · Border comparison</title>
+  <link rel="stylesheet" href="./dashboard.css?v=m1">
 </head>
 <body>
-<main class="shell">
-  <header class="masthead">
-    <div class="branding"><div><h1>nexus</h1><p>Border wait times</p></div></div>
-    <button class="refresh" id="refresh" type="button" aria-label="Check the latest published border snapshot" title="Refresh snapshot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.5 9a7 7 0 0 1 12.5-3l2 6M4 12l2 6a7 7 0 0 0 12.5 3"/></svg><span>Refresh</span></button>
+<main class="app-shell" id="main">
+  <header class="topbar">
+    <h1>Nexus</h1>
+    <div class="top-actions">
+      <button id="themeToggle" class="icon-button" type="button" aria-label="Switch to dark mode" title="Toggle light/dark">◐</button>
+      <button id="settingsOpen" class="icon-button" type="button" aria-label="Settings" title="Settings">⚙</button>
+    </div>
   </header>
-  <section class="selector" aria-label="Crossing direction">
-    <div class="segment" role="group" aria-label="Border crossing direction">
-      <button type="button" id="intoUs" aria-pressed="true">Into USA</button>
-      <button type="button" id="intoCa" aria-pressed="false">Into Canada</button>
-    </div>
-  </section>
-  <section class="status-row" aria-live="polite" aria-atomic="true">
-    <span class="status-dot" id="statusDot"></span><span id="summary">Loading latest published official data…</span>
-  </section>
-  <section class="board" aria-label="Border crossing status">
-    
-    <div id="crossingRows">
-      <div class="loading">Checking published border data…</div>
-    </div>
 
+  <div class="controls" aria-label="Comparison controls">
+    <div class="sort-wrap">
+      <button class="icon-button" id="sortToggle" type="button" aria-label="Sort crossings; current order: crossing order" aria-expanded="false" aria-haspopup="true" aria-controls="sortMenu" title="Sort crossings">⇅</button>
+      <div class="sort-menu" id="sortMenu" hidden aria-label="Sort options">
+        <button type="button" data-sort="fixed">Crossing order</button>
+        <button type="button" data-sort="ca">Lowest Canada wait</button>
+        <button type="button" data-sort="us">Lowest USA wait</button>
+      </div>
+    </div>
+    <label class="sr-only" for="vehicleSelect">Vehicle type</label>
+    <select id="vehicleSelect" aria-label="Vehicle type">
+      <option value="passenger">Passenger</option>
+      <option value="commercial">Commercial</option>
+    </select>
+    <label class="sr-only" for="laneSelect">Lane category</label>
+    <select id="laneSelect" aria-label="Lane category"><option value="regular">Regular</option></select>
+  </div>
+
+  <section aria-label="Official border inspection wait comparison">
+    <div class="comparison" role="table" aria-label="Three crossings, Canada and USA direction">
+      <div class="table-header" role="row">
+        <div role="columnheader">Crossing</div>
+        <div role="columnheader" id="caHeading">Canada</div>
+        <div role="columnheader" id="usHeading">USA</div>
+      </div>
+      <div id="crossingRows" role="rowgroup">
+        <div class="loading" role="status">Checking official border reports…</div>
+      </div>
+    </div>
   </section>
-  <details class="data-notes" id="aboutReadings">
-    <summary>About these readings</summary>
-    <p id="freshnessNote">Canada-bound NEXUS hours are scheduled, not verified live operation or inspection waits. Missing readings never mean zero.</p>
-  </details>
-  <details class="diagnostics" id="diagnostics">
-    <summary>Technical diagnostics <span aria-hidden="true">+</span></summary>
-    <div id="diagnosticBody">No snapshot loaded.</div>
-  </details>
-  <footer>Independent border information viewer · Not affiliated with CBP or CBSA</footer>
+
+  <div class="source-summary" aria-live="polite" aria-atomic="true">
+    <span class="status-dot" id="statusDot" aria-hidden="true"></span>
+    <button id="sourceDetails" class="status-link" type="button" aria-label="View official source freshness details"><span id="summary">Checking reported observations…</span></button>
+    <button id="refresh" class="icon-button subtle" type="button" aria-label="Check the latest published snapshot" title="Check snapshot">↻</button>
+  </div>
+  <section class="notice" id="notices" aria-live="polite" hidden>
+    <button class="notice-button" id="noticeOpen" type="button"><span id="noticeText"></span><span aria-hidden="true">›</span></button>
+  </section>
+  <footer class="disclaimer">Official inspection reports, not full-trip times · Independent app</footer>
 </main>
-<dialog id="cameraDialog" class="camera-modal" aria-labelledby="cameraTitle">
-  <div class="camera-header">
-    <div><h2 id="cameraTitle">Crossing camera</h2><p id="cameraSubtitle">Official camera · inspection wait reports</p></div>
-    <button id="closeCamera" aria-label="Close and stop camera" type="button">×</button>
-  </div>
-  <section class="camera-report" aria-label="Latest inspection reports">
-    <div class="camera-metrics">
-      <div class="camera-metric">
-        <span class="camera-metric-label">NEXUS</span>
-        <strong id="cameraNexusWait">Checking…</strong>
-        <span id="cameraNexusLanes" class="camera-metric-lanes">Lanes not reported</span>
-        <small id="cameraNexusStatus">Waiting for agency data</small>
-      </div>
-      <div class="camera-metric">
-        <span class="camera-metric-label">REGULAR</span>
-        <strong id="cameraRegularWait">Checking…</strong>
-        <span id="cameraRegularLanes" class="camera-metric-lanes">Lanes not reported</span>
-        <small id="cameraRegularStatus">Waiting for agency data</small>
-      </div>
+
+<dialog id="detailDialog" class="bottom-sheet" aria-labelledby="detailTitle">
+  <div class="sheet-body">
+    <div class="sheet-header"><h2 id="detailTitle" tabindex="-1">Crossing details</h2><button id="detailClose" class="icon-button" type="button" aria-label="Close crossing details">×</button></div>
+    <div class="direction-picker" role="group" aria-label="Country of entry">
+      <button id="detailCa" type="button" data-direction="ca">Canada</button>
+      <button id="detailUs" type="button" data-direction="us">USA</button>
     </div>
-  </section>
-  <div class="camera-surface" id="cameraStage">
-    <iframe id="cameraFrame" title="Official crossing camera" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="no-referrer" hidden></iframe>
-    <div id="cameraZoomSurface" role="button" tabindex="0" aria-label="Drag to pan camera; tap to fit" aria-pressed="true" hidden></div>
-    <p id="cameraNotice">Connecting to official camera…</p>
+    <p class="eyebrow" id="detailCategory"></p>
+    <div class="detail-wait" id="detailWait">--</div>
+    <p class="detail-note" id="detailNote"></p>
+    <p class="detail-alert" id="detailAlert" hidden></p>
+    <p class="detail-schedule" id="detailSchedule" hidden></p>
+    <details class="detail-disclosure" open>
+      <summary>Source and freshness</summary>
+      <div id="detailProvenance" class="detail-provenance"></div>
+    </details>
+    <a id="cameraViewer" class="secondary-link" href="./classic-board.html">Open existing camera viewer</a>
+    <p class="detail-note">Saved destinations and verified crossing-specific navigation are scheduled for M3. No route is currently asserted.</p>
   </div>
-  <div id="cameraViewChoices" class="camera-views" role="group" aria-label="Camera angles"></div>
-  <div id="cameraZoomControls" class="camera-zoom-controls" role="group" aria-label="Bridge camera zoom" hidden>
-    <div class="camera-zoom-buttons">
-      <button type="button" data-scale="1">Fit</button>
-      <button type="button" data-scale="2">2×</button>
-      <button type="button" data-scale="3">3×</button>
-      <button type="button" data-scale="4">4×</button>
-    </div>
-    <span id="cameraZoomHint">Drag to pan · Tap to fit</span>
-  </div>
-  <div class="camera-actions">
-    <button type="button" id="cameraRetry">Reload camera</button>
-    <a id="officialCamera" target="_blank" rel="noopener noreferrer">Official camera page ↗</a>
-  </div>
-  <details class="camera-details" id="cameraDetails">
-    <summary>NEXUS hours &amp; source details <span id="cameraScheduleSummary">View details</span></summary>
-    <div class="camera-schedule" id="cameraScheduleBox">
-      <strong id="cameraNexusSchedule">NEXUS schedule unavailable</strong>
-      <span id="cameraNexusScheduleNote">Published operating hours do not confirm a lane is open.</span>
-    </div>
-    <p id="cameraSourceDetails" class="camera-source-details">Agency observations and schedule source times appear here.</p>
-    <p class="camera-disclaimer">Agency waits exclude road approaches and full-trip travel time. Lane counts and NEXUS published hours do not independently confirm live lane availability. Video playback depends on the operator.</p>
-  </details>
 </dialog>
+
+<dialog id="settingsDialog" class="settings-screen" aria-labelledby="settingsTitle">
+  <div class="settings-body">
+    <div class="sheet-header"><h2 id="settingsTitle" tabindex="-1">Settings</h2><button id="settingsClose" class="icon-button" type="button" aria-label="Close Settings">×</button></div>
+    <section><h3>Comparison</h3><p>Sorting is remembered locally. Vehicle and lane choices apply to this visit.</p><button id="resetSort" class="secondary-button" type="button">Reset crossing order</button></section>
+    <section><h3>Destinations</h3><p>Home, Work and custom destinations will be configured here when navigation support is validated (M3).</p></section>
+    <section><h3>Data &amp; diagnostics</h3><div id="diagnosticBody" class="diagnostics">No official snapshot loaded.</div></section>
+    <section><h3>Camera viewer</h3><a href="./classic-board.html">Open existing camera viewer</a></section>
+    <p class="detail-note">No account required. No location permission requested. Data is based on periodically published reports, not live lane confirmation.</p>
+  </div>
+</dialog>
+
 <script src="./decision.js?v=rc149-schedule"></script>
-<script src="./board.js?v=board7" defer></script>
+<script src="./dashboard.js?v=m1" defer></script>
 </body>
 </html>
