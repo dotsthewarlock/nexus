@@ -27,6 +27,6 @@ assert.ok(js.includes('lastFetch')&&js.includes('renderDiagnostics()'));
 assert.ok(js.includes('removeAttribute(\'src\')'),'camera must unload on close');
 assert.ok(css.includes('grid-template-columns')&&css.includes('@media(max-width:600px)'));
 assert.ok(html.includes('board.js?v=board1')&&html.includes('board.css?v=board1'));
-assert.ok(workflow.includes('cp index.html board.css board.js'), 'board must be published');
-assert.ok(workflow.includes('cp legacy.html styles.css app.js decision.js'), 'original camera UI must remain accessible');
+assert.ok(workflow.includes('cp board.css board.js legacy.html site/'), 'board and legacy page must be published');
+assert.ok(workflow.includes('cp index.html styles.css app.js decision.js camera-diagnostics.html site/'), 'original camera scripts must remain deployed');
 console.log('Border-status board static checks passed: direction, three rows, lanes, unavailable semantics, cameras, deployment.');
