@@ -122,12 +122,12 @@ def _event(entry, kind, now):
     if not ROAD_PATTERN.search(_words(road)):
         return None
     location = _coords(entry)
-    if location is None:
+    if location is None and not _polyline_hits(entry.get('EncodedPolyline')):
         return None  # City text alone is insufficient for event placement.
     timing = _timing(entry.get('StartDate'), entry.get('PlannedEndDate'), now)
     if timing is None:
         return None
-    lat, lon = location
+    lat, lon = location if location is not None else (None, None)
     return {
         'id': _clean(entry.get('ID'), 40),
         'category': kind,
