@@ -6,12 +6,12 @@
 <meta name="theme-color" content="#f5f7fa">
 <meta name="description" content="Nexus border wait times and reported lane counts for the three Windsor–Detroit crossings.">
 <title>Nexus · Border Status</title>
-<link rel="stylesheet" href="./board.css?v=board3">
+<link rel="stylesheet" href="./board.css?v=board4">
 </head>
 <body>
 <main class="shell">
   <header class="masthead">
-    <div class="branding"><div class="mark" aria-hidden="true">N</div><div><h1>nexus</h1><p>Border status</p></div></div>
+    <div class="branding"><div><h1>nexus</h1><p>Border wait times</p></div></div>
     <button class="refresh" id="refresh" type="button" aria-label="Check the latest published border snapshot" title="Refresh snapshot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.5 9a7 7 0 0 1 12.5-3l2 6M4 12l2 6a7 7 0 0 0 12.5 3"/></svg><span>Refresh</span></button>
   </header>
   <section class="selector" aria-label="Crossing direction">
@@ -24,25 +24,28 @@
     <span class="status-dot" id="statusDot"></span><span id="summary">Loading latest published official data…</span>
   </section>
   <section class="board" aria-label="Border crossing status">
-    <div class="board-heading"><h2>Crossings</h2><span>Inspection waits · reported lanes</span></div>
+    
     <div id="crossingRows">
       <div class="loading">Checking published border data…</div>
     </div>
-    <div class="board-footer"><span><strong>Wait</strong> · border inspection only</span><span><strong>Lanes</strong> · source-reported, not independently verified</span></div>
+
   </section>
-  <p class="freshness-note" id="freshnessNote">Missing or outdated agency values are never converted to zero. Road approach and full-trip times are excluded.</p>
+  <details class="data-notes" id="aboutReadings">
+    <summary>About these readings</summary>
+    <p id="freshnessNote">Inspection waits only, not full-trip travel time. Only official observations under 20 minutes old are presented as current. Lane counts are source-reported, not independently confirmed. Missing values never mean zero.</p>
+  </details>
   <details class="diagnostics" id="diagnostics">
-    <summary>Source details &amp; last reports <span>Expand</span></summary>
+    <summary>Technical diagnostics <span aria-hidden="true">+</span></summary>
     <div id="diagnosticBody">No snapshot loaded.</div>
   </details>
   <footer>Independent border information viewer · Not affiliated with CBP or CBSA</footer>
 </main>
 <dialog id="cameraDialog" class="camera-modal" aria-labelledby="cameraTitle">
   <div class="camera-header">
-    <div><h2 id="cameraTitle">Crossing camera</h2><p id="cameraSubtitle">Official camera · inspection wait snapshot</p></div>
+    <div><h2 id="cameraTitle">Crossing camera</h2><p id="cameraSubtitle">Official camera · inspection wait reports</p></div>
     <button id="closeCamera" aria-label="Close and stop camera" type="button">×</button>
   </div>
-  <section class="camera-report" aria-label="Latest crossing wait and lane reports">
+  <section class="camera-report" aria-label="Latest inspection reports">
     <div class="camera-metrics">
       <div class="camera-metric">
         <span class="camera-metric-label">NEXUS</span>
@@ -57,17 +60,13 @@
         <small id="cameraRegularStatus">Waiting for agency data</small>
       </div>
     </div>
-    <div class="camera-schedule" id="cameraScheduleBox" role="status">
-      <strong id="cameraNexusSchedule">NEXUS schedule unavailable</strong>
-      <span id="cameraNexusScheduleNote">Published operating hours are not live lane status.</span>
-    </div>
   </section>
-  <div id="cameraViewChoices" class="camera-views" role="group" aria-label="Camera angles"></div>
   <div class="camera-surface" id="cameraStage">
     <iframe id="cameraFrame" title="Official crossing camera" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="no-referrer" hidden></iframe>
     <div id="cameraZoomSurface" role="button" tabindex="0" aria-label="Drag to pan camera; tap to fit" aria-pressed="true" hidden></div>
     <p id="cameraNotice">Connecting to official camera…</p>
   </div>
+  <div id="cameraViewChoices" class="camera-views" role="group" aria-label="Camera angles"></div>
   <div id="cameraZoomControls" class="camera-zoom-controls" role="group" aria-label="Bridge camera zoom" hidden>
     <div class="camera-zoom-buttons">
       <button type="button" data-scale="1">Fit</button>
@@ -77,10 +76,21 @@
     </div>
     <span id="cameraZoomHint">Drag to pan · Tap to fit</span>
   </div>
-  <div class="camera-actions"><button type="button" id="cameraRetry">Reload camera</button><a id="officialCamera" target="_blank" rel="noopener noreferrer">Official camera page ↗</a></div>
-  <p class="camera-disclaimer">Agency wait and lane counts do not include approach traffic. Published NEXUS schedules do not confirm actual lane availability. Camera playback depends on the operator.</p>
+  <div class="camera-actions">
+    <button type="button" id="cameraRetry">Reload camera</button>
+    <a id="officialCamera" target="_blank" rel="noopener noreferrer">Official camera page ↗</a>
+  </div>
+  <details class="camera-details" id="cameraDetails">
+    <summary>NEXUS hours &amp; source details <span id="cameraScheduleSummary">View details</span></summary>
+    <div class="camera-schedule" id="cameraScheduleBox">
+      <strong id="cameraNexusSchedule">NEXUS schedule unavailable</strong>
+      <span id="cameraNexusScheduleNote">Published operating hours do not confirm a lane is open.</span>
+    </div>
+    <p id="cameraSourceDetails" class="camera-source-details">Agency observations and schedule source times appear here.</p>
+    <p class="camera-disclaimer">Agency waits exclude road approaches and full-trip travel time. Lane counts and NEXUS published hours do not independently confirm live lane availability. Video playback depends on the operator.</p>
+  </details>
 </dialog>
 <script src="./decision.js?v=rc149-schedule"></script>
-<script src="./board.js?v=board3" defer></script>
+<script src="./board.js?v=board4" defer></script>
 </body>
 </html>
