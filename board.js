@@ -92,7 +92,7 @@
   function metric(m,id,cat){
     const isCanadaNexus=direction==='ca'&&cat==='NEXUS';
     const laneLine=isCanadaNexus?'':m.lanes==='Lanes not reported'?'Lanes —':
-      m.lanes.replace(/ reported$/,'').replace(/ last reported$/,' (last report)');
+      m.lanes.replace(/ last reported$/,' (last report)').replace(/ reported$/,'');
     let hint='';
     if(isCanadaNexus)hint='Not published by CBSA';
     else if(['expired','unknown','closed'].includes(m.variant))hint=m.status;
