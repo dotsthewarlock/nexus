@@ -25,7 +25,7 @@ assert.match(css,/data-large-text="true"/,'large text must reflow table and cont
 assert.match(js,/function syncLargeText\(\)/,'font scaling must update responsive layout');
 assert.match(js,/window\.addEventListener\('resize',syncLargeText\)/,'font scaling must update on resize');
 assert.match(css,/\.settings-screen\{position:fixed/);
-assert.match(fs.readFileSync('.github/workflows/publish.yml','utf8'),/cp dashboard\.css dashboard\.js destinations\.js classic-board\.html site\//);
+assert.match(fs.readFileSync('.github/workflows/publish.yml','utf8'),/cp dashboard\.css dashboard\.js destinations\.js routing\.js classic-board\.html site\//);
 assert.match(fs.readFileSync('classic-board.html','utf8'),/id="cameraDialog"/);
 
 const injected=js.replace(/\ninit\(\);\n\}\)\(\);\s*$/,"\nwindow.__m1Test={store,classify,sortIds,cell,render,openDetail};\n})();");
