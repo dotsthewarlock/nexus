@@ -194,3 +194,5 @@ An actual authenticated Ontario 511 response cannot be tested outside the Action
 - The record's agency `observation_at`, Nexus `first_seen_at`, `previous_checked_at`, `last_value_change_at`, and abbreviated fingerprints have distinct meanings. Identical waits with new agency timestamps count as new observations, not changed waits.
 - Reused or failed sources cannot create newer first-seen timestamps. Snapshot archives already retain the tracker records for 30 days; no database or client identifiers are collected.
 - The tracker is metadata only; there is no change to primary UI freshness eligibility or route recommendations.
+
+- If a slower supplemental source fails, its last successful record may remain available **as historical only** for up to two scheduled check intervals (never a renewed source success). Faster border-source fallback behavior is unchanged.
