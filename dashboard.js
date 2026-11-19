@@ -1,0 +1,159 @@
+(function(){
+'use strict';
+const D=window.NexusDecision;
+const IDS=['ambassador','tunnel','gordie'];
+const NAMES={ambassador:'Ambassador Bridge',tunnel:'Detroit–Windsor Tunnel',gordie:'Gordie Howe International Bridge'};
+const $=id=>document.getElementById(id);
+const key='nexus-m1-sort';
+const categories={passenger:[['regular','Regular'],['nexus','NEXUS'],['ready','Ready']],commercial:[['regular','Regular'],['fast','FAST']]};
+const store={data:null,sort:'fixed',vehicle:'passenger',lane:'regular',selected:null,direction:'ca',lastFetch:null,error:null,busy:false};
+try{const v=localStorage.getItem(key);if(['fixed','ca','us'].includes(v))store.sort=v}catch{}
+const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const stamp=s=>s&&Number.isFinite(Date.parse(s))?new Date(s).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'}):'Unavailable';
+const age=s=>D.age(s,Date.now());
+const primary=dir=>dir==='ca'?'cbsa':'cbp';
+const rawKey=()=>store.lane==='regular'?(store.vehicle==='passenger'?'standard':'commercial'):store.lane;
+const source=dir=>store.data?.sources?.[primary(dir)];
+function classify(id,dir){
+ const src=source(dir),raw=store.data?.directions?.[dir]?.[id]?.[rawKey()];
+ const reported=D.reading(raw,store.data,Date.now());
+ const srcAge=age(src?.retrieved_at),snapAge=age(store.data?.generated_at);
+ const goodSource=src?.status==='ok'&&srcAge<=20;
+ const retained=src?.status==='error'&&src?.retained_previous===true;
+ if(store.vehicle==='passenger'&&store.lane==='nexus'&&dir==='ca')
+   return {kind:'unsupported',text:'Not reported',minutes:null,raw,src,reason:'CBSA does not publish separate Canada-bound NEXUS inspection waits. Published hours are not live lane operation.'};
+ if(!raw||raw.status==='not_applicable')return {kind:'unsupported',text:'Not reported',minutes:null,raw,src,reason:'This lane category has no applicable published inspection report.'};
+ if(src?.status!=='ok'&&!retained)return {kind:'unavailable',text:'Unavailable',minutes:null,raw,src,reason:'The official source is unavailable.'};
+ if(reported.kind==='closed'&&goodSource)return {kind:'closed',text:'Closed',minutes:null,raw,src,reason:'Source-reported closure; verify before travel.'};
+ if(!Number.isInteger(reported.minutes)){
+   return {kind:reported.kind==='unavailable'?'unavailable':'stale',text:'Unavailable',minutes:null,raw,src,reason:'No usable timestamped wait for this lane category.'};
+ }
+ if(!goodSource||retained||snapAge>20||!['current','aging'].includes(reported.kind)){
+   return {kind:'stale',text:reported.minutes+' min',minutes:reported.minutes,raw,src,reason:'Historical report, not a current wait.'};
+ }
+ return {kind:'current',text:reported.minutes+' min',minutes:reported.minutes,raw,src,reason:'Recent official inspection report; not a full-trip ETA.'};
+}
+function sortIds(){
+ if(store.sort==='fixed')return [...IDS];
+ const dir=store.sort;
+ return [...IDS].sort((a,b)=>{
+   const x=classify(a,dir),y=classify(b,dir);
+   const good=z=>z.kind==='current';
+   if(good(x)!==good(y))return good(x)?-1:1;
+   if(good(x)&&x.minutes!==y.minutes)return x.minutes-y.minutes;
+   return IDS.indexOf(a)-IDS.indexOf(b);
+ });
+}
+function cell(id,dir){
+ const v=classify(id,dir);
+ const ageText=v.raw?.observation_at&&v.kind==='stale'?' · report '+Math.round(age(v.raw.observation_at))+'m old':'';
+ const laneCount=v.kind==='current'&&dir==='us'&&Number.isInteger(v.raw?.lanes_open)&&v.raw.lanes_open>=0
+   ?'<span class="lanes">'+v.raw.lanes_open+' '+(v.raw.lanes_open===1?'lane':'lanes')+' reported</span>':'';
+ const sub=v.kind==='stale'?'Older report'+ageText:v.kind==='closed'?'Source-reported closure':v.kind==='unsupported'?'No category-specific wait':v.kind==='unavailable'?'Check source':null;
+ return '<button class="wait-cell" type="button" data-crossing="'+id+'" data-direction="'+dir+'" aria-label="'+escape(NAMES[id]+', into '+(dir==='ca'?'Canada':'USA')+', '+v.text+', '+v.kind)+'"><span class="wait-value" data-kind="'+v.kind+'">'+escape(v.text)+'</span>'+laneCount+(sub?'<span class="cell-note">'+escape(sub)+'</span>':'')+'</button>';
+}
+function render(){
+ $('caHeading').textContent='Canada'+(store.sort==='ca'?' ↓':'');
+ $('usHeading').textContent='USA'+(store.sort==='us'?' ↓':'');
+ $('sortToggle').setAttribute('aria-label','Sort crossings; current order: '+({fixed:'crossing order',ca:'lowest Canada wait',us:'lowest USA wait'}[store.sort]));
+ document.querySelectorAll('[data-sort]').forEach(b=>b.setAttribute('aria-current',String(b.dataset.sort===store.sort)));
+ $('crossingRows').innerHTML=sortIds().map(id=>'<div class="crossing-row" role="row"><button type="button" class="crossing-name" data-crossing="'+id+'" aria-label="Details for '+escape(NAMES[id])+'">'+escape(NAMES[id])+'</button>'+cell(id,'ca')+cell(id,'us')+'</div>').join('');
+ const s=store.data?.sources||{},snap=age(store.data?.generated_at);
+ const healthy=!!store.data&&snap<=20&&['cbp','cbsa'].every(k=>s[k]?.status==='ok'&&age(s[k].retrieved_at)<=20);
+ const noData=!store.data||!Number.isFinite(snap);
+ $('statusDot').dataset.state=healthy?'ok':noData?'error':'warn';
+ const freshness=noData?'Official reports unavailable':healthy?'Official checks recent · observations vary':'Some official reports are delayed or unavailable';
+ $('summary').textContent=store.error?freshness+' · '+store.error:freshness;
+ const notices=[];
+ for(const id of IDS)for(const dir of ['ca','us']){
+  const p=store.data?.directions?.[dir]?.[id];
+  const s=source(dir);
+  if(s?.status!=='ok'||age(s.retrieved_at)>20)continue;
+  if(p?.port_status&&/^\s*(temporarily\s+)?closed\b/i.test(p.port_status))notices.push(NAMES[id]+' · '+(dir==='ca'?'Canada':'USA')+' port reported closed');
+  else if(p?.notice&&D.noticeKind(p.notice)==='operational')notices.push(NAMES[id]+' · official crossing advisory');
+ }
+ $('notices').hidden=!notices.length;
+ $('noticeText').textContent=notices[0]||'';
+ $('noticeOpen').dataset.crossing=notices.length?IDS.find(id=>notices[0].startsWith(NAMES[id])):'';
+ renderDiagnostics();
+ if($('detailDialog').open&&store.selected)renderDetail();
+}
+function renderDiagnostics(){
+ const s=store.data?.sources||{};
+ $('diagnosticBody').innerHTML='<p>Snapshot published: '+escape(stamp(store.data?.generated_at))+'</p><p>Browser retrieved: '+escape(stamp(store.lastFetch))+'</p>'+Object.entries(s).map(([k,v])=>'<p><strong>'+escape(k.toUpperCase())+'</strong>: '+escape(v.status||'unknown')+' · retrieval '+escape(stamp(v.retrieved_at))+' · last success '+escape(stamp(v.last_success_at||v.retrieved_at))+(v.cache_reused?' · cached':'')+'</p>').join('')+'<p>Source retrieval does not establish observation freshness. Missing data is never zero.</p>';
+}
+function renderDetail(){
+ const id=store.selected,dir=store.direction,v=classify(id,dir);
+ $('detailTitle').textContent=NAMES[id];
+ $('detailCa').setAttribute('aria-pressed',String(dir==='ca'));
+ $('detailUs').setAttribute('aria-pressed',String(dir==='us'));
+ $('detailCategory').textContent=(store.vehicle==='passenger'?'Passenger':'Commercial')+' · '+categories[store.vehicle].find(x=>x[0]===store.lane)[1]+' · Into '+(dir==='ca'?'Canada':'USA');
+ $('detailWait').textContent=v.text;
+ $('detailWait').dataset.kind=v.kind;
+ $('detailNote').textContent=v.reason;
+ $('detailProvenance').innerHTML='<p>Official source: '+escape(dir==='ca'?'CBSA':'CBP')+'</p><p>Source status: '+escape(v.src?.status||'unavailable')+'</p><p>Observation: '+escape(stamp(v.raw?.observation_at))+'</p><p>Retrieved: '+escape(stamp(v.src?.retrieved_at))+'</p><p>Snapshot published: '+escape(stamp(store.data?.generated_at))+'</p>';
+ const sched=dir==='ca'&&store.vehicle==='passenger'&&store.lane==='nexus'&&D.nextNexusSchedule?D.nextNexusSchedule(store.data,id,'ca',Date.now()):null;
+ $('detailSchedule').hidden=!sched;
+ if(sched)$('detailSchedule').textContent='Published NEXUS schedule: '+sched.kind+(sched.next?' · next '+sched.next:'')+'. This does not confirm a live lane.';
+ $('cameraViewer').href='./classic-board.html';
+}
+function openDetail(id,dir='ca'){
+ store.selected=id;store.direction=dir;renderDetail();
+ $('detailDialog').showModal();$('detailTitle').focus();
+}
+function closeDialog(id){$(id).close()}
+function updateLanes(){
+ const sel=$('laneSelect'),allowed=categories[store.vehicle];
+ sel.innerHTML=allowed.map(([k,label])=>'<option value="'+k+'">'+label+'</option>').join('');
+ if(!allowed.some(x=>x[0]===store.lane))store.lane='regular';
+ sel.value=store.lane;
+}
+async function refresh(){
+ if(store.busy)return;store.busy=true;
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),13000);
+ try{
+  const res=await fetch('./data/live.json?ts='+Date.now(),{cache:'no-store',signal:controller.signal});
+  if(!res.ok)throw Error('HTTP '+res.status);
+  const next=await res.json();
+  if(!['nexus-live-v2','nexus-live-v1'].includes(next.schema)||!next.sources||!next.directions||!Number.isFinite(Date.parse(next.generated_at)))throw Error('Invalid published snapshot');
+  if(!store.data||Date.parse(next.generated_at)>=Date.parse(store.data.generated_at))store.data=next;
+  store.lastFetch=new Date().toISOString();store.error=null;
+ }catch(e){store.error=e.name==='AbortError'?'Request timed out':'Snapshot fetch failed';}
+ finally{clearTimeout(timer);store.busy=false;render();}
+}
+function init(){
+ updateLanes();
+ try{const t=localStorage.getItem('nexus-theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t;}catch{}
+ $('themeToggle').addEventListener('click',()=>{
+  const next=document.documentElement.dataset.theme==='dark'?'light':'dark';
+  document.documentElement.dataset.theme=next;
+  try{localStorage.setItem('nexus-theme',next)}catch{}
+  $('themeToggle').setAttribute('aria-label','Switch to '+(next==='dark'?'light':'dark')+' mode');
+ });
+ $('sortToggle').addEventListener('click',()=>{$('sortMenu').hidden=!$('sortMenu').hidden;$('sortToggle').setAttribute('aria-expanded',String(!$('sortMenu').hidden))});
+ $('sortMenu').addEventListener('click',e=>{
+  const b=e.target.closest('[data-sort]');if(!b)return;
+  store.sort=b.dataset.sort;try{localStorage.setItem(key,store.sort)}catch{}
+  $('sortMenu').hidden=true;$('sortToggle').setAttribute('aria-expanded','false');render();
+ });
+ $('vehicleSelect').addEventListener('change',e=>{store.vehicle=e.target.value;store.lane='regular';updateLanes();render()});
+ $('laneSelect').addEventListener('change',e=>{store.lane=e.target.value;render()});
+ $('crossingRows').addEventListener('click',e=>{const b=e.target.closest('[data-crossing]');if(b)openDetail(b.dataset.crossing,b.dataset.direction||'ca')});
+ $('noticeOpen').addEventListener('click',e=>{const id=e.currentTarget.dataset.crossing;if(id)openDetail(id)});
+ $('sourceDetails').addEventListener('click',()=>{$('settingsDialog').showModal();$('settingsTitle').focus()});
+ $('settingsOpen').addEventListener('click',()=>{$('settingsDialog').showModal();$('settingsTitle').focus()});
+ $('detailClose').addEventListener('click',()=>closeDialog('detailDialog'));
+ $('settingsClose').addEventListener('click',()=>closeDialog('settingsDialog'));
+ $('detailCa').addEventListener('click',()=>{store.direction='ca';renderDetail()});
+ $('detailUs').addEventListener('click',()=>{store.direction='us';renderDetail()});
+ $('resetSort').addEventListener('click',()=>{store.sort='fixed';try{localStorage.removeItem(key)}catch{}render()});
+ $('refresh').addEventListener('click',refresh);
+ document.addEventListener('click',e=>{if(!e.target.closest('.sort-wrap')){$('sortMenu').hidden=true;$('sortToggle').setAttribute('aria-expanded','false')}});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('sortMenu').hidden=true;$('sortToggle').setAttribute('aria-expanded','false')}});
+ render();refresh();
+ setInterval(()=>{if(!document.hidden)refresh()},60000);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});
+ setInterval(()=>{if(!document.hidden)render()},60000);
+}
+init();
+})();
