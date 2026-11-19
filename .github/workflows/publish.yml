@@ -36,6 +36,8 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Decision engine tests
         run: node tests/decision.test.cjs
+      - name: Three-crossing status dashboard tests
+        run: node tests/status_board.test.cjs
       - name: Camera source regression tests
         run: node tests/camera_rc148.test.cjs
       - name: Standalone camera diagnostic tests
@@ -81,7 +83,7 @@ jobs:
       - name: Stage static website
         run: |
           mkdir -p site/data
-          cp index.html styles.css app.js decision.js camera-diagnostics.html site/
+          cp index.html board.css board.js legacy.html styles.css app.js decision.js camera-diagnostics.html site/
           cp camera-alternatives.html site/
           cp camera-lab-v3.html site/
           cp camera-navigation-lab.html site/
