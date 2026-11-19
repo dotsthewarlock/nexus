@@ -76,6 +76,7 @@ jobs:
           cp camera-lab-v3.html site/
           cp camera-navigation-lab.html site/
           cp camera-modal-viability.html site/
+          cp camera-modal-autoplay.html site/
           cp data/live.json site/data/live.json
           touch site/.nojekyll
       - uses: actions/configure-pages@v5
