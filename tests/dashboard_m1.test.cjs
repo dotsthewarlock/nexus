@@ -1,0 +1,33 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const html=fs.readFileSync('index.html','utf8');
+const css=fs.readFileSync('dashboard.css','utf8');
+const js=fs.readFileSync('dashboard.js','utf8');
+new vm.Script(js);
+for(const id of ['crossingRows','caHeading','usHeading','sortToggle','sortMenu','vehicleSelect','laneSelect','themeToggle','settingsDialog','detailDialog','detailCa','detailUs','detailProvenance','diagnosticBody','notices','sourceDetails']){
+ assert.ok(html.includes('id="'+id+'"'),'missing dashboard control '+id);
+}
+assert.match(html,/Canada/);
+assert.match(html,/USA/);
+assert.match(html,/Passenger/);
+assert.match(html,/Commercial/);
+assert.match(html,/dashboard\.js\?v=m1/);
+assert.match(html,/dashboard\.css\?v=m1/);
+assert.match(js,/const IDS=\['ambassador','tunnel','gordie'\]/);
+assert.match(js,/D\.reading\(raw,store\.data,Date\.now\(\)\)/);
+assert.match(js,/dir==='ca'[\s\S]*?kind:'unsupported'/);
+assert.match(js,/good\(x\)!==good\(y\)/);
+assert.match(js,/store\.sort='fixed'/);
+assert.match(js,/if\(!raw\|\|raw\.status==='not_applicable'\)/);
+assert.match(js,/src\?\.status!=='ok'/);
+assert.match(js,/Number\.isInteger\(v\.raw\?\.lanes_open\)/);
+assert.match(js,/\.showModal\(\)/);
+assert.match(js,/source retrieval/i);
+assert.match(css,/grid-template-columns/);
+assert.match(css,/@media\(max-width:360px\)/);
+assert.match(css,/prefers-reduced-motion/);
+const workflow=fs.readFileSync('.github/workflows/publish.yml','utf8');
+assert.match(workflow,/cp dashboard\.css dashboard\.js classic-board\.html site\//);
+console.log('M1 dashboard structure and publishing checks passed.');
