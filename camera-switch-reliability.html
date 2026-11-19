@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f7fa">
+<title>Nexus · Camera Switch Reliability Lab</title>
+<style>
+:root{font:16px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:#142b40;background:#f5f7fa}
+*{box-sizing:border-box}body{margin:0 auto;max-width:720px;padding:17px 15px 65px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px}a{color:#135e94}
+h1{font-size:1.48rem;line-height:1.2;margin:17px 0 10px}h2{font-size:1.08rem;margin:0 0 9px}
+p{margin:7px 0 11px}.small{font-size:.87rem;color:#465d70}
+.card{padding:16px;background:#fff;border:1px solid #d6e1e9;border-radius:14px;margin:14px 0;box-shadow:0 2px 8px #162b3810}
+label{display:block;font-weight:650;margin:9px 0 5px}
+select,textarea{font:inherit;width:100%;padding:10px;border:1px solid #94acbc;border-radius:9px;color:inherit;background:white}
+textarea{min-height:70px;resize:vertical}
+button{font:inherit;font-weight:650;padding:11px 13px;border-radius:9px;border:1px solid #92aabb;background:#fff;color:#17344b;cursor:pointer}
+button.primary{background:#16649c;border-color:#16649c;color:#fff}button:disabled{opacity:.5;cursor:default}
+button:focus-visible,select:focus-visible,a:focus-visible,textarea:focus-visible{outline:3px solid #e4a437;outline-offset:3px}
+.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}.row>*{flex:1}
+.status{background:#eef4f9;border-radius:9px;padding:11px;margin:10px 0;font-size:.9rem}
+#sequence{font-weight:700;font-size:.95rem}
+#cameraName{font-size:1.1rem;font-weight:700;margin:5px 0 9px}
+.pill{position:relative;display:inline-block;width:152px;height:54px;margin:6px 0 10px;border-radius:13px;isolation:isolate}
+.pill-face{position:absolute;inset:0;border:1.5px solid #b9c7d2;border-radius:13px;background:#fff;box-shadow:0 1px 3px #0a233114;z-index:3;pointer-events:none}
+.pill-label{position:absolute;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;gap:9px;color:#152c41;font-weight:700;pointer-events:none;user-select:none}
+.pill-label svg{width:21px;height:21px;stroke:currentColor;stroke-width:1.8;fill:none}
+.spinner{display:none;width:20px;height:20px;border:2.5px solid #9cbbc9;border-top-color:#145982;border-radius:50%;animation:spin .8s linear infinite}
+.pill.launching .pill-label>svg,.pill.launching .pill-label>span:not(.spinner){display:none}
+.pill.launching .spinner{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.spinner{animation:none}}
+#playerHost{position:absolute;inset:0;border-radius:13px;overflow:hidden;z-index:2}
+#playerHost iframe{position:absolute;width:480px;height:270px;max-width:none;border:0;top:50%;left:50%;transform:translate(-50%,-50%) scale(6);transform-origin:center;opacity:1}
+#playerHost.launching{pointer-events:none;opacity:0}
+#playerHost.collapsed{pointer-events:none;visibility:hidden}
+#playerHost.expanded{position:fixed;z-index:1003;top:clamp(76px,14dvh,140px);left:0;right:0;margin:auto;width:min(calc(100vw - 20px),850px);height:auto;aspect-ratio:16/9;border-radius:12px;background:#07131e;box-shadow:0 8px 35px #0007;pointer-events:auto;visibility:visible;opacity:1}
+#playerHost.expanded iframe{width:100%;height:100%;top:0;left:0;transform:none;opacity:1}
+#reopen{position:absolute;inset:0;z-index:5;display:none;width:100%;height:100%;border:0;background:transparent;border-radius:13px}
+.pill.minimized #reopen{display:block}
+#shade{display:none;position:fixed;inset:0;z-index:1000;background:#071521df}
+#shade.open{display:block}
+.modalBar{position:fixed;z-index:1004;left:10px;right:10px;top:12px;max-width:850px;margin:auto;display:none;align-items:center;justify-content:space-between;gap:9px;color:#fff}
+.modalBar.open{display:flex}.modalBar button{background:#203748;color:#fff;border-color:#8ba6bc}
+.modalFoot{position:fixed;z-index:1004;left:12px;right:12px;bottom:max(16px,env(safe-area-inset-bottom));max-width:850px;margin:auto;display:none;justify-content:center;gap:9px;flex-wrap:wrap;color:#fff}
+.modalFoot.open{display:flex}
+.modalFoot a{color:#b5deff}
+body.modal-open{overflow:hidden}
+pre{font:12px/1.48 ui-monospace,Consolas,monospace;background:#eef2f5;border-radius:9px;padding:11px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:360px;overflow:auto}
+table{border-collapse:collapse;width:100%;font-size:.82rem}th,td{padding:7px 5px;text-align:left;border-bottom:1px solid #d7e1e8;vertical-align:top}
+th:nth-child(n+2),td:nth-child(n+2){text-align:center}
+@media(min-width:700px){.modalBar{top:28px}#playerHost.expanded{top:110px}}
+</style></head><body>
+<header><strong>Nexus · Camera Research</strong><a href="./">Return to Nexus</a></header>
+<h1>DWT Camera · Switch Reliability A/B Lab</h1>
+<p class="small">Two isolated camera-switch permutations. The <strong>Camera</strong> pill is visually identical before first launch and after minimizing. First launch passes the user's tap to native Dacast Play, then uses the existing 1,500 ms iframe-focus handoff. Minimize/reopen retains the current iframe.</p>
+<section class="card">
+<h2>1 · Choose switching strategy</h2>
+<label for="strategy">Switching permutation</label>
+<select id="strategy">
+<option value="control">A · Control: reuse iframe, assign new src</option>
+<option value="fresh">B · Candidate: replace iframe, ignore stale events</option>
+</select>
+<p id="strategyInfo" class="small"></p>
+<p id="sequence">Sequence step 1 / 7</p>
+<p id="cameraName">Canada → USA · Windsor inspection</p>
+<div class="pill" id="pill" aria-label="Camera">
+<div class="pill-face"></div>
+<div class="pill-label" aria-hidden="true">
+<svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg><span>Camera</span><span class="spinner"></span>
+</div>
+<div id="playerHost"></div>
+<button type="button" id="reopen" aria-label="Reopen camera modal"></button>
+</div>
+<p id="state" class="status" role="status">Preparing camera…</p>
+<p class="small">Tap <strong>Camera</strong> once and observe the live feed. Minimize, then tap the same button again to confirm immediate playback. The next-step button switches cameras according to the same fixed sequence for both permutations.</p>
+<div class="row"><button type="button" id="manualExpand">Manual expand (diagnostic)</button><button type="button" id="restart">Restart this camera</button></div>
+<p class="small">Manual expand and Restart are recovery controls. Using either should be recorded in Notes and does not count as an ordinary one-tap success.</p>
+</section>
+<section class="card">
+<h2>2 · Record this transition</h2>
+<label for="launchOutcome">One-tap Play + modal expansion</label>
+<select id="launchOutcome">
+<option value="untested">Not tested</option>
+<option value="success">One tap starts playing and expands</option>
+<option value="expand_idle">Modal expands, but video does not play</option>
+<option value="play_no_expand">Video plays, modal does not expand</option>
+<option value="no_effect">No useful first-tap response</option>
+<option value="blocked">Player blocked / unavailable</option>
+<option value="other">Other</option>
+</select>
+<label for="reopenOutcome">Minimize and reopen</label>
+<select id="reopenOutcome">
+<option value="untested">Not tested</option>
+<option value="instant">Immediate reopen with video playing</option>
+<option value="paused">Reopen immediate but video paused</option>
+<option value="reloaded">Reopen reloaded / lost video</option>
+<option value="failed">Reopen failed</option>
+<option value="other">Other</option>
+</select>
+<label for="notes">Notes (optional)</label>
+<textarea id="notes" maxlength="500" placeholder="Did the camera actually move? Which interaction failed? Did Restart help?"></textarea>
+<div class="row"><button type="button" class="primary" id="next">Save + next camera</button><button type="button" id="restartSequence">Restart current sequence</button></div>
+<p id="saveStatus" class="small" role="status"></p>
+</section>
+<section class="card">
+<h2>3 · A/B result matrix</h2>
+<p class="small">Sequence for both strategies: <strong>Windsor → Detroit → Windsor → Randolph → Windsor → Detroit → Windsor</strong>.</p>
+<table><thead><tr><th>Step</th><th>Control first / reopen</th><th>Fresh first / reopen</th></tr></thead><tbody id="matrix"></tbody></table>
+<div class="row"><button type="button" class="primary" id="copy">Copy full diagnostic report</button><button type="button" id="clearResults">Clear all results</button></div>
+<p id="copyStatus" class="small" role="status"></p>
+<pre id="report"></pre>
+<p class="small">Iframe focus and load events <strong>do not prove video playback</strong>. Record only what you actually observe. No camera feed, location, or personal information is uploaded by this page; results are stored in this tab's session storage.</p>
+</section>
+<div id="shade" aria-hidden="true"></div>
+<div id="modalBar" class="modalBar"><strong id="modalTitle">Live tunnel camera</strong><button type="button" id="minimize">Minimize</button></div>
+<div id="modalFoot" class="modalFoot"><button type="button" id="restartModal">Restart camera</button><a id="external" href="https://www.dwtunnel.com/" target="_blank" rel="noopener noreferrer">Open externally</a></div>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const ROOT='https://iframe.dacast.com/live/8b2b630f-b7c1-262d-f343-118f510224a0/';
+const CAMERA={
+ A:{id:'4aea1c45-d402-3690-afae-fe635942da82',name:'Canada → USA · Windsor inspection'},
+ B:{id:'794566d4-a75e-3cd1-6f95-2d60e54f2fdb',name:'USA → Canada · Detroit inspection'},
+ C:{id:'5408b5c3-f8d1-f34b-a18a-9943047905b6',name:'USA → Canada · Randolph Street'}
+};
+const STEPS=['A','B','A','C','A','B','A'];
+const STORE='nexus-dwt-switch-reliability-v1';
+let data={runs:{control:[],fresh:[]},strategy:'control',step:0};
+try{
+ const v=JSON.parse(sessionStorage.getItem(STORE)||'null');
+ if(v&&v.runs&&typeof v.runs==='object'){
+  data.runs.control=Array.isArray(v.runs.control)?v.runs.control.slice(0,7):[];
+  data.runs.fresh=Array.isArray(v.runs.fresh)?v.runs.fresh.slice(0,7):[];
+  if(v.strategy==='fresh')data.strategy='fresh';
+  if(Number.isInteger(v.step)&&v.step>=0&&v.step<STEPS.length)data.step=v.step;
+ }
+}catch{}
+const state={mode:'idle',token:0,camera:'A',restarts:0,firstHandoffs:0,reopens:0,manualOpens:0,focusSignal:'none'};
+let frame=null,handoff=null,hideTimer=null;
+const events=[];
+const host=$('playerHost'),pill=$('pill');
+$('strategy').value=data.strategy;
+function persist(){try{sessionStorage.setItem(STORE,JSON.stringify(data));}catch{}}
+function event(message){
+ events.push(new Date().toISOString()+' '+message);
+ if(events.length>50)events.shift();
+ render();
+}
+function status(message){$('state').textContent=message;render();}
+function cancelPending(){
+ if(handoff!==null){clearTimeout(handoff);handoff=null;}
+ if(hideTimer!==null){clearTimeout(hideTimer);hideTimer=null;}
+}
+function source(){return ROOT+CAMERA[state.camera].id;}
+function resetPresentation(){
+ document.body.classList.remove('modal-open');
+ $('shade').classList.remove('open');
+ $('modalBar').classList.remove('open');
+ $('modalFoot').classList.remove('open');
+ pill.classList.remove('launching','minimized');
+ host.classList.remove('expanded','launching','collapsed');
+}
+function makeFrame(session){
+ const next=document.createElement('iframe');
+ next.title='DWT '+CAMERA[state.camera].name+' live video';
+ next.referrerPolicy='no-referrer';
+ next.allow='autoplay; encrypted-media; fullscreen; picture-in-picture';
+ next.allowFullscreen=true;
+ next.loading='eager';
+ next.addEventListener('focus',()=>{
+  if(frame!==next||state.token!==session){event('Ignored stale iframe focus.');return;}
+  beginHandoff('iframe focus',session);
+ });
+ next.addEventListener('load',()=>{
+  if(frame!==next||state.token!==session)return;
+  event('iframe document loaded (NOT playback confirmation); token='+session);
+ });
+ next.addEventListener('error',()=>{
+  if(frame!==next||state.token!==session)return;
+  event('iframe element error; cross-origin details unavailable.');
+ });
+ next.src=source();
+ return next;
+}
+function switchCamera(key,reason,forceFresh){
+ cancelPending();
+ const prior=frame;
+ const session=++state.token;
+ state.camera=key;
+ state.mode='idle';
+ state.restarts=0;state.firstHandoffs=0;state.reopens=0;state.manualOpens=0;state.focusSignal='none';
+ resetPresentation();
+ // Control deliberately retains the same iframe DOM node; candidate replaces it.
+ if(data.strategy==='control'&&!forceFresh&&prior){
+  frame=prior;
+  frame.title='DWT '+CAMERA[key].name+' live video';
+  frame.src=source();
+  event('Control: retained iframe; assigned new src; token='+session);
+ }else{
+  if(prior)prior.remove();
+  frame=makeFrame(session);
+  host.replaceChildren(frame);
+  event('Fresh iframe created; old iframe removed; token='+session);
+ }
+ // Control's existing focus listener captures the original generation.
+ // Reattach an explicit current-generation listener on reused nodes.
+ if(data.strategy==='control'&&!forceFresh&&prior){
+  const old=frame;
+  old.addEventListener('focus',function controlFocus(){
+   old.removeEventListener('focus',controlFocus);
+   if(frame===old && state.token===session)beginHandoff('reused iframe focus',session);
+  });
+ }
+ $('external').href=source();
+ $('modalTitle').textContent=CAMERA[key].name;
+ $('cameraName').textContent=CAMERA[key].name;
+ $('sequence').textContent='Sequence step '+(data.step+1)+' / '+STEPS.length+' · '+STEPS.map((x,i)=>i===data.step?'['+x+']':x).join(' → ');
+ status('Idle · native Dacast Play target ready. First tap should start the camera.');
+ event('Camera '+key+' selected ('+reason+'); '+data.strategy+' strategy.');
+ loadRecord();
+ render();
+}
+function beginHandoff(signal,session){
+ if(state.mode!=='idle'||session!==state.token)return;
+ state.mode='launching';state.focusSignal=signal;state.firstHandoffs++;
+ pill.classList.add('launching');
+ event('Possible native play interaction: '+signal+' (not playback proof), token='+session);
+ hideTimer=setTimeout(()=>{
+  if(session===state.token&&state.mode==='launching')host.classList.add('launching');
+ },180);
+ handoff=setTimeout(()=>{
+  if(session===state.token&&state.mode==='launching')expand('first');
+ },1500);
+ status('Focus signal received · 1,500 ms handoff (not proof of playback).');
+}
+window.addEventListener('blur',()=>{
+ const session=state.token;
+ const active=frame;
+ setTimeout(()=>{
+  if(session===state.token&&frame===active&&state.mode==='idle'&&document.activeElement===active){
+   beginHandoff('window blur + active iframe',session);
+  }
+ },0);
+});
+function expand(kind){
+ if(state.mode==='expanded')return;
+ cancelPending();
+ if(kind==='manual')state.manualOpens++;
+ if(kind==='reopen')state.reopens++;
+ state.mode='expanded';
+ pill.classList.remove('launching','minimized');
+ host.classList.remove('launching','collapsed');
+ host.classList.add('expanded');
+ document.body.classList.add('modal-open');
+ $('shade').classList.add('open');$('modalBar').classList.add('open');$('modalFoot').classList.add('open');
+ status('Expanded · '+(kind==='reopen'?'instant reopen':kind==='manual'?'manual diagnostic expand':'first tap handoff')+'. Observe real video.');
+ event('Expanded without moving or replacing iframe; method='+kind);
+}
+function minimize(){
+ if(state.mode!=='expanded')return;
+ state.mode='minimized';
+ document.body.classList.remove('modal-open');
+ $('shade').classList.remove('open');$('modalBar').classList.remove('open');$('modalFoot').classList.remove('open');
+ host.classList.remove('expanded','launching');
+ host.classList.add('collapsed');
+ pill.classList.add('minimized');
+ status('Minimized · player retained. Tap identical Camera pill for immediate reopen.');
+ event('Minimized; iframe retained, not reloaded.');
+}
+function restartCamera(){
+ state.restarts++;
+ event('Manual Restart camera invoked; previous iframe destroyed.');
+ cancelPending();
+ const session=++state.token;
+ state.mode='idle';state.focusSignal='none';
+ resetPresentation();
+ if(frame)frame.remove();
+ frame=makeFrame(session);
+ host.replaceChildren(frame);
+ status('Camera restarted · use one native Play tap to expand again.');
+}
+$('minimize').addEventListener('click',minimize);
+$('reopen').addEventListener('click',()=>{if(state.mode==='minimized')expand('reopen');});
+$('manualExpand').addEventListener('click',()=>{if(state.mode==='minimized'||state.mode==='idle'||state.mode==='launching')expand('manual');});
+$('restart').addEventListener('click',restartCamera);
+$('restartModal').addEventListener('click',restartCamera);
+function record(){
+ const r=data.runs[data.strategy][data.step]||{};
+ return r&&typeof r==='object'?r:{};
+}
+function loadRecord(){
+ const r=record();
+ $('launchOutcome').value=['untested','success','expand_idle','play_no_expand','no_effect','blocked','other'].includes(r.launch)?r.launch:'untested';
+ $('reopenOutcome').value=['untested','instant','paused','reloaded','failed','other'].includes(r.reopen)?r.reopen:'untested';
+ $('notes').value=typeof r.notes==='string'?r.notes.slice(0,500):'';
+}
+function saveRecord(){
+ data.runs[data.strategy][data.step]={
+  camera:state.camera,launch:$('launchOutcome').value,reopen:$('reopenOutcome').value,
+  notes:$('notes').value.slice(0,500),restarts:state.restarts,
+  firstHandoffs:state.firstHandoffs,reopens:state.reopens,
+  manualOpens:state.manualOpens,focusSignal:state.focusSignal,
+  savedAt:new Date().toISOString()
+ };
+ persist();render();
+}
+for(const id of ['launchOutcome','reopenOutcome','notes']){
+ $(id).addEventListener(id==='notes'?'input':'change',saveRecord);
+}
+function label(id,v){
+ const map={
+  launch:{untested:'—',success:'Play+modal',expand_idle:'No playback',play_no_expand:'No modal',no_effect:'No response',blocked:'Blocked',other:'Other'},
+  reopen:{untested:'—',instant:'Instant',paused:'Paused',reloaded:'Reloaded',failed:'Failed',other:'Other'}
+ };
+ return map[id][v]||'—';
+}
+function cellValue(which,i){
+ const r=data.runs[which][i]||{};
+ return label('launch',r.launch)+' / '+label('reopen',r.reopen)+(r.restarts?' (R)':'');
+}
+function report(){
+ const out=[
+  'Nexus DWT camera switch reliability A/B lab — manual results',
+  'UTC: '+new Date().toISOString(),
+  'Origin: '+location.origin,
+  'Current strategy: '+data.strategy,
+  'Current sequence step: '+(data.step+1)+' of '+STEPS.length,
+  'Current camera: '+CAMERA[state.camera].name,
+  'Current state: '+state.mode,
+  'Sequence: '+STEPS.join(' → '),
+  'Constant: no-referrer Dacast iframe; 6x centred Play crop; 1500 ms focus handoff; iframe retained on minimize',
+  'Control: reuse iframe and assign src on camera switch',
+  'Candidate: remove old iframe, create a fresh iframe with token-guarded listeners/timers',
+  'Iframe focus or load is NOT proof of playback; results below are manually reported.'
+ ];
+ for(const strategy of ['control','fresh']){
+  out.push('--- '+strategy.toUpperCase()+' ---');
+  for(let i=0;i<STEPS.length;i++){
+   const r=data.runs[strategy][i]||{};
+   out.push((i+1)+'. '+STEPS[i]+' | first='+label('launch',r.launch)+' | reopen='+label('reopen',r.reopen)+
+    ' | restarts='+(r.restarts||0)+' | focus='+(r.focusSignal||'none')+
+    ' | notes='+(r.notes||'None'));
+  }
+ }
+ out.push('Events (latest):',...(events.length?events:['None']));
+ return out.join('\n');
+}
+function render(){
+ if(!$('matrix'))return;
+ const body=$('matrix');body.replaceChildren();
+ for(let i=0;i<STEPS.length;i++){
+  const tr=document.createElement('tr'),name=document.createElement('td');
+  name.textContent=(i+1)+' · '+STEPS[i];
+  tr.append(name);
+  for(const mode of ['control','fresh']){
+   const td=document.createElement('td');
+   td.textContent=cellValue(mode,i);
+   tr.append(td);
+  }
+  body.append(tr);
+ }
+ $('report').textContent=report();
+}
+$('next').addEventListener('click',()=>{
+ saveRecord();
+ if(data.step===STEPS.length-1){
+  $('saveStatus').textContent='Completed this strategy. Select the other strategy to run the same sequence.';
+  event('Finished '+data.strategy+' seven-camera sequence.');
+  return;
+ }
+ data.step++;
+ persist();
+ switchCamera(STEPS[data.step],'advance sequence',false);
+ $('saveStatus').textContent='Switched to step '+(data.step+1)+'.';
+ $('pill').scrollIntoView({block:'center'});
+});
+$('strategy').addEventListener('change',()=>{
+ saveRecord();
+ data.strategy=$('strategy').value==='fresh'?'fresh':'control';
+ data.step=0;persist();
+ $('strategyInfo').textContent=data.strategy==='fresh'?
+  'Candidate: destroy the prior iframe and create a new one on every camera change. Ignore callbacks from old sessions.':
+  'Control: keep the iframe element and change its src when switching cameras, as in the previous lab.';
+ switchCamera(STEPS[0],'strategy changed',true);
+ $('saveStatus').textContent='Strategy switched; beginning at camera A. Prior results retained.';
+});
+$('restartSequence').addEventListener('click',()=>{
+ data.runs[data.strategy]=[];data.step=0;persist();
+ switchCamera(STEPS[0],'sequence reset',true);
+ $('saveStatus').textContent='Current strategy results cleared and sequence restarted.';
+});
+$('clearResults').addEventListener('click',()=>{
+ data.runs={control:[],fresh:[]};data.step=0;data.strategy='control';
+ $('strategy').value='control';persist();
+ switchCamera(STEPS[0],'all results cleared',true);
+ $('saveStatus').textContent='All results cleared.';
+});
+$('copy').addEventListener('click',async()=>{
+ saveRecord();
+ try{await navigator.clipboard.writeText(report());$('copyStatus').textContent='Report copied. Paste into the Nexus project conversation.';}
+ catch{$('copyStatus').textContent='Clipboard unavailable; select and copy the text below.';}
+});
+window.addEventListener('pagehide',cancelPending);
+window.addEventListener('error',e=>event('Parent JS error: '+String(e.message||'unknown').slice(0,130)));
+window.addEventListener('securitypolicyviolation',e=>event('Parent CSP: '+String(e.violatedDirective||'unknown').slice(0,90)));
+$('strategyInfo').textContent=data.strategy==='fresh'?
+ 'Candidate: recreate iframe on each switch; guard late events with a session token.':
+ 'Control: retain the same iframe element when changing cameras; update its src.';
+switchCamera(STEPS[data.step],'page initialized',true);
+})();
+</script>
+<p class="small">Research-only page. Production Nexus is unchanged. No video proxy, recording, stream extraction, synthetic player clicks or attempt to inspect the cross-origin player. The default link uses original operator-hosted camera URLs.</p>
+</body></html>
