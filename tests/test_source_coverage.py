@@ -123,6 +123,9 @@ class SourceCoverageTests(unittest.TestCase):
         data["directions"]["us"]["ambassador"]["port_status"] = "Closed"
         self.assertEqual(C.cell(data, "us", "ambassador", "standard", NOW),
                          "Port closure reported")
+        data["directions"]["us"]["ambassador"]["port_status"] = "Closed due to operations"
+        self.assertEqual(C.cell(data, "us", "ambassador", "standard", NOW),
+                         "Port closure reported")
         data["sources"]["cbp"]["retrieved_at"] = iso(65)
         self.assertEqual(C.cell(data, "us", "ambassador", "standard", NOW),
                          "Old port status")
