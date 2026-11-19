@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f5f7fa">
   <meta name="description" content="Nexus: a clear, source-aware Windsor–Detroit crossing comparison for everyday commuters.">
   <title>Nexus RC1.4.8 · Border commuter</title>
-  <link rel="stylesheet" href="./styles.css?v=rc148">
+  <link rel="stylesheet" href="./styles.css?v=rc149">
 </head>
 <body>
 <svg aria-hidden="true" class="sprite" xmlns="http://www.w3.org/2000/svg">
@@ -49,7 +49,7 @@
       </div>
       <div id="operatorLine" class="operator-line" hidden></div>
       <div id="finding" class="finding" data-level="unknown"><svg class="icon" id="findingIcon"><use href="#i-info"/></svg><div><strong id="findingHeading">Checking conditions</strong><p id="findingDetail">Loading data from official sources.</p></div></div>
-      <div class="hero-actions"><button class="primary-button" id="navigateButton" type="button"><svg class="icon"><use href="#i-route"/></svg><span id="navigateText">Set destination</span></button><button class="secondary-button camera-button" id="heroCamera" type="button"><svg class="icon"><use href="#i-camera"/></svg><span id="heroCameraText">Camera</span></button></div>
+      <div class="hero-actions"><button class="primary-button" id="navigateButton" type="button"><svg class="icon"><use href="#i-route"/></svg><span id="navigateText">Set destination</span></button><div class="tunnel-camera-launch" id="tunnelCameraLauncher"><button class="secondary-button camera-button" id="heroCamera" type="button"><svg class="icon"><use href="#i-camera"/></svg><span id="heroCameraText">Camera</span></button><div id="tunnelPlayerHost" class="tunnel-player-host"></div></div></div>
       <div class="hero-secondary"><button id="heroDetails" type="button" class="text-button">Crossing details <svg class="icon"><use href="#i-chevron"/></svg></button><button id="resetTrip" type="button" class="text-button" hidden>Use preferred crossing</button></div>
       <div class="hero-footnote"><svg class="icon"><use href="#i-clock"/></svg><span id="heroFreshness">Reading time unavailable</span></div>
     </section>
@@ -58,7 +58,7 @@
     <section class="alerts-section" id="alertsSection" hidden><div class="section-head"><h2>Regional advisories</h2><a href="https://511on.ca/" target="_blank" rel="noopener noreferrer">Ontario 511 <svg class="icon"><use href="#i-external"/></svg></a></div><div id="advisories"></div><p class="subtle">Regional advisories are not verified delays on a selected route.</p></section>
     <details id="allConditions" class="all-conditions"><summary>Full conditions &amp; source details <svg class="icon"><use href="#i-chevron"/></svg></summary><div id="detailsBody" class="details-body"></div></details>
     <p class="route-disclaimer">Border wait estimates exclude approach traffic. Navigation is a route preview; verify the selected crossing in Maps.</p>
-    <footer><span>Nexus RC1.4.8</span><span>Independent commuter tool · Not affiliated with border agencies</span></footer>
+    <footer><span>Nexus RC1.4.9</span><span>Independent commuter tool · Not affiliated with border agencies</span></footer>
   </main>
 </div>
 
@@ -79,6 +79,8 @@
 </form></dialog>
 
 <dialog id="cameraDialog" class="modal camera-modal" aria-labelledby="cameraTitle"><div class="modal-header"><div><h2 id="cameraTitle">Crossing camera</h2><p id="cameraDescription">Official operator view</p></div><button class="icon-button close-modal" id="closeCamera" type="button" aria-label="Close camera"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="camera-content"><div class="camera-stage" id="cameraStage"><iframe id="cameraFrame" title="Live crossing camera" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" hidden></iframe><div id="cameraZoomSurface" class="camera-zoom-surface" role="button" tabindex="0" aria-pressed="false" aria-label="Zoom bridge camera" hidden></div><div id="cameraZoomControls" class="camera-zoom-controls" role="group" aria-label="Bridge camera zoom" hidden><button type="button" data-scale="1" aria-pressed="false">Fit</button><button type="button" data-scale="2" aria-pressed="false">2×</button><button type="button" data-scale="3" aria-pressed="false">3×</button><button type="button" data-scale="4" aria-pressed="false">4×</button></div><span id="cameraZoomHint" class="camera-zoom-hint" aria-hidden="true" hidden><svg class="icon"><use href="#i-zoom"/></svg><span id="cameraZoomHintText">Tap to zoom</span></span><div id="cameraFallback" class="camera-fallback"><svg class="icon"><use href="#i-camera"/></svg><p id="cameraFallbackText">Official camera unavailable</p><button type="button" id="cameraWatch" class="camera-watch-button" hidden>▶ Watch Live</button><button type="button" id="cameraContinue" class="camera-watch-button" hidden>Continue watching</button></div></div><div id="cameraViews" class="camera-tabs" role="group" aria-label="Camera view"></div><div class="camera-links"><span id="cameraProvider"></span><button type="button" id="cameraReload" class="camera-reload" hidden><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg> Reload video</button><a id="cameraOfficial" target="_blank" rel="noopener noreferrer">Official camera page <svg class="icon"><use href="#i-external"/></svg></a></div><p class="subtle">Camera views are supplemental and do not establish inspection waits or NEXUS availability. Playback depends on the operator.</p></div></dialog>
-<script src="./decision.js?v=rc148"></script><script src="./app.js?v=rc148" defer></script>
+<div id="tunnelCameraHead" class="tunnel-camera-head" role="group" aria-label="Tunnel camera controls" hidden><strong id="tunnelCameraTitle">Tunnel live camera</strong><div class="tunnel-camera-head-actions"><button id="tunnelCameraMinimize" type="button">Minimize</button><button id="tunnelCameraStop" type="button">Stop</button></div></div>
+<div id="tunnelCameraFoot" class="tunnel-camera-foot" role="region" aria-label="Tunnel camera selection" hidden><div id="tunnelCameraTabs" class="tunnel-camera-tabs" role="group" aria-label="Tunnel camera view"></div><div class="tunnel-camera-foot-actions"><button id="tunnelCameraRetry" type="button">Restart camera</button><a id="tunnelCameraDirect" target="_blank" rel="noopener noreferrer">Open video directly</a><a href="https://www.dwtunnel.com/" target="_blank" rel="noopener noreferrer">Operator site</a></div><p id="tunnelCameraHint">If video is not moving, tap the native Play button.</p></div>
+<script src="./decision.js?v=rc149"></script><script src="./app.js?v=rc149" defer></script>
 </body>
 </html>
