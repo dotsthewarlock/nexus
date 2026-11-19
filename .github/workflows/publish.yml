@@ -63,7 +63,7 @@ jobs:
       - name: Stage static website
         run: |
           mkdir -p site/data
-          cp index.html styles.css app.js decision.js camera-diagnostics.html site/
+          cp index.html styles.css app.js decision.js camera-diagnostics.html camera-alternatives.html site/
           cp data/live.json site/data/live.json
           touch site/.nojekyll
       - uses: actions/configure-pages@v5
