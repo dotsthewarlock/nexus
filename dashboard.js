@@ -136,7 +136,16 @@ async function refresh(){
  }catch(e){store.error=e.name==='AbortError'?'Request timed out':'Snapshot fetch failed';}
  finally{clearTimeout(timer);store.busy=false;render();}
 }
+
+function syncLargeText(){
+ if(!Number.isFinite(window.innerWidth)||typeof getComputedStyle!=='function')return;
+ const rootSize=parseFloat(getComputedStyle(document.documentElement).fontSize)||16;
+ document.documentElement.dataset.largeText=window.innerWidth/rootSize<17?'true':'false';
+}
+
 function init(){
+ syncLargeText();
+ window.addEventListener('resize',syncLargeText);
  updateLanes();
  try{const t=localStorage.getItem('nexus-theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t;}catch{}
  $('themeToggle').setAttribute('aria-label','Switch to '+((document.documentElement.dataset.theme||(window.matchMedia?.('(prefers-color-scheme: dark)').matches?'dark':'light'))==='dark'?'light':'dark')+' mode');
