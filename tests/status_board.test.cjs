@@ -81,6 +81,7 @@ const payload=()=>({
 });
 let data=payload();
 api.setData(data);
+api.render();
 let zero=api.entry(data.directions.us.ambassador.standard,'regular');
 assert.equal(zero.display,'No Delay','fresh official zero means No Delay');
 assert.equal(zero.unit,'','No Delay must not append min');
