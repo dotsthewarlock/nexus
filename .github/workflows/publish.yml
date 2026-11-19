@@ -47,7 +47,7 @@ jobs:
             -o /tmp/nexus-previous.json || echo 'No trusted previous snapshot available'
       - name: Collect official data
         env:
-          ONTARIO_511_KEY: ${{ secrets.ONTARIO_511_KEY }}
+          ONTARIO_511_API_KEY: ${{ secrets.ONTARIO_511_API_KEY }}
         run: python scripts/fetch_live.py --output data/live.json --previous /tmp/nexus-previous.json
       - name: Report collection health
         run: python scripts/report_health.py data/live.json
