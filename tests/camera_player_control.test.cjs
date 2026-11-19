@@ -39,6 +39,17 @@ for(const s of [
  assert.ok(script.includes(s),'required diagnostic or caveat missing: '+s);
 }
 assert.ok(!/\.m3u8|\.mpd|XMLHttpRequest|fetch\s*\(|serviceWorker|document\.cookie/.test(script),'do not proxy, extract or access credentials');
+assert.ok(html.includes('id="apiPlay" type="button" class="secondary" hidden'),'API Play must be hidden but not disabled by default');
+assert.ok(!html.includes('id="apiPlay" type="button" class="secondary" disabled'),'API Play must not be permanently disabled');
+for(const label of ['value="api_no_ready"','value="api_setup_failed"','id="apiStatus"']){
+ assert.ok(html.includes(label),'API diagnostic control missing: '+label);
+}
+assert.ok(script.includes("$('apiPlay').hidden=false;"),'API Play must be visible on E/F immediately');
+assert.ok(script.includes("$('apiPlay').disabled=false;"),'API Play must be enabled without requiring onReady');
+assert.ok(script.includes('if(!activePlayer||typeof activePlayer.play!==\'function\')'),'missing explicit no-instance result');
+assert.ok(!script.includes('if(!playerReady||!activePlayer)'),'API Play must never be gated by readiness');
+assert.ok(script.includes("readyTimer=setTimeout("),'missing finite ready-event timeout');
+assert.ok(script.includes("setApiPhase('setup_failed'"),'API setup failure must be logged separately');
 assert.ok(workflow.includes('node tests/camera_player_control.test.cjs'),'CI regression test absent');
 assert.ok(workflow.includes('cp camera-player-control-lab.html site/'),'Pages staging absent');
 console.log('DWT control lab checks passed: modal, interaction limits, documented API and publishing.');
