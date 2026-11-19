@@ -1,4 +1,4 @@
-/* Nexus RC1.4.6: conservative, timestamp-aware inspection comparisons. No DOM dependencies. */
+/* Nexus RC1.4.8: evidence-aware inspection displays and conservative comparisons. */
 (function(root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;
@@ -11,7 +11,8 @@
   const CLOCK_SKEW_MIN = 2;
   const READING_CURRENT_AGE = 10;
   const READING_AGING_AGE = 20;
-  const READING_EXPIRE_AGE = 60;
+  const READING_STALE_AGE = 60;
+  const READING_EXPIRE_AGE = 120; // Values older than 2h must not appear as present waits.
   const SNAPSHOT_RECENT_AGE = 20;
   const RECOMMEND_MAX_AGE = 10;
   const RECOMMEND_MAX_OBSERVATION_GAP = 5;
@@ -36,7 +37,10 @@
       return {kind:'unavailable',minutes:null,age:obsAge};
     if (!Number.isFinite(obsAge) || !Number.isFinite(snapAge) || obsAge>READING_EXPIRE_AGE || snapAge>READING_EXPIRE_AGE)
       return {kind:'unavailable',minutes:null,age:obsAge};
-    // Show old numeric readings only with an explicit stale label, never as decision evidence.
+    // A snapshot may be recent even when the agency's observation is hours old.
+    // Both clocks control display; neither refreshes or upgrades the other.
+    if (obsAge>READING_STALE_AGE || snapAge>READING_STALE_AGE)
+      return {kind:'old',minutes:raw.minutes,age:obsAge};
     if (!snapshotRecent || obsAge>READING_AGING_AGE)
       return {kind:'stale',minutes:raw.minutes,age:obsAge};
     return {kind:obsAge<=READING_CURRENT_AGE?'current':'aging',minutes:raw.minutes,age:obsAge};
@@ -55,14 +59,23 @@
   function crossing(data,direction,id,nexus,now=Date.now()) {
     const port=data?.directions?.[direction]?.[id]||{};
     const source=data?.sources?.[direction==='us'?'cbp':'cbsa'];
-    const sourceRecent=source?.status==='ok' && age(source.retrieved_at,now)<=SNAPSHOT_RECENT_AGE;
+    const retrievedAge=age(source?.retrieved_at,now);
+    const sourceRecent=source?.status==='ok' && retrievedAge<=SNAPSHOT_RECENT_AGE;
+    const historicalFallback=source?.status==='error' && source?.retained_previous===true &&
+      age(source?.last_success_at,now)<=READING_EXPIRE_AGE;
     const sourceReading=raw=>{
       const r=reading(raw,data,now);
-      // A recently generated wrapper cannot validate an older or failed source.
-      if(source?.status!=='ok' || !Number.isFinite(age(source?.retrieved_at,now)))
+      // Failed sources may display explicitly OLD, provenance-preserved values.
+      // Never interpret old lane closures or operator notices as live status.
+      if(historicalFallback)
+        return Number.isInteger(r.minutes) && r.kind!=='unavailable'
+          ? {kind:'old',minutes:r.minutes,age:r.age} : {kind:'unavailable',minutes:null,age:r.age};
+      if(source?.status!=='ok' || !Number.isFinite(retrievedAge))
         return {kind:'unavailable',minutes:null,age:r.age};
       if(!sourceRecent && (usable(r)||r.kind==='closed'||r.kind==='not_applicable'))
-        return Number.isInteger(r.minutes)?{kind:'stale',minutes:r.minutes,age:r.age}:{kind:'unavailable',minutes:null,age:r.age};
+        return Number.isInteger(r.minutes)
+          ? {kind:retrievedAge>READING_STALE_AGE?'old':'stale',minutes:r.minutes,age:r.age}
+          : {kind:'unavailable',minutes:null,age:r.age};
       return r;
     };
     const standard=sourceReading(port.standard);
@@ -79,7 +92,7 @@
     const operatorFresh=!!dwt && age(dwt.observation_at,now)<=MAX_OPERATOR_AGE &&
       age(data?.generated_at,now)<=SNAPSHOT_RECENT_AGE;
     return {id,name:NAMES[id],port,standard,nexus:nx,ready,commercial,fast,pedestrian,primary,primaryType,portClosed,
-      sourceRecent,noticeKind:noticeKind(port.notice),dwt:operatorFresh?dwt:null,dwtStale:!!dwt&&!operatorFresh,
+      sourceRecent,sourceFailed:source?.status==='error',noticeKind:noticeKind(port.notice),dwt:operatorFresh?dwt:null,dwtStale:!!dwt&&!operatorFresh,
       nexusReportedClosed:nexus&&direction==='us'&&nx.kind==='closed',noUsNexusWait:direction==='ca',
       isUsable:!portClosed&&sourceRecent&&usable(primary)};
   }
@@ -227,6 +240,6 @@
     return null;
   }
   return {IDS,NAMES,age,reading,usable,recommendationReady,noticeKind,crossing,evaluate,publishedNexusWindow,
-    countrySide,MAX_OPERATOR_AGE,READING_CURRENT_AGE,READING_AGING_AGE,READING_EXPIRE_AGE,SNAPSHOT_RECENT_AGE,
+    countrySide,MAX_OPERATOR_AGE,READING_CURRENT_AGE,READING_AGING_AGE,READING_STALE_AGE,READING_EXPIRE_AGE,SNAPSHOT_RECENT_AGE,
     RECOMMEND_MAX_AGE,RECOMMEND_MAX_OBSERVATION_GAP};
 });

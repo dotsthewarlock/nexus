@@ -402,7 +402,8 @@ def empty_snapshot():
             # Used for diagnostics only; not proof that a scheduled trigger is healthy.
             'trigger': os.environ.get('GITHUB_EVENT_NAME', 'local')[:30],
             'run_id': os.environ.get('GITHUB_RUN_ID', '')[:30] or None,
-            'configured_interval_minutes': 15,
+            'configured_interval_minutes': 10,
+            'previous_snapshot_at': None,
         },
         'sources': {},
         'supplemental': {'dwt': {}, 'ontario511_events': [], 'cbsa_nexus_hours': {}},
@@ -411,12 +412,93 @@ def empty_snapshot():
     }
 
 
-def collect(cbp_text=None, cbsa_text=None, cbsa_format='auto', dwt_text=None, ontario_events_text=None, cbsa_hours_text=None):
+def validated_previous(payload):
+    """Only an older Nexus snapshot can supply clearly labeled last-known reports.
+
+    A failed/blank/non-Nexus response must never become a new source of truth.
+    """
+    if not isinstance(payload, dict) or payload.get('schema') != 'nexus-live-v2':
+        return None
+    if not all(isinstance(payload.get(key), dict) for key in ('sources', 'directions', 'supplemental')):
+        return None
+    try:
+        dt = datetime.fromisoformat(payload['generated_at'].replace('Z', '+00:00'))
+        if dt.tzinfo is None:
+            return None
+        elapsed = (datetime.now(UTC) - dt.astimezone(UTC)).total_seconds()
+        if elapsed < -120 or elapsed > 48 * 3600:
+            return None
+    except (TypeError, ValueError, KeyError, AttributeError):
+        return None
+    return payload
+
+
+def successful_before(previous, key, max_minutes):
+    """Provenance of last successful retrieval; failed retries never advance it."""
+    if previous is None:
+        return None
+    src = previous['sources'].get(key)
+    if not isinstance(src, dict):
+        return None
+    if src.get('status') != 'ok' and src.get('retained_previous') is not True:
+        return None
+    stamp = src.get('last_success_at') or (src.get('retrieved_at') if src.get('status') == 'ok' else None)
+    try:
+        dt = datetime.fromisoformat(stamp.replace('Z', '+00:00'))
+        if dt.tzinfo is None:
+            return None
+        elapsed = (datetime.now(UTC) - dt.astimezone(UTC)).total_seconds()
+        if elapsed < -120 or elapsed > max_minutes * 60:
+            return None
+    except (AttributeError, ValueError, TypeError):
+        return None
+    return stamp
+
+
+def retain_on_failure(result, previous):
+    """Preserve raw historical values only after source failure, never mark fresh.
+
+    Client decision logic handles source status=error as OLD, not as a current
+    measurement; stale port closures and NEXUS statuses do not count as live.
+    """
+    if previous is None:
+        return
+    directions={'cbp':'us','cbsa':'ca'}
+    supplemental={'dwt':'dwt','cbsa_hours':'cbsa_nexus_hours','ontario511':'ontario511_events'}
+    for key in (*directions, *supplemental):
+        source=result['sources'].get(key, {})
+        if source.get('status') != 'error':
+            continue
+        ttl = 120 if key in directions else 30 if key in ('dwt','ontario511') else 2880
+        prior_success=successful_before(previous,key,ttl)
+        if not prior_success:
+            continue
+        if key in directions:
+            old=previous['directions'].get(directions[key])
+            if not isinstance(old,dict) or not old:
+                continue
+            result['directions'][directions[key]]=old
+            source['coverage']=len(old)
+        else:
+            name=supplemental[key]
+            old=previous['supplemental'].get(name)
+            if not isinstance(old, (list,dict)) or not old:
+                continue
+            result['supplemental'][name]=old
+            source['coverage']=len(old)
+        source['retained_previous']=True
+        source['last_success_at']=prior_success
+
+
+def collect(cbp_text=None, cbsa_text=None, cbsa_format='auto', dwt_text=None, ontario_events_text=None, cbsa_hours_text=None, previous=None):
+    previous=validated_previous(previous)
     result = empty_snapshot()
+    result['collection']['previous_snapshot_at'] = previous['generated_at'] if previous else None
     try:
         cbp = normalize_cbp(cbp_text if cbp_text is not None else get_text(CBP_URL))
         result['directions']['us'] = cbp
-        result['sources']['cbp'] = {'status': 'ok', 'retrieved_at': now_utc(), 'url': CBP_URL,
+        stamp=now_utc()
+        result['sources']['cbp'] = {'status': 'ok', 'retrieved_at': stamp, 'last_success_at': stamp, 'url': CBP_URL,
                                     'coverage': len(cbp)}
     except Exception as exc:
         result['sources']['cbp'] = {'status': 'error', 'retrieved_at': now_utc(), 'url': CBP_URL,
@@ -436,7 +518,8 @@ def collect(cbp_text=None, cbsa_text=None, cbsa_format='auto', dwt_text=None, on
             else:
                 data = normalize_cbsa_html(raw)
             result['directions']['ca'] = data
-            result['sources']['cbsa'] = {'status': 'ok', 'retrieved_at': now_utc(),
+            stamp=now_utc()
+            result['sources']['cbsa'] = {'status': 'ok', 'retrieved_at': stamp, 'last_success_at': stamp,
                                          'url': url if not url.startswith('fixture:') else CBSA_CSV_URL,
                                          'coverage': len(data)}
             break
@@ -445,27 +528,37 @@ def collect(cbp_text=None, cbsa_text=None, cbsa_format='auto', dwt_text=None, on
     if 'cbsa' not in result['sources']:
         result['sources']['cbsa'] = {'status': 'error', 'retrieved_at': now_utc(),
                                     'url': CBSA_CSV_URL, 'error': '; '.join(issues)[:300]}
-    # Published CBSA NEXUS schedules are contextual; never claim live access.
+    # NEXUS posted hours are schedules, not live conditions. Use the prior
+    # verified version for up to a day; do not re-fetch every 10-minute cycle.
     fixture_mode = cbp_text is not None or cbsa_text is not None
-    try:
-        if cbsa_hours_text is not None or not fixture_mode:
-            hours = normalize_cbsa_nexus_hours(cbsa_hours_text if cbsa_hours_text is not None else get_text(CBSA_HOURS_URL))
-            result['supplemental']['cbsa_nexus_hours'] = hours
-            result['sources']['cbsa_hours'] = {'status': 'ok', 'retrieved_at': now_utc(),
-                                                'url': CBSA_HOURS_URL, 'coverage': len(hours)}
-        else:
-            result['sources']['cbsa_hours'] = {'status': 'not_collected', 'url': CBSA_HOURS_URL}
-    except Exception as exc:
-        result['sources']['cbsa_hours'] = {'status': 'error', 'retrieved_at': now_utc(),
-                                            'url': CBSA_HOURS_URL, 'error': f'{type(exc).__name__}: {str(exc)[:160]}'}
-
+    cached_hours=successful_before(previous,'cbsa_hours',1440) if not fixture_mode else None
+    prev_hours=previous['supplemental'].get('cbsa_nexus_hours') if cached_hours else None
+    if cbsa_hours_text is None and isinstance(prev_hours,dict) and prev_hours:
+        result['supplemental']['cbsa_nexus_hours']=prev_hours
+        result['sources']['cbsa_hours']={'status':'ok','retrieved_at':cached_hours,
+            'last_success_at':cached_hours,'url':CBSA_HOURS_URL,
+            'coverage':len(prev_hours),'cache_reused':True}
+    else:
+        try:
+            if cbsa_hours_text is not None or not fixture_mode:
+                hours = normalize_cbsa_nexus_hours(cbsa_hours_text if cbsa_hours_text is not None else get_text(CBSA_HOURS_URL))
+                result['supplemental']['cbsa_nexus_hours'] = hours
+                stamp=now_utc()
+                result['sources']['cbsa_hours'] = {'status': 'ok', 'retrieved_at': stamp,
+                    'last_success_at':stamp,'url': CBSA_HOURS_URL, 'coverage': len(hours)}
+            else:
+                result['sources']['cbsa_hours'] = {'status': 'not_collected', 'url': CBSA_HOURS_URL}
+        except Exception as exc:
+            result['sources']['cbsa_hours'] = {'status': 'error', 'retrieved_at': now_utc(),
+                'url': CBSA_HOURS_URL, 'error': f'{type(exc).__name__}: {str(exc)[:160]}'}
     # DWT is a supplemental operator feed, not a replacement for inspection waits.
     # Tests with explicit CBP/CBSA fixture inputs never make external requests.
     fixture_mode = cbp_text is not None or cbsa_text is not None
     try:
         if dwt_text is not None or not fixture_mode:
             result['supplemental']['dwt'] = normalize_dwt(dwt_text if dwt_text is not None else get_text(DWT_URL))
-            result['sources']['dwt'] = {'status': 'ok', 'retrieved_at': now_utc(),
+            stamp=now_utc()
+            result['sources']['dwt'] = {'status': 'ok', 'retrieved_at': stamp, 'last_success_at': stamp,
                                          'url': DWT_URL, 'coverage': len(result['supplemental']['dwt'])}
         else:
             result['sources']['dwt'] = {'status': 'not_collected', 'url': DWT_URL}
@@ -479,20 +572,23 @@ def collect(cbp_text=None, cbsa_text=None, cbsa_format='auto', dwt_text=None, on
             url = ONTARIO_511_URL + '?' + urlencode({'key': key, 'format': 'json', 'lang': 'en'})
             raw = ontario_events_text if ontario_events_text is not None else get_text(url)
             result['supplemental']['ontario511_events'] = normalize_ontario_events(raw)
-            result['sources']['ontario511'] = {'status': 'ok', 'retrieved_at': now_utc(),
+            stamp=now_utc()
+            result['sources']['ontario511'] = {'status': 'ok', 'retrieved_at': stamp, 'last_success_at': stamp,
                                                 'url': ONTARIO_511_URL, 'coverage': len(result['supplemental']['ontario511_events'])}
         else:
             result['sources']['ontario511'] = {'status': 'not_configured' if not key else 'not_collected', 'url': ONTARIO_511_URL}
     except Exception as exc:
         # Do not log API keys, response URLs, or credentials.
         result['sources']['ontario511'] = {'status': 'error', 'retrieved_at': now_utc(), 'url': ONTARIO_511_URL,
-                                            'error': f'{type(exc).__name__}: {str(exc)[:160]}'}
+                                            'error': type(exc).__name__}
+    retain_on_failure(result, previous)
     return result
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--output', default='data/live.json')
+    ap.add_argument('--previous', help='Optional last published validated snapshot for stale-only recovery')
     ap.add_argument('--cbp-fixture')
     ap.add_argument('--cbsa-fixture')
     ap.add_argument('--cbsa-hours-fixture')
@@ -505,7 +601,13 @@ def main():
     raw_dwt = Path(args.dwt_fixture).read_text(encoding='utf-8') if args.dwt_fixture else None
     raw_ont = Path(args.ontario_events_fixture).read_text(encoding='utf-8') if args.ontario_events_fixture else None
     raw_hours = Path(args.cbsa_hours_fixture).read_text(encoding='utf-8') if args.cbsa_hours_fixture else None
-    payload = collect(raw_cbp, raw_cbsa, args.cbsa_format, raw_dwt, raw_ont, raw_hours)
+    previous=None
+    if args.previous and Path(args.previous).is_file():
+        try:
+            previous=json.loads(Path(args.previous).read_text(encoding='utf-8'))
+        except (ValueError, OSError):
+            print('WARNING: Prior snapshot invalid or unreadable; proceeding with fresh collection.', file=sys.stderr)
+    payload = collect(raw_cbp, raw_cbsa, args.cbsa_format, raw_dwt, raw_ont, raw_hours, previous)
     path = Path(args.output)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')

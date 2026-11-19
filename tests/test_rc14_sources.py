@@ -45,5 +45,5 @@ class TestRC14(unittest.TestCase):
   self.assertIn('NEXUS',d['ambassador']['groups'][0]['label'])
  def test_schema_and_supplemental_without_network(self):
   r=mod.empty_snapshot();self.assertEqual(r['schema'],'nexus-live-v2');self.assertEqual(r['supplemental']['dwt'],{})
-  self.assertIn('trigger',r['collection']);self.assertEqual(r['collection']['configured_interval_minutes'],15)
+  self.assertIn('trigger',r['collection']);self.assertEqual(r['collection']['configured_interval_minutes'],10)
 if __name__=='__main__':unittest.main()

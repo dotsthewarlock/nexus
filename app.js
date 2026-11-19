@@ -28,8 +28,8 @@
   const esc = x=>safeText(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const fmtAge = n=>!Number.isFinite(n)?'time unknown':n<2?'just now':n<60?`${Math.round(n)} min ago`:`${Math.floor(n/60)}h ${Math.floor(n%60)}m ago`;
   const fmtClock=x=>{const t=new Date(x||'');return Number.isNaN(t.getTime())?'time unknown':new Intl.DateTimeFormat('en-CA',{hour:'numeric',minute:'2-digit',timeZone:'America/Toronto'}).format(t);};
-  const fmtWait=r=>D.usable(r)||r?.kind==='stale'&&Number.isInteger(r.minutes)?String(r.minutes):r?.kind==='closed'?'Closed':'—';
-  const waitUnit=r=>D.usable(r)||r?.kind==='stale'&&Number.isInteger(r.minutes)?'min':'';
+  const fmtWait=r=>D.usable(r)||['stale','old'].includes(r?.kind)&&Number.isInteger(r.minutes)?String(r.minutes):r?.kind==='closed'?'Closed':'—';
+  const waitUnit=r=>D.usable(r)||['stale','old'].includes(r?.kind)&&Number.isInteger(r.minutes)?'min':'';
   function load(){try{const raw=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');return {...defaults,...raw,
     favorites:{...defaults.favorites,...raw.favorites},selected:{...defaults.selected,...raw.selected},
     destinations:{...defaults.destinations,...raw.destinations},
@@ -74,11 +74,11 @@
       reading:prefs.direction==='us'?home.nexus:{kind:'unavailable'},
       note:prefs.direction==='ca'?(home.dwt?.lane_counts?.nexus!=null?`${home.dwt.lane_counts.nexus} operator-listed lanes · Wait unavailable`:'Canada-bound NEXUS wait not reported'):
         D.usable(home.nexus)&&Number.isInteger(nxLanes)?`${nxLanes} ${nxLanes===1?'lane':'lanes'} reported`:
-        home.nexus.kind==='closed'?'Lane reported closed':home.nexus.kind==='stale'?`Stale · observed ${fmtAge(home.nexus.age)}`:'Wait not available'};
+        home.nexus.kind==='closed'?'Lane reported closed':home.nexus.kind==='stale'?`STALE · ${fmtAge(home.nexus.age)}`:home.nexus.kind==='old'?`OLD REPORT · ${fmtAge(home.nexus.age)}`:'Wait not available'};
     const lanes=home.port?.standard?.lanes_open;
     const regularMetric={label:`Regular · ${prefs.direction==='us'?'CBP':'CBSA'}`,reading:home.standard,
       note:D.usable(home.standard)?Number.isInteger(lanes)?`${lanes} ${lanes===1?'lane':'lanes'} reported`:`Reported ${fmtAge(home.standard.age)}`:
-        home.standard.kind==='closed'?'Lane reported closed':home.standard.kind==='stale'?`Stale · observed ${fmtAge(home.standard.age)}`:'Wait not available'};
+        home.standard.kind==='closed'?'Lane reported closed':home.standard.kind==='stale'?`STALE · ${fmtAge(home.standard.age)}`:home.standard.kind==='old'?`OLD REPORT · ${fmtAge(home.standard.age)}`:'Wait not available'};
     const leadNexus=prefs.nexus&&prefs.direction==='us';
     const lead=leadNexus?nexusMetric:regularMetric;
     const secondary=leadNexus?regularMetric:nexusMetric;
@@ -110,7 +110,7 @@
     const leadNexus=prefs.nexus&&prefs.direction==='us';
     const r=leadNexus?home.nexus:home.standard,source=prefs.direction==='us'?'CBP':'CBSA';
     const category=leadNexus?'NEXUS':'Regular';
-    const state=r?.kind==='current'?'Current':r?.kind==='aging'?'Aging':r?.kind==='stale'?'Stale':r?.kind==='closed'?'Closed':'Unavailable';
+    const state=r?.kind==='current'?'Current':r?.kind==='aging'?'Aging':r?.kind==='stale'?'Stale':r?.kind==='old'?'Old report':r?.kind==='closed'?'Closed':'Unavailable';
     const observation=Number.isFinite(r?.age)?` · observed ${fmtAge(r.age)}`:'';
     setText('heroFreshness',`${source} · ${category} · ${state}${observation} · inspection only`);
   }
@@ -119,8 +119,10 @@
     $('alternatives').innerHTML=alt.map(c=>{
       const isNx=prefs.nexus&&prefs.direction==='us'&&c.primaryType==='nexus';
       const source=prefs.direction==='us'?'CBP':'CBSA';
-      const note=c.portClosed?'Port reported closed':c.primary.kind==='stale'?`${isNx?'NEXUS':'Regular'} · STALE ${fmtAge(c.primary.age)}`:D.usable(c.primary)?`${isNx?'NEXUS':'Regular'} · observed ${fmtAge(c.primary.age)} · ${source}`:'Inspection wait unavailable';
-      return `<button type="button" class="alternative${result.suggested===c.id?' alternative--suggested':''}" data-crossing="${c.id}" aria-label="Select ${esc(c.name)} for this trip"><span class="alt-caption"><h3>${esc(c.name)}</h3><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></span><span class="alt-wait">${c.portClosed?'Closed':fmtWait(c.primary)} <small>${!c.portClosed&&Number.isInteger(c.primary.minutes)&&c.primary.kind!=='unavailable'?'min':''}</small></span>${result.suggested===c.id?'<span class="alt-suggested">Inspection alternative to consider</span>':''}<span class="alt-sub">${esc(note)}</span></button>`;
+      const displayed=prefs.nexus&&prefs.direction==='us'&&['stale','old'].includes(c.nexus.kind)?c.nexus:c.primary;
+      const displayedNx=displayed===c.nexus;
+      const note=c.portClosed?'Port reported closed':displayed.kind==='stale'?`${displayedNx?'NEXUS':'Regular'} · STALE ${fmtAge(displayed.age)}`:displayed.kind==='old'?`${displayedNx?'NEXUS':'Regular'} · OLD REPORT ${fmtAge(displayed.age)}`:D.usable(displayed)?`${displayedNx?'NEXUS':'Regular'} · observed ${fmtAge(displayed.age)} · ${source}`:'Inspection wait unavailable';
+      return `<button type="button" class="alternative${result.suggested===c.id?' alternative--suggested':''}" data-crossing="${c.id}" aria-label="Select ${esc(c.name)} for this trip"><span class="alt-caption"><h3>${esc(c.name)}</h3><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></span><span class="alt-wait">${c.portClosed?'Closed':fmtWait(displayed)} <small>${!c.portClosed&&Number.isInteger(displayed.minutes)&&displayed.kind!=='unavailable'?'min':''}</small></span>${result.suggested===c.id?'<span class="alt-suggested">Inspection alternative to consider</span>':''}<span class="alt-sub">${esc(note)}</span></button>`;
     }).join('');
     $('alternatives').querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>{tripOverride=button.dataset.crossing;render();scrollTo({top:0,behavior:'smooth'});}));
   }
@@ -129,19 +131,25 @@
     const sourceName=prefs.direction==='us'?'CBP':'CBSA';
     const now=Date.now(),snapAge=D.age(data?.generated_at,now),sourceAge=D.age(source?.retrieved_at,now);
     const readings=D.IDS.map(id=>D.crossing(data,prefs.direction,id,prefs.nexus,now).standard);
-    const current=readings.filter(r=>r.kind==='current').length;
-    const aging=readings.filter(r=>r.kind==='aging').length;
+    const recent=readings.filter(r=>D.usable(r)).length;
+    const older=readings.filter(r=>['stale','old'].includes(r.kind)).length;
     let level='unknown',line='Official reports unavailable';
     if(busy&&!data) line='Checking published snapshot…';
-    else if(loadError){level='caution';line=`Update failed · last snapshot ${fmtAge(snapAge)}`;}
-    else if(!data || source?.status!=='ok') {level='caution';line=`${sourceName} source unavailable · verify before travelling`;}
-    else if(!Number.isFinite(snapAge)||snapAge>60){level='caution';line=`Snapshot expired · last collected ${fmtAge(snapAge)}`;}
-    else if(snapAge>20||sourceAge>20){level='caution';line=`${sourceName} publication overdue · collected ${fmtAge(snapAge)} · source ${fmtAge(sourceAge)}`;}
-    else {
-      level=current===3?'ok':'caution';
-      line=`${sourceName} · ${current}/3 current, ${aging} aging · collected ${fmtAge(snapAge)}`;
+    else if(loadError){level='caution';line=`Update failed · last published ${fmtAge(snapAge)}`;}
+    else if(!data){level='caution';line='No published border snapshot available';}
+    else if(source?.status==='error'){
+      level='caution';
+      line=source.retained_previous && older>0
+        ? `${sourceName} fetch failed · ${older} older reports preserved · last successful fetch ${fmtAge(D.age(source.last_success_at,now))}`
+        : `${sourceName} feed failed · latest reports unavailable`;
+    }else if(source?.status!=='ok'){
+      level='caution';line=`${sourceName} source unavailable · verify before travelling`;
+    }else if(!Number.isFinite(snapAge)||snapAge>20||sourceAge>20){
+      level='caution';line=`${sourceName} publication overdue · last published ${fmtAge(snapAge)} · ${older} older reports`;
+    }else {
+      level=recent===3?'ok':'caution';
+      line=`${sourceName} · ${recent}/3 recent · ${older} older · fetched ${fmtAge(sourceAge)}`;
     }
-    // A cooldown message must not linger after the cooldown has expired.
     if(refreshFeedback.startsWith('Next check')) {
       if(now>=refreshCooldownUntil)refreshFeedback='';
       else refreshFeedback=`Next check in ${Math.ceil((refreshCooldownUntil-now)/1000)}s`;
@@ -161,7 +169,10 @@
   function fieldWait(c,key,label){
     const reading=c[key];const raw=c.port?.[key];
     let value=reading?.kind==='closed'?'Closed':reading?.kind==='not_applicable'?'Not applicable':D.usable(reading)?`${reading.minutes} min`:'Unavailable';
-    if(reading?.kind==='stale')value=`${reading.minutes} min · STALE (${fmtAge(reading.age)} old; not for recommendations)`;
+    if(reading?.kind==='stale')value=`${reading.minutes} min · STALE (observed ${fmtAge(reading.age)}; not for recommendations)`;
+    if(reading?.kind==='old')value=`${reading.minutes} min · OLD REPORT (observed ${fmtAge(reading.age)}; not current)`;
+    if(reading?.kind==='unavailable'&&raw?.status==='reported'&&Number.isInteger(raw?.minutes)&&Number.isFinite(D.age(raw.observation_at))&&D.age(raw.observation_at)<=1440)
+      value=`Unavailable now · last reported ${raw.minutes} min at ${fmtClock(raw.observation_at)} (${fmtAge(D.age(raw.observation_at))})`;
     const lane=raw?.lanes_open;
     if(Number.isInteger(lane)&&D.usable(reading))value+=` · ${lane} lanes reported`;
     return detailLine(label,value);
@@ -177,7 +188,7 @@
         content+=detailLine('Passenger max lanes',c.port?.passenger_max_lanes);
         content+=detailLine('Commercial max lanes',c.port?.commercial_max_lanes);
         if(c.port?.published_port_hours)content+=detailLine('Published port hours',c.port.published_port_hours);
-        if(c.port?.port_status)content+=detailLine('Port status',c.port.port_status);
+        if(c.port?.port_status)content+=detailLine(c.sourceRecent?'Port status':'Previously reported port status (not current)',c.port.port_status);
         if(c.port?.notice)content+=detailLine('CBP notice',c.port.notice);
       }else{
         content+=fieldWait(c,'commercial','Commercial wait');
@@ -188,16 +199,16 @@
         content+=`<p class="subtle">Published Canada-bound NEXUS hours (schedule, not live): ${scheduleFresh&&schedules.length?esc(schedules.join(' · ')):'Unavailable or not verified'}. <a href="${CBSA_HOURS_URL}" target="_blank" rel="noopener noreferrer">CBSA directory</a></p>`;
       }
       if(c.id==='tunnel'&&c.dwt){content+=detailLine('DWT listed NEXUS lanes',c.dwt.lane_counts.nexus)+detailLine('DWT listed car lanes',c.dwt.lane_counts.car)+detailLine('DWT listed truck lanes',c.dwt.lane_counts.truck)+detailLine('Operator travel-time category',c.dwt.travel_time_category?c.dwt.travel_time_category+' min':'Not reported')+detailLine('Operator observation',fmtClock(c.dwt.observation_at));}
-      if(c.id==='tunnel'&&c.dwtStale)content+='<p class="subtle">DWT operator observation is stale; lane counts hidden.</p>';
+      if(c.id==='tunnel'&&c.dwtStale)content+=`<p class="subtle">DWT operator report is not current; lane counts hidden. ${esc(c.dwtStale&&data?.supplemental?.dwt?.[prefs.direction]?.observation_at?`Last observed ${fmtAge(D.age(data.supplemental.dwt[prefs.direction].observation_at))}`:'')}</p>`;
       content+=detailLine('Standard wait observed',c.port?.standard?.observation_at?fmtClock(c.port.standard.observation_at):'Unknown');
       return `<article class="detail-crossing"><h3>${esc(c.name)}</h3>${content}</article>`;
     }).join('')+`<p class="subtle">Inspection estimates and operator travel-time categories describe different measurements; they are not added together. Road events shown above describe the Windsor-Essex vicinity, not a validated route impact.</p>`;
   }
   function renderDiagnostics(){
     const sources=data?.sources||{};
-    $('diagnosticText').innerHTML=[`<p>Build: RC1.4.7 · Schema: ${esc(data?.schema||'No snapshot')}</p>`,`<p>Generated: ${esc(data?.generated_at||'Unavailable')} · Browser fetch: ${esc(lastClientFetch||'Not yet')}</p>`,
-      `<p>Collector trigger: ${esc(data?.collection?.trigger||'Unknown')} · Run: ${esc(data?.collection?.run_id||'Unreported')} · Job cadence configured for 15 minutes. Scheduled execution must be confirmed in GitHub Actions.</p>`,
-      `<p>Current ≤10 min; aging 10–20 min; stale 20–60 min; older readings unavailable. Recommendations require recent, comparable observations ≤5 min apart. Published NEXUS hours are not live lane status.</p>`,...Object.entries(sources).map(([k,v])=>`<p><strong>${esc(k.toUpperCase())}</strong> · ${esc(v.status||'?')} · ${esc(v.coverage===undefined?'':v.coverage+' records')} · Retrieved ${esc(v.retrieved_at||'unknown')}${v.error?' · '+esc(v.error):''}<br><a href="${esc(v.url||'#')}" target="_blank" rel="noopener noreferrer">Official source</a></p>`),
+    $('diagnosticText').innerHTML=[`<p>Build: RC1.4.8 · Schema: ${esc(data?.schema||'No snapshot')}</p>`,`<p>Generated: ${esc(data?.generated_at||'Unavailable')} · Browser fetch: ${esc(lastClientFetch||'Not yet')}</p>`,
+      `<p>Collector trigger: ${esc(data?.collection?.trigger||'Unknown')} · Run: ${esc(data?.collection?.run_id||'Unreported')} · Target cadence: ${esc(data?.collection?.configured_interval_minutes||'?')} minutes (GitHub schedule is best-effort). Previous published snapshot: ${esc(data?.collection?.previous_snapshot_at||'Not available')}.</p>`,
+      `<p>Current ≤10 min; aging 10–20; stale 20–60; OLD 60–120; beyond 120 unavailable (last report may appear in details). Only recent comparable observations support recommendations. Agency observation age differs from fetch age.</p>`,...Object.entries(sources).map(([k,v])=>`<p><strong>${esc(k.toUpperCase())}</strong> · ${esc(v.status||'?')} · ${esc(v.coverage===undefined?'':v.coverage+' records')} · Last successful retrieval ${esc(v.last_success_at||v.retrieved_at||'unknown')}${v.retained_previous?' · HISTORICAL BACKUP (not live)':''}${v.cache_reused?' · schedule cache reused':''}${v.error?' · '+esc(v.error):''}<br><a href="${esc(v.url||'#')}" target="_blank" rel="noopener noreferrer">Official source</a></p>`),
     '<p>MDOT RIDE requires MiLogin for Business. Ontario 511 event ingestion requires a developer key. Supplemental feed failure never fabricates a delay or closure.</p>'].join('');
   }
   async function refresh(manual=false){

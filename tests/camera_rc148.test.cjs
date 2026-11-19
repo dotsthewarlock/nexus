@@ -1,4 +1,4 @@
-// RC1.4.7 camera source and initiation regression checks. Provider playback requires device QA.
+// RC1.4.8 regression: unchanged RC1.4.7 camera source and initiation. Provider playback requires device QA.
 const fs=require('node:fs');
 const assert=require('node:assert/strict');
 const app=fs.readFileSync('app.js','utf8');
@@ -19,5 +19,5 @@ assert(html.includes('data-scale="4"') && html.includes('data-scale="3"') && htm
 assert(app.includes('const BRIDGE_DEFAULT_ZOOM=4'));
 assert(app.includes('left:0.20,up:0.50'));
 assert(css.includes('.camera-watch-button'));
-assert(html.includes('app.js?v=rc147') && html.includes('styles.css?v=rc147'));
-console.log('RC1.4.7 camera source assertions passed');
+assert(html.includes('app.js?v=rc148') && html.includes('styles.css?v=rc148'));
+console.log('RC1.4.8 camera preservation assertions passed');

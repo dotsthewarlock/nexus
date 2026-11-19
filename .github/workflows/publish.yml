@@ -7,7 +7,7 @@ on:
   schedule:
     # Stagger away from minute 0 to reduce GitHub's high-load schedule delays.
     # Actual execution remains best-effort, not a freshness guarantee.
-    - cron: '7,22,37,52 * * * *'
+    - cron: '3,13,23,33,43,53 * * * *'
 
 permissions:
   contents: read
@@ -37,11 +37,20 @@ jobs:
       - name: Decision engine tests
         run: node tests/decision.test.cjs
       - name: Camera source regression tests
-        run: node tests/camera_rc147.test.cjs
+        run: node tests/camera_rc148.test.cjs
+      - name: Recover last published snapshot for stale-only fallback
+        run: |
+          # Best effort; cached prior reports never become fresh observations.
+          curl --fail --silent --show-error --max-time 10 --connect-timeout 5 \
+            -H 'Cache-Control: no-cache' \
+            'https://dotsthewarlock.github.io/nexus/data/live.json?previous=${{ github.run_id }}' \
+            -o /tmp/nexus-previous.json || echo 'No trusted previous snapshot available'
       - name: Collect official data
         env:
           ONTARIO_511_KEY: ${{ secrets.ONTARIO_511_KEY }}
-        run: python scripts/fetch_live.py --output data/live.json
+        run: python scripts/fetch_live.py --output data/live.json --previous /tmp/nexus-previous.json
+      - name: Report collection health
+        run: python scripts/report_health.py data/live.json
       - name: Archive snapshot (rolling 30-day retention)
         uses: actions/upload-artifact@v4
         with:

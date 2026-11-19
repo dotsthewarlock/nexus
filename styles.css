@@ -99,7 +99,7 @@ body[data-theme="dark"] {color-scheme:dark; --bg:#101a24; --surface:#182633; --s
 @media(max-width:360px){.camera-zoom-controls{right:6px;top:6px;gap:1px;padding:3px}.camera-zoom-controls button{min-width:38px;font-size:13px}}
 
 /* RC1.4.6: stale readings remain visible but cannot be mistaken for current. */
-.metric[data-state="stale"]{border-color:var(--warn);background:var(--soft)}
-.metric[data-state="stale"] .metric-value{opacity:.78}
+.metric[data-state="stale"],.metric[data-state="old"]{border-color:var(--warn);background:var(--soft)}
+.metric[data-state="stale"] .metric-value,.metric[data-state="old"] .metric-value{opacity:.78}
 .alternative--suggested{border-color:var(--blue-border);background:var(--blue-soft)}
 .alt-suggested{font-size:11px;font-weight:740;color:var(--accent-strong)}

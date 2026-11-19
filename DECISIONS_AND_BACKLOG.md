@@ -106,3 +106,13 @@
 **Unverified:** Scheduled GitHub Actions execution; GitHub commit-triggered execution does not establish a working cron. Official CBSA 'Holidays' semantics may differ from public holiday calendars. No assumption of live NEXUS open status or total-trip routing benefit.
 
 **Deferred:** New backend, 5-minute collector and direct source refresh, predictive routing, new mobile three-crossing layout, permanent time-series storage.
+
+
+## RC1.4.8 — Approved trust and collection implementation
+
+- **Confirmed:** Retain GitHub Actions and GitHub Pages. A shared normalized JSON snapshot serves all clients; no end-user action triggers a CBP/CBSA/DWT fetch.
+- **Implemented:** Explicit 0–10 current, 10–20 aging, 20–60 stale, 60–120 OLD REPORT; observations beyond 120 minutes unavailable in headline metrics, historical time retained in details. Older values never qualify for switching recommendations. The stricter comparative time/observation requirements remain.
+- **Implemented:** Best-effort collector target every 10 minutes, CBSA published-hours cache reused for ≤24h when verified, and failure-only last-known retention via the previous published snapshot. Source status remains failed, with original timestamps; stale closures are not treated as live.
+- **Operational limitation:** GitHub scheduled collection may be late or skipped and a Pages deployment is required to publish every new shared snapshot. No guarantee of <10-minute delivery or agency observation age.
+- **Monitoring:** Actions job summaries report collection/fetch and observed age. Review success rate across scheduled runs over 48h before changing architecture.
+- **Deferred:** Independent backend/DB, live feed scraping outside official access terms, per-user upstream refresh, prediction of full-trip savings.

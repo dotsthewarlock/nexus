@@ -1,6 +1,6 @@
-# Nexus RC1.4.7 — trustworthy commuter data
+# Nexus RC1.4.8 — trustworthy commuter data
 
-**Status:** RC1.4.7 camera playback initiation atop RC1.4.6 data integrity and conservative recommendation improvements; deployment is managed by GitHub Actions. The publishing workflow generates a fresh `data/live.json` from official sources.
+**Status:** RC1.4.8 trust-aware last-known reports and scheduled collection improvements, preserving RC1.4.7 cameras and RC1.4.6 conservative decision logic; deployment is managed by GitHub Actions. The publishing workflow generates a fresh `data/live.json` from official sources.
 
 ## What's included
 
@@ -8,10 +8,10 @@
 - Persistent preferences for each travel direction, NEXUS, Home/Work, appearance, and recommendation sensitivity. Existing `nexus-prototype-v1` browser storage key is retained.
 - One-trip crossing override does not overwrite saved preference.
 - Deterministic `decision.js`: vetted operational notices, source and observation freshness, timezone-aware NEXUS published hours, conservative/balanced/information-only comparison. Conservative minimum difference is 20 minutes of **comparable inspection wait**; balanced minimum is 10 minutes. Neither is a full-trip saving estimate.
-- Ambassador Bridge camera opens at **4×**, framed 50% toward the top and 20% toward the left of its permitted pan, with Fit / 2× / 3× / 4× controls, drag-to-pan and a compact 90dvh modal. Camera framing applies only to the cross-origin iframe rectangle; internal content is never accessed. Detroit–Windsor Tunnel offers **Watch Live** to load the operator's original Dacast iframe only after a tap, followed by the 15-second viewing cycle and **Continue watching**. The official DWT website is always linked. In-app playback remains browser/provider-dependent and requires Android Chrome validation.
+- Ambassador Bridge camera opens at **4×**, framed 50% toward the top and 20% toward the left of its permitted pan, with Fit / 2× / 3× / 4× controls, drag-to-pan and a compact 90dvh modal. Camera framing applies only to the cross-origin iframe rectangle; internal content is never accessed. Detroit–Windsor Tunnel attempts to load the original Dacast iframe on modal open, with **Retry video** and a 15-second viewing cycle / **Continue watching**. The official DWT website is always linked. In-app playback remains browser/provider-dependent and requires Android Chrome validation.
 - Expanded official data collection: CBP regular/NEXUS/Ready/FAST/commercial/pedestrian categories, lane counts and maximums; CBSA traveller and commercial waits; CBSA dedicated Canada-bound NEXUS schedules; Detroit–Windsor Tunnel operator lane counts and reported coarse travel-time category; optional Ontario 511 Windsor-Essex road advisories.
-- Observation and source retrieval times remain distinct; stale operator data are suppressed. Wait observations aged 20–60 minutes remain visible as **STALE** but are excluded from recommendations; older or invalid reports are unavailable. Missing values are never converted to zero.
-- GitHub Actions centrally collects data every **15 minutes** (minutes 07/22/37/52 UTC, best effort), publishes the shared static site, and archives each normalized snapshot as an Actions artifact for **30 days**. This is bounded archival, not permanent history storage or a forecast service.
+- Observation and source retrieval times remain distinct; stale operator data are suppressed. Wait observations aged 20–60 minutes remain visible as **STALE** and 60–120 minutes as **OLD REPORT**, never as current and never for recommendations; older observations are available only as timestamped history in expanded details. Missing values are never converted to zero.
+- GitHub Actions centrally targets collection every **10 minutes** (minutes 03/13/23/33/43/53 UTC, best effort), publishes the shared static site, and archives each normalized snapshot as an Actions artifact for **30 days**. This is bounded archival, not permanent history storage or a forecast service.
 - SVG icon sprites, responsive theme, no runtime JavaScript/CSS framework and no mandatory login.
 
 ## Project layout
@@ -22,7 +22,8 @@
 | `styles.css` | Responsive colors, spacing, typography and interaction styles |
 | `app.js` | Preference state, rendering, navigation and camera interactions |
 | `decision.js` | Pure, testable source-aware crossing evaluation |
-| `scripts/fetch_live.py` | Official source adapters and normalized `nexus-live-v2` JSON |
+| `scripts/fetch_live.py` | Official source adapters, prior-report fallback, and normalized `nexus-live-v2` JSON |
+| `scripts/report_health.py` | Actions summary of last successful fetch and observation ages |
 | `.github/workflows/publish.yml` | Scheduled collection, tests, snapshot archive, GitHub Pages deployment |
 | `tests/` | Collector, decision logic and browser smoke tests |
 | `previews/` | Synthetic-data layout QA only (never actual live conditions) |
@@ -95,17 +96,28 @@ RC1.4.6 fixes the formerly open decision-engine defects: day-type schedule appli
 
 - Tunnel: opt-in Watch Live for each of the original three directional streams; camera switching unloads the prior player; 15-second Continue watching action; official camera-page fallback.
 - Bridge: 4× default, upward framing offset 50% of available vertical pan, leftward framing offset 20% of available horizontal pan; Fit / 2× / 3× / 4×, pointer/keyboard panning, and responsive mobile modal.
-- Tests: `python3 -m unittest discover -s tests`, `node tests/decision.test.cjs`, `node tests/camera_rc147.test.cjs`, and `python3 tests/smoke_rc14.py` locally. The GitHub Action runs the Python and Node tests before publishing.
+- Tests: `python3 -m unittest discover -s tests`, `node tests/decision.test.cjs`, `node tests/camera_rc148.test.cjs`, and `python3 tests/smoke_rc14.py` locally. The GitHub Action runs the Python and Node tests before publishing.
 
 ## RC1.4.6 data trust and refresh rules
 
-- **Current:** official observation ≤10 minutes old; **aging:** 10–20 minutes; **stale:** 20–60 minutes (numeric value visibly marked, not recommendation eligible); **unavailable:** >60 minutes, missing/invalid time. Snapshot/source age is independently enforced; an overdue collection never refreshes an old agency observation.
+- **Current:** official observation ≤10 minutes old; **aging:** 10–20 minutes; **stale:** 20–60 minutes (numeric value visibly marked, not recommendation eligible); **old:** 60–120 minutes; **unavailable:** >120 minutes, missing/invalid time. Snapshot/source age is independently enforced; an overdue collection never refreshes an old agency observation.
 - **Recommendations:** only observations ≤10 minutes old with a ≤5-minute timestamp difference, same lane category, supported source status, no conflicting operational notice, and a meaningful policy threshold. The recommendation concerns *inspection waits*, not total-trip time.
 - **Canada-bound NEXUS schedules:** evaluate the CBSA published lane schedules for local weekday/weekend and known 2026–27 Canadian/ON public-holiday dates, including overnight windows. Some observed holiday interpretations are not determined by the directory; these yield *unknown*. Even a scheduled window never confirms real-time lane operation. Government calendar references: [Canada.ca 2026 public holidays](https://www.canada.ca/en/revenue-agency/services/tax/public-holidays.html) and [Ontario 2026–27 school calendar holidays](https://www.ontario.ca/page/school-year-calendars).
-- **Automatic collection:** centralized GitHub Actions every 15 minutes, staggered away from minute zero. Browser checks the one shared published JSON approximately every two minutes and on returning to the foreground after inactivity. Manual refresh checks the same JSON, with 30-second per-device cooldown; **no user interaction calls CBP/CBSA/DWT**.
-- **Schedule validation:** the repository may show successful push-triggered builds before any schedule-triggered build is recorded. Diagnostics include the GitHub event trigger and run ID; do not describe the schedule as verified until actual `schedule` runs appear. GitHub scheduled workflows can be delayed/dropped or disabled after 60 days of public-repository inactivity.
+- **Automatic collection:** centralized GitHub Actions target every 10 minutes, staggered away from minute zero. Browser checks the one shared published JSON approximately every two minutes and on returning to the foreground after inactivity. Manual refresh checks the same JSON, with 30-second per-device cooldown; **no user interaction calls CBP/CBSA/DWT**.
+- **Schedule validation:** at least one scheduled run was confirmed successful on November 18, 2026, but continued reliability and exact cadence are not guaranteed. Diagnostics include the trigger and run ID. GitHub scheduled workflows can be delayed/dropped or disabled after 60 days of public-repository inactivity.
 - **Deferred:** permanent database/backend, direct user-triggered upstream requests, sub-five-minute guarantees, and RC1.5 three-crossing layout.
 
 ## RC1.4.7 Tunnel video initiation
 
 Opening a Tunnel camera attempts to load the exact Dacast iframe used in RC1.4.5, without requiring the extra Watch Live tap. Camera-tab selection likewise starts the selected view. Android Chrome may still require tapping Play in the provider iframe. **Retry video** provides a real user-activated reload without rewriting the original Dacast URLs or bypassing restrictions. The original 15-second viewing interval, **Continue watching** and official-site fallback remain intact. Live Dacast playback requires manual device confirmation; local tests mock external video traffic. Bridge zoom, crossing data and RC1.4.6 trust logic are unchanged.
+
+
+## RC1.4.8 — Trust-aware freshness and centralized collection
+
+The site continues to fetch only one centrally published `data/live.json` snapshot; user refreshes never query official upstream APIs. GitHub Actions is scheduled every **10 minutes** (best effort, not a guaranteed SLA) with one publisher and no per-user upstream load. CBSA posted NEXUS schedules are reused for up to 24 hours when the prior verified snapshot is available, rather than fetched every cycle.
+
+The scheduled collector fetches the previous published JSON **only to preserve provenance-qualified historical readings if a source fails**. Prior data is validated for schema and timestamps; previous fetch time and agency observation time are never replaced by collection time. A failed source is marked `error` and cached measurements are shown as `OLD REPORT`, excluded from switching recommendations. If the prior snapshot is unavailable, collection still proceeds independently; no caching state is required.
+
+Observation ages: ≤10 min current; 10–20 aging; 20–60 stale; 60–120 old. Older observations are not shown as current waits, but last reported figures (with time/age) may be visible in expanded diagnostics. The snapshot itself may also be overdue. Only recent (≤10 min), comparable same-type measurements can support switching recommendations. Public API access does not guarantee regular updates or operator permission to republish.
+
+The collector records status, the last successful retrieval time, previous-report usage, and run metadata. `scripts/report_health.py` prints source/observation ages into GitHub Actions job summaries. Check the GitHub Actions scheduled-run history to evaluate long-term reliability; the existing Pages publisher remains a single point of delay.

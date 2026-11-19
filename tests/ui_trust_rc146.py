@@ -27,7 +27,7 @@ def main():
     ctx=browser.new_context(viewport={'width':390,'height':844},device_scale_factor=1,is_mobile=True,has_touch=True)
     page=ctx.new_page()
     boot(page,sample())
-    assert '3/3 current' in page.locator('#dataStatus').inner_text(),page.locator('#dataStatus').inner_text()
+    assert '3/3 recent' in page.locator('#dataStatus').inner_text(),page.locator('#dataStatus').inner_text()
     before=page.evaluate('window.__fetchCount')
     page.locator('#refreshButton').click()
     page.wait_for_function('(prev)=>window.__fetchCount===prev+1',arg=before)
@@ -44,7 +44,7 @@ def main():
     page=ctx.new_page();boot(page,stale)
     assert 'NEXUS conditions unverified' in page.locator('#findingHeading').inner_text()
     assert '5' in page.locator('#primaryValue').inner_text(),'stale numeric value retained'
-    assert 'Stale' in page.locator('#primaryNote').inner_text(),page.locator('#primaryNote').inner_text()
+    assert 'STALE' in page.locator('#primaryNote').inner_text(),page.locator('#primaryNote').inner_text()
     assert page.locator('#primaryValue').evaluate('(el)=>el.closest(".metric").dataset.state')=='stale'
     assert page.locator('#heroFreshness').inner_text().startswith('CBP · NEXUS · Stale'), 'freshness must match visible NEXUS reading, not regular fallback'
     ctx.close()
@@ -57,9 +57,32 @@ def main():
     ctx=browser.new_context(viewport={'width':390,'height':844})
     page=ctx.new_page();boot(page,expired)
     assert 'Current conditions unavailable' in page.locator('#findingHeading').inner_text()
-    assert page.locator('#primaryValue').inner_text()=='—',page.locator('#primaryValue').inner_text()
-    assert '0/3 current' in page.locator('#dataStatus').inner_text()
+    assert page.locator('#primaryValue').inner_text()=='5',page.locator('#primaryValue').inner_text()
+    assert '0/3 recent' in page.locator('#dataStatus').inner_text()
+    assert page.locator('#primaryValue').inner_text()=='5', '68-minute report shown as old, not made current'
+    assert 'OLD REPORT' in page.locator('#primaryNote').inner_text()
+    ctx.close()
+
+    expired=sample()
+    stamp=(datetime.now(timezone.utc)-timedelta(minutes=125)).isoformat()
+    for port in expired['directions']['us'].values():
+      port['standard']['observation_at']=stamp
+      port['nexus']['observation_at']=stamp
+    ctx=browser.new_context(viewport={'width':390,'height':844})
+    page=ctx.new_page();boot(page,expired)
+    assert page.locator('#primaryValue').inner_text()=='—', '125-min old readings hidden from headline'
+    assert 'Unavailable' in page.locator('#heroFreshness').inner_text()
+    assert 'last reported' in page.locator('#detailsBody').text_content().lower()
+    ctx.close()
+
+    recovered=sample()
+    recovered['sources']['cbp'].update(status='error',retained_previous=True,last_success_at=(datetime.now(timezone.utc)-timedelta(minutes=40)).isoformat())
+    ctx=browser.new_context(viewport={'width':390,'height':844})
+    page=ctx.new_page();boot(page,recovered)
+    assert 'fetch failed' in page.locator('#dataStatus').inner_text()
+    assert 'OLD REPORT' in page.locator('#primaryNote').inner_text()
+    assert 'Unable' not in page.locator('#primaryNote').inner_text()
     ctx.close()
     browser.close()
-  print('RC1.4.6 UI trust checks passed: manual cooldown, source age labels, expired data, no NEXUS fallback recommendation.')
+  print('RC1.4.8 UI trust checks passed: cooldown, OLD reports, recovery, older history, conservative recommendations.')
 if __name__=='__main__': main()
