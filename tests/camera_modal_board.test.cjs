@@ -38,6 +38,13 @@ assert.equal(hours.kind,'outside');assert.equal(hours.event,'opens');
 assert.match(hours.next,/Today 2:00/i);
 hours=D.nextNexusSchedule(schedule([{label:'7 days per week',start:'22:00',end:'06:00'}]),'ambassador','ca',base);
 assert.equal(hours.kind,'outside');assert.equal(hours.event,'opens');
+// Overlapping lane-specific windows must end when the last confirmed lane window ends.
+hours=D.nextNexusSchedule(schedule([
+ {label:'7 days per week',start:'07:00',end:'14:00'},
+ {label:'7 days per week',start:'10:00',end:'20:00'}
+]),'ambassador','ca',base);
+assert.equal(hours.kind,'within');
+assert.match(hours.next,/Today 8:00/i,'merged availability should persist to 8 PM');
 hours=D.nextNexusSchedule(schedule([{label:'Special circumstances',start:'07:00',end:'22:00'}]),'ambassador','ca',base);
 assert.equal(hours.kind,'unknown');
 hours=D.nextNexusSchedule(schedule(weekdays),'ambassador','us',base);
