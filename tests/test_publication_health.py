@@ -107,7 +107,7 @@ class PublicationGapTests(unittest.TestCase):
             'collection': {'previous_snapshot_at': '2026-11-19T21:00:00Z'}}))
         self.assertIsNone(report_health.publication_gap_minutes({
             'generated_at': '2026-11-19T19:00:00Z',
-            'collection': {'previous_snapshot_at': 'nonsense'}})
+            'collection': {'previous_snapshot_at': 'nonsense'}}))
 
     def test_provisional_threshold_respects_longer_schedule(self):
         self.assertEqual(report_health.gap_warning_threshold({'collection': {
