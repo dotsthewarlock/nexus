@@ -39,7 +39,7 @@ def main():
   page.on('pageerror',lambda e:errors.append(str(e)))
   fixture=sample()
   def boot(page):
-   html=(ROOT/'index.html').read_text()
+   html=(ROOT/'legacy.html').read_text()
    html=re.sub(r'<link rel="stylesheet" href="\./styles\.css(?:\?[^"]*)?">','',html)
    html=re.sub(r'<script src="\./(?:decision|app)\.js(?:\?[^"]*)?"(?: defer)?></script>','',html)
    page.set_content(html,wait_until='domcontentloaded')
