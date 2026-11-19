@@ -73,6 +73,8 @@ assert.equal(api.classify('ambassador','us').text,'N/A');
 api.store.data.directions.us.ambassador.standard={status:'closed',minutes:null,observation_at:ago(1)};
 assert.equal(api.classify('ambassador','us').kind,'closed');
 assert.equal(api.classify('ambassador','us').text,'Closed');
+api.store.data.directions.us.ambassador.standard={status:'closed',minutes:null,observation_at:ago(31)};
+assert.equal(api.classify('ambassador','us').kind,'unavailable','aged closure must not remain current');
 api.store.data.directions.us.ambassador.standard=sample(5,31);
 assert.equal(api.classify('ambassador','us').kind,'stale');
 assert.match(api.cell('ambassador','us'),/Old report/);
