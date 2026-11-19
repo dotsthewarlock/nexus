@@ -83,7 +83,8 @@ jobs:
       - name: Stage static website
         run: |
           mkdir -p site/data
-          cp index.html board.css board.js legacy.html styles.css app.js decision.js camera-diagnostics.html site/
+          cp index.html styles.css app.js decision.js camera-diagnostics.html site/
+          cp board.css board.js legacy.html site/
           cp camera-alternatives.html site/
           cp camera-lab-v3.html site/
           cp camera-navigation-lab.html site/
