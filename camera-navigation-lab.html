@@ -180,7 +180,8 @@ function report(){
   'UTC: '+new Date().toISOString(),
   'Origin: '+location.origin,
   'Camera: '+CAMERAS[$('camera').value],
-  'Tests launched: '+launchCount
+  'Tests launched: '+launchCount,
+  'Direct player URL: '+cameraUrl()
  ];
  for(const t of TESTS){
    const r=results[t.id]||{outcome:'untested',notes:''};
