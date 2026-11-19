@@ -1,6 +1,6 @@
-# Nexus RC1.4.6 — trustworthy commuter data
+# Nexus RC1.4.7 — trustworthy commuter data
 
-**Status:** RC1.4.6 data integrity and conservative recommendation improvements; deployment is managed by GitHub Actions. The publishing workflow generates a fresh `data/live.json` from official sources.
+**Status:** RC1.4.7 camera playback initiation atop RC1.4.6 data integrity and conservative recommendation improvements; deployment is managed by GitHub Actions. The publishing workflow generates a fresh `data/live.json` from official sources.
 
 ## What's included
 
@@ -39,7 +39,7 @@ The local placeholder displays an **unavailable** state until you run the collec
 ```bash
 python3 -m unittest discover -s tests -v
 node tests/decision.test.cjs
-node tests/camera_rc145.test.cjs
+node tests/camera_rc147.test.cjs
 python3 tests/smoke_rc14.py
 python3 tests/ui_trust_rc146.py
 ```
@@ -95,7 +95,7 @@ RC1.4.6 fixes the formerly open decision-engine defects: day-type schedule appli
 
 - Tunnel: opt-in Watch Live for each of the original three directional streams; camera switching unloads the prior player; 15-second Continue watching action; official camera-page fallback.
 - Bridge: 4× default, upward framing offset 50% of available vertical pan, leftward framing offset 20% of available horizontal pan; Fit / 2× / 3× / 4×, pointer/keyboard panning, and responsive mobile modal.
-- Tests: `python3 -m unittest discover -s tests`, `node tests/decision.test.cjs`, `node tests/camera_rc145.test.cjs`, and `python3 tests/smoke_rc14.py` locally. The GitHub Action runs the Python and Node tests before publishing.
+- Tests: `python3 -m unittest discover -s tests`, `node tests/decision.test.cjs`, `node tests/camera_rc147.test.cjs`, and `python3 tests/smoke_rc14.py` locally. The GitHub Action runs the Python and Node tests before publishing.
 
 ## RC1.4.6 data trust and refresh rules
 
@@ -105,3 +105,7 @@ RC1.4.6 fixes the formerly open decision-engine defects: day-type schedule appli
 - **Automatic collection:** centralized GitHub Actions every 15 minutes, staggered away from minute zero. Browser checks the one shared published JSON approximately every two minutes and on returning to the foreground after inactivity. Manual refresh checks the same JSON, with 30-second per-device cooldown; **no user interaction calls CBP/CBSA/DWT**.
 - **Schedule validation:** the repository may show successful push-triggered builds before any schedule-triggered build is recorded. Diagnostics include the GitHub event trigger and run ID; do not describe the schedule as verified until actual `schedule` runs appear. GitHub scheduled workflows can be delayed/dropped or disabled after 60 days of public-repository inactivity.
 - **Deferred:** permanent database/backend, direct user-triggered upstream requests, sub-five-minute guarantees, and RC1.5 three-crossing layout.
+
+## RC1.4.7 Tunnel video initiation
+
+Opening a Tunnel camera attempts to load the exact Dacast iframe used in RC1.4.5, without requiring the extra Watch Live tap. Camera-tab selection likewise starts the selected view. Android Chrome may still require tapping Play in the provider iframe. **Retry video** provides a real user-activated reload without rewriting the original Dacast URLs or bypassing restrictions. The original 15-second viewing interval, **Continue watching** and official-site fallback remain intact. Live Dacast playback requires manual device confirmation; local tests mock external video traffic. Bridge zoom, crossing data and RC1.4.6 trust logic are unchanged.

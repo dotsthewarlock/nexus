@@ -33,6 +33,9 @@ def main():
   browser=p.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
   ctx=browser.new_context(viewport={'width':390,'height':844},device_scale_factor=1,is_mobile=True,has_touch=True)
   page=ctx.new_page()
+  # Do not contact live video providers during browser regression tests.
+  page.route('https://iframe.dacast.com/**',lambda route:route.fulfill(status=200,content_type='text/html',body='<html><body>mock DWT player</body></html>'))
+  page.route('https://ambassador.solutionspal.com/**',lambda route:route.fulfill(status=200,content_type='text/html',body='<html><body>mock Bridge camera</body></html>'))
   page.on('pageerror',lambda e:errors.append(str(e)))
   fixture=sample()
   def boot(page):
@@ -61,45 +64,46 @@ def main():
   assert '4' in page.locator('#primaryValue').inner_text()
   assert '2 NEXUS lanes listed' in page.locator('#operatorLine').inner_text()
   page.screenshot(path=str(OUT/'rc14-mobile-dark.png'),full_page=True)
-  # RC1.4.5 DWT: Watch Live gesture loads the embed, and viewing timer starts
-  # on that gesture, not when the modal is opened. Provider playback requires QA.
+  # RC1.4.7 DWT: attempt existing iframe on modal open and tab selection.
+  # Retry remains a real user gesture; provider playback requires device QA.
   page.evaluate('''() => {
     const original=window.setTimeout.bind(window);
+    window.__cameraTimerCount=0;
     window.setTimeout=(cb,delay,...args)=>delay===15000
-      ?(window.__cameraLimit=()=>cb(...args),999999)
+      ?(window.__cameraTimerCount++,window.__cameraLimit=()=>cb(...args),999999)
       :original(cb,delay,...args);
   }''')
   assert page.locator('#heroCameraText').inner_text()=='Cameras'
   page.locator('#heroCamera').click()
   assert page.locator('#cameraDialog').evaluate('(x)=>x.open')
   assert page.locator('#cameraViews button').count()==2
-  assert page.locator('#cameraFrame').get_attribute('src') is None, 'No DWT request before Watch Live'
-  assert page.locator('#cameraWatch').is_visible(), 'Explicit opt-in video action'
-  page.screenshot(path=str(OUT/'rc145-tunnel-watch-live.png'))
-  assert page.evaluate('typeof window.__cameraLimit')=='undefined', 'Timer must not start on opening'
-  assert page.locator('#cameraZoomControls').is_hidden()
-  assert page.locator('#cameraReload').is_hidden()
-  page.locator('#cameraWatch').click()
+  assert '794566d4' in page.locator('#cameraFrame').get_attribute('src'), 'DWT should attempt auto-load on modal open'
+  assert page.locator('#cameraWatch').is_hidden(), 'No extra initial Watch Live tap required'
+  assert page.locator('#cameraReload').is_visible(), 'Manual Retry video remains available'
+  assert 'Retry video' in page.locator('#cameraReload').inner_text()
+  assert page.evaluate('window.__cameraTimerCount')==1, 'Timer should start once on initial load attempt'
+  assert page.locator('#cameraZoomControls').is_hidden(), 'Bridge zoom must not appear on tunnel'
+  page.screenshot(path=str(OUT/'rc147-tunnel-auto-load.png'))
+  page.locator('#cameraReload').click()
+  assert page.evaluate('window.__cameraTimerCount')==2, 'Manual retry must create a new load attempt'
   assert '794566d4' in page.locator('#cameraFrame').get_attribute('src')
-  assert page.evaluate('typeof window.__cameraLimit')=='function', 'Timer must start on Watch Live'
   page.locator('#cameraViews button').nth(1).click()
-  assert page.locator('#cameraFrame').get_attribute('src') is None, 'Switch unloads prior player'
-  assert page.locator('#cameraWatch').is_visible()
-  page.locator('#cameraWatch').click()
-  assert '5408b5c3' in page.locator('#cameraFrame').get_attribute('src')
+  assert '5408b5c3' in page.locator('#cameraFrame').get_attribute('src'), 'Camera-tab selection should auto-load'
+  assert page.evaluate('window.__cameraTimerCount')==3
   page.evaluate('window.__cameraLimit()')
   assert page.locator('#cameraFrame').get_attribute('src') is None
   assert page.locator('#cameraContinue').is_visible()
+  assert page.locator('#cameraReload').is_hidden(), 'No redundant retry after timed interval'
   assert 'Viewing interval complete' in page.locator('#cameraFallbackText').inner_text()
   page.locator('#cameraContinue').click()
   assert '5408b5c3' in page.locator('#cameraFrame').get_attribute('src')
+  assert page.locator('#cameraReload').is_visible()
   page.locator('#closeCamera').click()
   assert page.locator('#cameraFrame').get_attribute('src') is None
   page.locator('#toUS').click()
   page.locator('#heroCamera').click()
-  assert page.locator('#cameraFrame').get_attribute('src') is None
-  page.locator('#cameraWatch').click()
-  assert '4aea1c45' in page.locator('#cameraFrame').get_attribute('src')
+  assert '4aea1c45' in page.locator('#cameraFrame').get_attribute('src'), 'US-bound stream should auto-load'
+  assert page.locator('#cameraReload').is_visible()
   assert page.locator('#cameraViews').is_hidden()
   page.locator('#closeCamera').click()
   page.locator('#toCA').click()
@@ -185,5 +189,5 @@ def main():
   desktop.close()
   assert not errors,errors
   browser.close()
- print('RC1.4.6 camera regression passed: DWT Watch Live/15s continue; 4x bridge default with 20% left, 50% up; 320/390/1440px.')
+ print('RC1.4.7 camera regression passed: DWT auto-load/retry/15s continue; 4x bridge default with 20% left, 50% up; 320/390/1440px.')
 if __name__=='__main__': main()

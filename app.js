@@ -11,8 +11,8 @@
   };
   const CBSA_HOURS_URL = 'https://www.cbsa-asfc.gc.ca/data/cbsa-offices-services-bureaux-asfc-en.json';
   // Source URLs come from the operator's public camera page. The Tunnel player
-  // is loaded only after a user's Watch Live tap. This does not override a
-  // publisher's domain restrictions; official website fallback stays visible.
+  // is attempted when its modal opens; a user-activated Retry remains available
+  // if the browser or provider disallows autoplay. Do not change embed URLs.
   const DACAST_ROOT='https://iframe.dacast.com/live/8b2b630f-b7c1-262d-f343-118f510224a0/';
   const CAMERAS = {
     tunnel:{us:{provider:'Detroit–Windsor Tunnel',official:'https://www.dwtunnel.com/',views:[{title:'Windsor inspection',embed:DACAST_ROOT+'4aea1c45-d402-3690-afae-fe635942da82',limit:15}]},
@@ -195,7 +195,7 @@
   }
   function renderDiagnostics(){
     const sources=data?.sources||{};
-    $('diagnosticText').innerHTML=[`<p>Build: RC1.4.6 · Schema: ${esc(data?.schema||'No snapshot')}</p>`,`<p>Generated: ${esc(data?.generated_at||'Unavailable')} · Browser fetch: ${esc(lastClientFetch||'Not yet')}</p>`,
+    $('diagnosticText').innerHTML=[`<p>Build: RC1.4.7 · Schema: ${esc(data?.schema||'No snapshot')}</p>`,`<p>Generated: ${esc(data?.generated_at||'Unavailable')} · Browser fetch: ${esc(lastClientFetch||'Not yet')}</p>`,
       `<p>Collector trigger: ${esc(data?.collection?.trigger||'Unknown')} · Run: ${esc(data?.collection?.run_id||'Unreported')} · Job cadence configured for 15 minutes. Scheduled execution must be confirmed in GitHub Actions.</p>`,
       `<p>Current ≤10 min; aging 10–20 min; stale 20–60 min; older readings unavailable. Recommendations require recent, comparable observations ≤5 min apart. Published NEXUS hours are not live lane status.</p>`,...Object.entries(sources).map(([k,v])=>`<p><strong>${esc(k.toUpperCase())}</strong> · ${esc(v.status||'?')} · ${esc(v.coverage===undefined?'':v.coverage+' records')} · Retrieved ${esc(v.retrieved_at||'unknown')}${v.error?' · '+esc(v.error):''}<br><a href="${esc(v.url||'#')}" target="_blank" rel="noopener noreferrer">Official source</a></p>`),
     '<p>MDOT RIDE requires MiLogin for Business. Ontario 511 event ingestion requires a developer key. Supplemental feed failure never fabricates a delay or closure.</p>'].join('');
@@ -349,8 +349,8 @@
       $('cameraReload').lastChild.textContent=' Reload camera';
       return;
     }
-    // A manual gesture creates the Dacast iframe, like the operator's Watch Live
-    // button. Do not presume autoplay; browser/provider may require Play too.
+    // Retain the original Watch Live handler as a fallback when autoplay is
+    // blocked or the interval expires. Tab selections attempt loading directly.
     $('cameraFrame').hidden=true;
     $('cameraFallback').hidden=false;
     $('cameraWatch').hidden=false;
@@ -364,14 +364,20 @@
     $('cameraFallback').hidden=true;
     $('cameraWatch').hidden=true;
     $('cameraContinue').hidden=true;
+    // Reassign from a clean iframe navigation so Retry genuinely reloads the
+    // provider's original embed. Never synthesize a click within the iframe.
+    $('cameraFrame').removeAttribute('src');
     $('cameraFrame').hidden=false;
     $('cameraFrame').src=view.embed;
+    $('cameraReload').hidden=false;
+    $('cameraReload').lastChild.textContent=' Retry video';
     if(view.limit){
-      // Use operator's published viewing interval, starting at Watch Live, not
-      // when the modal is opened. Actual provider playback remains unverified.
+      // Retain the working version's 15-second iframe viewing cycle. The
+      // countdown starts on the load attempt, not confirmed video playback.
       cameraTimeout=setTimeout(()=>{
         unloadCamera();
         $('cameraFallback').hidden=false;
+        $('cameraReload').hidden=true;
         setText('cameraFallbackText','Viewing interval complete');
         $('cameraContinue').hidden=false;
       },view.limit*1000);
@@ -386,8 +392,15 @@
     setText('cameraProvider',camera.provider);$('cameraOfficial').href=camera.official;
     $('cameraViews').innerHTML=camera.views.map((v,i)=>`<button type="button" data-index="${i}" aria-pressed="${i===0}">${esc(v.title)}</button>`).join('');
     $('cameraViews').hidden=camera.views.length<2;
-    $('cameraViews').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>activateCamera(Number(b.dataset.index))));
-    $('cameraDialog').showModal();activateCamera(0);
+    $('cameraViews').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+      activateCamera(Number(b.dataset.index));
+      if(camera?.kind==='video')startTunnelVideo();
+    }));
+    $('cameraDialog').showModal();
+    activateCamera(0);
+    // Attempt the same original Dacast iframe as Watch Live immediately within
+    // the user's camera-button gesture. Autoplay is not guaranteed by Dacast.
+    if(camera.kind==='video')startTunnelVideo();
   }
   $('cameraZoomControls').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>setBridgeScale(Number(b.dataset.scale))));
   const zoomSurface=$('cameraZoomSurface');
@@ -446,7 +459,10 @@
   $('copyLink').addEventListener('click',async()=>{routeOrigin=$('originRoute').value.trim().slice(0,180);const dest=$('destinationRoute').value.trim().slice(0,180);if(prefs.destinationChoice==='custom')customDestination=dest;else prefs.destinations[prefs.destinationChoice]=dest;
     const link=buildShareUrl();try{await navigator.clipboard.writeText(link);setText('copyLink','Copied');}catch{window.prompt('Copy this trip link:',link);}setTimeout(()=>setText('copyLink','Copy trip link'),1700);});
   $('closeCamera').addEventListener('click',closeCamera);
-  $('cameraReload').addEventListener('click',()=>activateCamera(cameraIndex));
+  $('cameraReload').addEventListener('click',()=>{
+    if(camera?.kind==='video')startTunnelVideo();
+    else activateCamera(cameraIndex);
+  });
   $('cameraContinue').addEventListener('click',startTunnelVideo);
   $('cameraWatch').addEventListener('click',startTunnelVideo);
   $('cameraDialog').addEventListener('close',()=>{unloadCamera();camera=null;$('cameraDialog').classList.remove('camera-modal--bridge');});
