@@ -58,6 +58,16 @@ def main():
     for name, state, retrieved, observed in rows:
         lines.append(f'| {name} | {state} | {retrieved} | {observed} |')
     lines.append('')
+    tracker = data.get('collection', {}).get('observation_tracker', {})
+    tracker_summary = tracker.get('summary', {}) if isinstance(tracker, dict) else {}
+    if tracker_summary:
+        lines.append('Observation first-seen tracking (new agency timestamps / changed values / baseline records):')
+        for source_name in ('cbp', 'cbsa'):
+            counts = tracker_summary.get(source_name, {})
+            lines.append(f'- {source_name}: {counts.get("new_observation_times", 0)} / '
+                         f'{counts.get("changed_values", 0)} / {counts.get("new_baseline_records", 0)}'
+                         + (' (source fetched)' if counts.get('source_fetched') else ' (reused or unavailable)'))
+        lines.append('')
     lines.append('Observation age is the agency-provided measurement time, not the fetch time. Older reports are not current. Source failure never upgrades cached data.')
     output = '\n'.join(lines) + '\n'
     print(output)
