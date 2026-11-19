@@ -103,3 +103,29 @@ body[data-theme="dark"] {color-scheme:dark; --bg:#101a24; --surface:#182633; --s
 .metric[data-state="stale"] .metric-value,.metric[data-state="old"] .metric-value{opacity:.78}
 .alternative--suggested{border-color:var(--blue-border);background:var(--blue-soft)}
 .alt-suggested{font-size:11px;font-weight:740;color:var(--accent-strong)}
+
+/* RC1.4.9: Native-Play Tunnel launcher. The opaque, pointer-transparent
+   dashboard button retains its appearance while the cross-origin Dacast
+   iframe underneath receives the user's real tap. Do not reparent the iframe. */
+.hero-actions .tunnel-camera-launch{position:relative;display:flex;flex:0 0 auto}
+.tunnel-camera-launch.is-tunnel:not(.is-minimized):not(.is-stopped) #heroCamera{position:relative;z-index:3;pointer-events:none}
+.tunnel-player-host{position:absolute;inset:0;z-index:2;display:none;overflow:hidden;border-radius:11px}
+.tunnel-camera-launch.is-tunnel .tunnel-player-host{display:block}
+.tunnel-player-host iframe{position:absolute;top:50%;left:50%;width:480px;height:270px;max-width:none;border:0;transform:translate(-50%,-50%) scale(6);transform-origin:center}
+.tunnel-camera-launch.is-minimized .tunnel-player-host{visibility:hidden;pointer-events:none}
+.tunnel-camera-launch.is-stopped .tunnel-player-host{display:none}
+.tunnel-player-host.is-expanded{position:fixed;top:clamp(78px,14dvh,140px);bottom:auto;left:0;right:0;margin:auto;width:min(calc(100vw - 20px),850px);height:auto;aspect-ratio:16/9;z-index:1003;border-radius:12px;overflow:hidden;visibility:visible;pointer-events:auto;background:#071521;box-shadow:0 10px 38px rgba(0,0,0,.5)}
+.tunnel-player-host.is-expanded iframe{width:100%;height:100%;top:0;left:0;transform:none}
+body.tunnel-camera-open{overflow:hidden}
+.tunnel-camera-head,.tunnel-camera-foot{position:fixed;z-index:1004;left:10px;right:10px;max-width:850px;margin:auto;background:var(--surface);color:var(--ink);border:1px solid var(--border);box-shadow:0 5px 20px rgba(0,0,0,.12);border-radius:12px}
+.tunnel-camera-head{top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 9px;font-size:13px}
+.tunnel-camera-head-actions{display:flex;gap:6px}
+.tunnel-camera-head button,.tunnel-camera-foot button{border:1px solid var(--border);border-radius:9px;background:var(--soft);color:var(--ink);padding:8px 10px;min-height:40px;font-size:12px;font-weight:700}
+.tunnel-camera-foot{bottom:max(10px,env(safe-area-inset-bottom));padding:10px}
+.tunnel-camera-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+.tunnel-camera-tabs button{min-width:0;font-size:12px;padding:8px 3px}
+.tunnel-camera-tabs button[aria-pressed="true"]{background:var(--blue-soft);border-color:var(--accent);color:var(--accent-strong)}
+.tunnel-camera-foot-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:9px;font-size:12px}
+.tunnel-camera-foot-actions a{font-size:12px}
+#tunnelCameraHint{margin:7px 0 0;color:var(--muted);font-size:11px}
+@media(max-width:390px){.tunnel-camera-foot{padding:8px}.tunnel-camera-head{font-size:12px}.tunnel-camera-head button{min-height:38px;padding:6px 8px}.tunnel-camera-foot-actions{gap:5px}.tunnel-camera-foot-actions a{font-size:11px}}
