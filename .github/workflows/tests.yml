@@ -1,0 +1,51 @@
+name: Nexus regression tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Python collector tests
+        run: python -m unittest discover -s tests -v
+      - name: Decision engine tests
+        run: node tests/decision.test.cjs
+      - name: Three-crossing status dashboard tests
+        run: node tests/status_board.test.cjs
+      - name: Camera modal and NEXUS schedule tests
+        run: node tests/camera_modal_board.test.cjs
+      - name: Camera source regression tests
+        run: node tests/camera_rc148.test.cjs
+      - name: Standalone camera diagnostic tests
+        run: node tests/camera_diagnostics.test.cjs
+      - name: Alternative camera diagnostic tests
+        run: node tests/camera_alternatives.test.cjs
+      - name: DWT Camera Lab 3 tests
+        run: node tests/camera_lab_v3.test.cjs
+      - name: DWT camera navigation matrix tests
+        run: node tests/camera_navigation.test.cjs
+      - name: DWT modal viability lab tests
+        run: node tests/camera_modal_viability.test.cjs
+      - name: DWT player control lab tests
+        run: node tests/camera_player_control.test.cjs
+      - name: DWT miniature-to-modal lab tests
+        run: node tests/camera_mini_modal.test.cjs
+      - name: DWT one-tap crop lab tests
+        run: node tests/camera_one_tap.test.cjs
+      - name: DWT camera switch reliability lab tests
+        run: node tests/camera_switch_reliability.test.cjs
+      - name: Three-camera playback handoff diagnostic tests
+        run: node tests/camera_playback_handoff.test.cjs

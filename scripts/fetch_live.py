@@ -19,9 +19,10 @@ import sys
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 try:
-    from scripts import ontario_511
+    from scripts import ontario_511, source_policy
 except ModuleNotFoundError:
     import ontario_511
+    import source_policy
 
 UTC = timezone.utc
 EASTERN = ZoneInfo('America/Toronto')
@@ -500,40 +501,46 @@ def collect(cbp_text=None, cbsa_text=None, cbsa_format='auto', dwt_text=None, on
     previous=validated_previous(previous)
     result = empty_snapshot()
     result['collection']['previous_snapshot_at'] = previous['generated_at'] if previous else None
-    try:
-        cbp = normalize_cbp(cbp_text if cbp_text is not None else get_text(CBP_URL))
-        result['directions']['us'] = cbp
-        stamp=now_utc()
-        result['sources']['cbp'] = {'status': 'ok', 'retrieved_at': stamp, 'last_success_at': stamp, 'url': CBP_URL,
-                                    'coverage': len(cbp)}
-    except Exception as exc:
-        result['sources']['cbp'] = {'status': 'error', 'retrieved_at': now_utc(), 'url': CBP_URL,
-                                    'error': f'{type(exc).__name__}: {str(exc)[:160]}'}
+    if cbp_text is None and source_policy.reuse_cached_source(result, previous, 'cbp', 'directions', 'us'):
+        pass
+    else:
+        try:
+            cbp = normalize_cbp(cbp_text if cbp_text is not None else get_text(CBP_URL))
+            result['directions']['us'] = cbp
+            stamp=now_utc()
+            result['sources']['cbp'] = {'status': 'ok', 'retrieved_at': stamp, 'last_success_at': stamp, 'url': CBP_URL,
+                                        'coverage': len(cbp)}
+        except Exception as exc:
+            result['sources']['cbp'] = {'status': 'error', 'retrieved_at': now_utc(), 'url': CBP_URL,
+                                        'error': f'{type(exc).__name__}: {str(exc)[:160]}'}
 
     # Prefer official CSV; retry using the CBSA official HTML table if it
     # fails or changes format. This fallback is not a third-party proxy.
-    issues = []
-    candidates = [(CBSA_CSV_URL, 'csv'), (CBSA_HTML_URL, 'html')]
-    if cbsa_text is not None:
-        candidates = [('fixture:cbsa', cbsa_format if cbsa_format != 'auto' else 'csv')]
-    for url, mode in candidates:
-        try:
-            raw = cbsa_text if cbsa_text is not None else get_text(url)
-            if mode == 'csv':
-                data = normalize_cbsa_csv(raw)
-            else:
-                data = normalize_cbsa_html(raw)
-            result['directions']['ca'] = data
-            stamp=now_utc()
-            result['sources']['cbsa'] = {'status': 'ok', 'retrieved_at': stamp, 'last_success_at': stamp,
-                                         'url': url if not url.startswith('fixture:') else CBSA_CSV_URL,
-                                         'coverage': len(data)}
-            break
-        except Exception as exc:
-            issues.append(f'{mode}: {type(exc).__name__}: {str(exc)[:100]}')
-    if 'cbsa' not in result['sources']:
-        result['sources']['cbsa'] = {'status': 'error', 'retrieved_at': now_utc(),
-                                    'url': CBSA_CSV_URL, 'error': '; '.join(issues)[:300]}
+    if cbsa_text is None and source_policy.reuse_cached_source(result, previous, 'cbsa', 'directions', 'ca'):
+        pass
+    else:
+        issues = []
+        candidates = [(CBSA_CSV_URL, 'csv'), (CBSA_HTML_URL, 'html')]
+        if cbsa_text is not None:
+            candidates = [('fixture:cbsa', cbsa_format if cbsa_format != 'auto' else 'csv')]
+        for url, mode in candidates:
+            try:
+                raw = cbsa_text if cbsa_text is not None else get_text(url)
+                if mode == 'csv':
+                    data = normalize_cbsa_csv(raw)
+                else:
+                    data = normalize_cbsa_html(raw)
+                result['directions']['ca'] = data
+                stamp=now_utc()
+                result['sources']['cbsa'] = {'status': 'ok', 'retrieved_at': stamp, 'last_success_at': stamp,
+                                             'url': url if not url.startswith('fixture:') else CBSA_CSV_URL,
+                                             'coverage': len(data)}
+                break
+            except Exception as exc:
+                issues.append(f'{mode}: {type(exc).__name__}: {str(exc)[:100]}')
+        if 'cbsa' not in result['sources']:
+            result['sources']['cbsa'] = {'status': 'error', 'retrieved_at': now_utc(),
+                                        'url': CBSA_CSV_URL, 'error': '; '.join(issues)[:300]}
     # NEXUS posted hours are schedules, not live conditions. Use the prior
     # verified version for up to a day; do not re-fetch every 10-minute cycle.
     fixture_mode = cbp_text is not None or cbsa_text is not None
@@ -560,22 +567,28 @@ def collect(cbp_text=None, cbsa_text=None, cbsa_format='auto', dwt_text=None, on
     # DWT is a supplemental operator feed, not a replacement for inspection waits.
     # Tests with explicit CBP/CBSA fixture inputs never make external requests.
     fixture_mode = cbp_text is not None or cbsa_text is not None
-    try:
-        if dwt_text is not None or not fixture_mode:
-            result['supplemental']['dwt'] = normalize_dwt(dwt_text if dwt_text is not None else get_text(DWT_URL))
-            stamp=now_utc()
-            result['sources']['dwt'] = {'status': 'ok', 'retrieved_at': stamp, 'last_success_at': stamp,
-                                         'url': DWT_URL, 'coverage': len(result['supplemental']['dwt'])}
-        else:
-            result['sources']['dwt'] = {'status': 'not_collected', 'url': DWT_URL}
-    except Exception as exc:
-        result['sources']['dwt'] = {'status': 'error', 'retrieved_at': now_utc(), 'url': DWT_URL,
-                                    'error': f'{type(exc).__name__}: {str(exc)[:160]}'}
+    if not fixture_mode and dwt_text is None and source_policy.reuse_cached_source(result, previous, 'dwt', 'supplemental', 'dwt'):
+        pass
+    else:
+        try:
+            if dwt_text is not None or not fixture_mode:
+                result['supplemental']['dwt'] = normalize_dwt(dwt_text if dwt_text is not None else get_text(DWT_URL))
+                stamp=now_utc()
+                result['sources']['dwt'] = {'status': 'ok', 'retrieved_at': stamp, 'last_success_at': stamp,
+                                             'url': DWT_URL, 'coverage': len(result['supplemental']['dwt'])}
+            else:
+                result['sources']['dwt'] = {'status': 'not_collected', 'url': DWT_URL}
+        except Exception as exc:
+            result['sources']['dwt'] = {'status': 'error', 'retrieved_at': now_utc(), 'url': DWT_URL,
+                                        'error': f'{type(exc).__name__}: {str(exc)[:160]}'}
     # The key only exists in this server-side GitHub Actions process.
     key = os.getenv('ONTARIO_511_API_KEY', '').strip()
     fixture_inputs = {'ontario511': ontario_events_text}
     for name, (kind, endpoint, field) in ontario_511.ENDPOINTS.items():
         raw_fixture = fixture_inputs.get(name)
+        if (raw_fixture is None and key and not fixture_mode and
+                source_policy.reuse_cached_source(result, previous, name, 'supplemental', field)):
+            continue
         try:
             if raw_fixture is not None or (key and not fixture_mode):
                 if raw_fixture is None:
