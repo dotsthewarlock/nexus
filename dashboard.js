@@ -262,7 +262,9 @@ function savedDestinationAction(event){
  }catch(error){messageDestination(error.message||'Unable to update destination');}
 }
 function initDestinations(){
- destinationRepo=window.NexusDestinations?.createStore?.(localStorage)||null;
+ let browserStorage=null;
+ try{browserStorage=localStorage}catch{} // Storage access can throw in restricted browsing contexts.
+ destinationRepo=window.NexusDestinations?.createStore?.(browserStorage)||null;
  resetDestinationForm();
  renderSavedDestinations();
  $('destinationKind').addEventListener('change',syncDestinationKind);
