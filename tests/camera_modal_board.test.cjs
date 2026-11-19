@@ -14,8 +14,14 @@ for(const id of [
  'cameraZoomSurface','cameraZoomControls','cameraZoomHint'
 ]) assert.ok(html.includes('id="'+id+'"'),'missing modal UI '+id);
 for(const scale of [1,2,3,4]) assert.ok(html.includes('data-scale="'+scale+'"'));
-assert.ok(html.includes('board.js?v=board3')&&html.includes('board.css?v=board3'));
+assert.ok(html.includes('board.js?v=board4')&&html.includes('board.css?v=board4'));
 assert.ok(css.includes('touch-action: none')&&css.includes('.camera-metrics'));
+assert.ok(html.includes('id="cameraDetails"'),'source and schedule details must collapse');
+assert.ok(html.includes('id="cameraSourceDetails"'));
+assert.ok(html.includes('id="cameraScheduleSummary"'));
+assert.ok(html.indexOf('id="cameraStage"')<html.indexOf('id="cameraScheduleBox"'),
+  'camera must precede the expanded NEXUS schedule');
+assert.ok(css.includes('.camera-details summary'));
 assert.ok(js.includes('BRIDGE_DEFAULT_ZOOM=4'));
 assert.ok(js.includes('BRIDGE_DEFAULT_FRAMING={left:0.20,up:0.50}'));
 assert.ok(js.includes("if(id==='gordie'||!CAMERAS[id])return"));
@@ -115,6 +121,8 @@ assert.equal(el('cameraDialog').open,true);
 assert.equal(el('cameraNexusWait').textContent,'6 min');
 assert.equal(el('cameraRegularWait').textContent,'No Delay');
 assert.equal(el('cameraRegularLanes').textContent,'2 lanes reported');
+assert.match(el('cameraSourceDetails').textContent,/Source retrieved/,'source timestamps remain accessible');
+assert.equal(el('cameraDetails').open,false,'schedule details should default to collapsed');
 assert.equal(el('cameraZoomSurface').hidden,false);
 assert.equal(api.bridgeZoom.scale,4);
 assert.match(el('cameraFrame').style.transform,/scale\(4\)/);
