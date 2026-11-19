@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#14202d">
+  <title>Nexus · DWT camera alternatives</title>
+  <style>
+    :root{color-scheme:dark;font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif;background:#101a24;color:#e9f1f8}
+    *{box-sizing:border-box}body{max-width:680px;margin:0 auto;padding:18px 14px 46px}
+    h1{font-size:1.45rem;line-height:1.2;margin:12px 0}h2{font-size:1.07rem;margin:0 0 9px}
+    p{margin:8px 0 12px}a{color:#9fd3ff}header{display:flex;justify-content:space-between;gap:14px;align-items:center}
+    .muted,small{color:#aec1d1}.card{border:1px solid #405466;border-radius:12px;padding:15px;margin:14px 0;background:#182635}
+    button,.action{font:inherit;font-weight:650;display:block;width:100%;text-align:center;border:1px solid #79b8ee;background:#20619a;color:white;padding:13px 11px;border-radius:9px;cursor:pointer;text-decoration:none;margin:9px 0}
+    button.secondary,.action.secondary{background:#293b4d;border-color:#6c8499}
+    button:disabled{opacity:.6;cursor:default}button:focus-visible,a:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #f6cd62;outline-offset:3px}
+    select,textarea{font:inherit;color:#f0f5fa;background:#11202e;border:1px solid #748ba0;border-radius:7px;padding:10px;width:100%;margin:5px 0 10px}
+    textarea{resize:vertical;min-height:62px}label{font-weight:550}
+    .stage{position:relative;aspect-ratio:16/9;background:#04070c;border:1px solid #425569;border-radius:8px;overflow:hidden;margin:12px 0}
+    #mount{position:absolute;inset:0;width:100%;height:100%}#mount iframe,#mount video{max-width:100%;max-height:100%}
+    .row{display:grid;grid-template-columns:1fr;gap:9px}.status{min-height:24px;color:#bde2ff}
+    pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.4 ui-monospace,monospace;background:#0b141d;padding:12px;border-radius:8px;max-height:230px;overflow:auto}
+    .note{border-left:3px solid #f1c36a;padding-left:10px}
+    @media(min-width:540px){.row{grid-template-columns:1fr 1fr}h1{font-size:1.7rem}}
+  </style>
+</head>
+<body>
+  <header><strong>Nexus · camera investigation</strong><a href="./">Back to Nexus</a></header>
+  <h1>DWT camera · alternative playback</h1>
+  <p class="muted">A second isolated diagnostic. The previous operator-style and Nexus-style iframes both displayed “Content blocked on this website”; direct Dacast and the official DWT website played. Production camera code is unchanged.</p>
+
+  <section class="card">
+    <h2>1. Camera</h2>
+    <label for="camera">Use one camera for all tests</label>
+    <select id="camera">
+      <option value="4aea1c45-d402-3690-afae-fe635942da82">Canada → USA · Windsor inspection</option>
+      <option value="794566d4-a75e-3cd1-6f95-2d60e54f2fdb">USA → Canada · Detroit inspection</option>
+      <option value="5408b5c3-f8d1-f34b-a18a-9943047905b6">USA → Canada · Randolph Street</option>
+    </select>
+    <small>Changing cameras reloads this diagnostic, preventing cross-stream player state.</small>
+  </section>
+
+  <section class="card">
+    <h2>2. E · Dacast JavaScript embed</h2>
+    <p>Try Dacast's documented <strong>JavaScript embed</strong>, rather than the blocked iframe route. Tap Play if the provider displays a player. This uses a content ID constructed from Dacast's documented live-stream format; the operator's original JS embed code has not been supplied, so a failure may be inconclusive.</p>
+    <button id="jsTest" type="button">E · Load JavaScript player</button>
+    <div id="stage" class="stage" hidden><div id="mount"></div></div>
+    <p id="jsStatus" class="status" role="status">Player not loaded.</p>
+    <small>Third-party Dacast JavaScript loads on this page only after your tap. A script-load event does not prove that video plays. No proxy, source extraction, or referrer modification is used.</small>
+  </section>
+
+  <section class="card">
+    <h2>3. External playback usability</h2>
+    <p>These are supported top-level navigation paths, not attempts to embed a restricted stream.</p>
+    <button id="sameTab" class="secondary" type="button">F · Open video in this tab</button>
+    <small>Watch the camera, then use the browser Back action to return here. Your selected camera and recorded outcomes will be restored.</small>
+    <a id="newTab" class="action secondary" href="#" target="_blank" rel="noopener noreferrer">G · Open video in new tab</a>
+    <small>Switch back to this diagnostic after confirming playback. On mobile, this may open a new browser tab rather than a separate window.</small>
+    <p><a href="https://www.dwtunnel.com/" target="_blank" rel="noopener noreferrer">Official DWT website</a> (previously confirmed playing).</p>
+  </section>
+
+  <section class="card">
+    <h2>4. Record actual outcomes</h2>
+    <p class="muted">Select results manually; this page cannot read playback state inside a third-party player.</p>
+    <label for="resultE">E · JavaScript inline player</label>
+    <select id="resultE" class="result">
+      <option value="not_tested">Not tested</option><option value="plays">Video plays</option>
+      <option value="content_blocked">“Content blocked on this website”</option>
+      <option value="no_play">Player loads, video does not play</option><option value="error">Other error</option>
+    </select>
+    <label for="resultF">F · Direct video in same tab</label>
+    <select id="resultF" class="result">
+      <option value="not_tested">Not tested</option><option value="plays">Video plays; Back returns</option>
+      <option value="no_return">Video plays; Back does not return</option>
+      <option value="blocked">Playback blocked</option><option value="error">Other error</option>
+    </select>
+    <label for="resultG">G · Direct video in new tab</label>
+    <select id="resultG" class="result">
+      <option value="not_tested">Not tested</option><option value="plays">Video plays; easy return to Nexus</option>
+      <option value="awkward">Video plays; return is awkward</option>
+      <option value="blocked">Playback blocked</option><option value="error">Other error</option>
+    </select>
+    <label for="notes">Notes (optional)</label>
+    <textarea id="notes" maxlength="600" placeholder="Exact error text, device/browser, playback behaviour"></textarea>
+    <button id="copy" type="button">Copy results</button>
+    <button id="reset" class="secondary" type="button">Reset diagnostic</button>
+    <p id="copyStatus" class="status" role="status"></p>
+    <pre id="report" aria-label="Report preview"></pre>
+  </section>
+  <small>Diagnostic only · No recording or retransmission · No results uploaded. If E is blocked, stop testing inline embedding and use the working direct-player link or seek operator authorization.</small>
+
+<script>
+(function(){
+  'use strict';
+  const ROOT='8b2b630f-b7c1-262d-f343-118f510224a0';
+  const CAMERAS={
+    '4aea1c45-d402-3690-afae-fe635942da82':'Canada → USA · Windsor inspection',
+    '794566d4-a75e-3cd1-6f95-2d60e54f2fdb':'USA → Canada · Detroit inspection',
+    '5408b5c3-f8d1-f34b-a18a-9943047905b6':'USA → Canada · Randolph Street'
+  };
+  const KEY='nexus-dwt-alternatives-v1', $=id=>document.getElementById(id);
+  const allowed={
+    resultE:['not_tested','plays','content_blocked','no_play','error'],
+    resultF:['not_tested','plays','no_return','blocked','error'],
+    resultG:['not_tested','plays','awkward','blocked','error']
+  };
+  function load(){
+    try{const state=JSON.parse(sessionStorage.getItem(KEY)||'{}');return state&&typeof state==='object'?state:{};}
+    catch{return {};}
+  }
+  const saved=load();
+  if(Object.hasOwn(CAMERAS,saved.camera))$('camera').value=saved.camera;
+  for(const id of Object.keys(allowed))if(allowed[id].includes(saved[id]))$(id).value=saved[id];
+  $('notes').value=typeof saved.notes==='string'?saved.notes.slice(0,600):'';
+  const events=[];
+  function stamp(s){events.push(new Date().toISOString()+' '+s);if(events.length>20)events.shift();}
+  function persist(){
+    const state={camera:$('camera').value,notes:$('notes').value.slice(0,600)};
+    for(const id of Object.keys(allowed))state[id]=$(id).value;
+    try{sessionStorage.setItem(KEY,JSON.stringify(state));}catch{}
+  }
+  function direct(){return 'https://iframe.dacast.com/live/'+ROOT+'/'+$('camera').value;}
+  function contentId(){return ROOT+'-live-'+$('camera').value;}
+  function refreshLink(){$('newTab').href=direct();}
+  refreshLink();
+  $('camera').addEventListener('change',()=>{
+    for(const id of Object.keys(allowed))$(id).value='not_tested';
+    $('notes').value='';persist();location.reload();
+  });
+  for(const id of Object.keys(allowed))$(id).addEventListener('change',persist);
+  $('notes').addEventListener('input',persist);
+  $('jsTest').addEventListener('click',()=>{
+    $('jsTest').disabled=true;
+    $('stage').hidden=false;
+    $('jsStatus').textContent='Loading provider JavaScript… verify video manually.';
+    const script=document.createElement('script');
+    script.id=contentId();
+    script.className='dc-video';
+    script.setAttribute('width','100%');
+    script.setAttribute('height','100%');
+    script.style.cssText='display:block;width:100%;height:100%';
+    script.src='https://prod-player.dacast.com/js/player.js?contentId='+encodeURIComponent(contentId());
+    script.onload=()=>{$('jsStatus').textContent='Provider script loaded. Is the video playing? Record E below.';stamp('E: JavaScript loader loaded (not video confirmation)');};
+    script.onerror=()=>{$('jsStatus').textContent='JavaScript loader failed. Record E as Other error.';stamp('E: JavaScript loader failed');};
+    stamp('E: inserting documented Dacast JavaScript embed with constructed live content ID');
+    $('mount').appendChild(script);
+  });
+  $('sameTab').addEventListener('click',()=>{
+    persist();stamp('F: navigating directly to Dacast in same tab');
+    location.assign(direct());
+  });
+  $('newTab').addEventListener('click',()=>{persist();stamp('G: opening direct Dacast in new tab');});
+  function report(){
+    return [
+      'Nexus DWT camera alternatives — manual results',
+      'UTC: '+new Date().toISOString(),
+      'Origin: '+location.origin,
+      'Camera: '+CAMERAS[$('camera').value],
+      'E · Dacast JavaScript embed: '+$('resultE').selectedOptions[0].textContent,
+      'F · Direct player, same tab: '+$('resultF').selectedOptions[0].textContent,
+      'G · Direct player, new tab: '+$('resultG').selectedOptions[0].textContent,
+      'Notes: '+($('notes').value||'None'),
+      'JS script load events are not proof of playback.',
+      'Local events:',...(events.length?events:['None logged in current page session'])
+    ].join('\n');
+  }
+  function updateReport(){$('report').textContent=report();}
+  $('copy').addEventListener('click',async()=>{
+    persist();const output=report();updateReport();
+    try{await navigator.clipboard.writeText(output);$('copyStatus').textContent='Results copied. Paste into the Nexus project conversation.';}
+    catch{$('copyStatus').textContent='Clipboard unavailable. Select and copy the report below.';}
+  });
+  $('reset').addEventListener('click',()=>{
+    try{sessionStorage.removeItem(KEY);}catch{}
+    location.reload();
+  });
+  for(const id of Object.keys(allowed))$(id).addEventListener('change',updateReport);
+  $('notes').addEventListener('input',updateReport);
+  updateReport();
+  stamp('Diagnostic loaded. No third-party script injected until E is tapped.');
+})();
+</script>
+</body>
+</html>
