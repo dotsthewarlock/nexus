@@ -59,7 +59,7 @@ if (typeof document !== 'undefined') {
     }
     function positionLayer() {
       if (!frame) return;
-      const rect = (state === 'playing' || state === 'resuming' || state === 'launching') && !shade.hidden
+      const rect = (state === 'playing' || state === 'resuming') && !shade.hidden
         ? target.getBoundingClientRect() : pill.getBoundingClientRect();
       host.style.left = rect.left + 'px';
       host.style.top = rect.top + 'px';
@@ -80,7 +80,7 @@ if (typeof document !== 'undefined') {
       const overlay = state === 'playing' || state === 'launching' || state === 'resuming' || state === 'expired';
       shade.hidden = !overlay;
       expired.hidden = state !== 'expired';
-      host.classList.toggle('expanded', overlay);
+      host.classList.toggle('expanded', state === 'playing' || state === 'resuming' || state === 'expired');
       document.body.classList.toggle('modal-open', overlay);
       main.inert = overlay;
       $('manualOpen').disabled = state === 'playing' || state === 'launching' || state === 'resuming';
