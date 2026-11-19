@@ -28,7 +28,7 @@ function classify(id,dir){
    return goodSource?{kind:'unsupported',text:'N/A',minutes:null,raw,src,reason:'This category is marked not applicable in the recent official report.'}:unavailable('Category support cannot be verified from a recent official report.');
  }
  const reported=D.reading(raw,store.data,Date.now());
- if(reported.kind==='closed'&&goodSource)return {kind:'closed',text:'Closed',minutes:null,raw,src,reason:'Source-reported closure; verify before travel.'};
+ if(reported.kind==='closed'&&goodSource&&(!raw.observation_at||age(raw.observation_at)<=20))return {kind:'closed',text:'Closed',minutes:null,raw,src,reason:'Source-reported closure; verify before travel.'};
  if(raw.status==='closed')return unavailable('Earlier closure report; current lane operation is unverified.');
  if(!Number.isInteger(reported.minutes))return unavailable('No valid timestamped wait for this lane category.');
  if(!goodSource||retained||!['current','aging'].includes(reported.kind))
