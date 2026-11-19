@@ -19,6 +19,27 @@ assert.ok(js.includes("setTimeout(()=>{pending=null;if(loaded&&!expanded)expand(
 assert.ok(js.includes("$('tile').classList.toggle('expanded',next)"));
 assert.ok(!js.includes("appendChild("),'iframe must never be reparented');
 assert.ok(!/\.m3u8|\.mpd|XMLHttpRequest|fetch\s*\(|document\.cookie/.test(js));
+for(const id of ['preset','applyPreset','saveTrial','clearTrials','trialSummary','saveState']){
+ assert.ok(html.includes('id="'+id+'"'),'missing permutation UI: '+id);
+}
+for(const preset of ['A','B','C','D','E','F','G']){
+ assert.ok(html.includes('<option value="'+preset+'"'),'missing preset '+preset);
+}
+for(const token of [
+ 'const PRESETS={',
+ "function applyPreset(){",
+ "function saveTrial(){",
+ "function persistTrials(){",
+ "function renderTrials(){",
+ "sessionStorage.setItem(STORE",
+ "'Saved trials for this camera:'",
+ "cancelPending();",
+ "armed=loaded&&p.trigger==='focus'",
+ "trials[camera]=trials[camera].slice(-25)"
+]){
+ assert.ok(js.includes(token),'missing preset/diagnostic behaviour: '+token);
+}
+assert.ok(!js.includes("appendChild($('player')"),'zoom/expand must not move iframe');
 assert.ok(workflow.includes('node tests/camera_one_tap.test.cjs'));
 assert.ok(workflow.includes('cp camera-one-tap-lab.html site/'));
 console.log('One-tap lab static checks passed.');
