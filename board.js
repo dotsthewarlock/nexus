@@ -141,8 +141,8 @@
     }).join('');
     $('crossingRows').querySelectorAll('button[data-camera]:not(:disabled)')
       .forEach(b=>b.addEventListener('click',()=>openCamera(b.dataset.camera)));
-    $('freshnessNote').textContent='Waits appear only when agency observations are under 20 minutes old. '+
-      'Older lane counts are labeled historical. Missing values are not zero; Canada-bound NEXUS waits are not supplied by CBSA.';
+    $('freshnessNote').textContent='Only observations under 20 minutes old appear as current. '+
+      'Older lane counts are historical; missing values are not zero.';
     renderDiagnostics();
   }
   function renderDiagnostics(){
