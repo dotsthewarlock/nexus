@@ -20,11 +20,9 @@ for(const id of ['4aea1c45-d402-3690-afae-fe635942da82',
 }
 for(const token of [
  "const STEPS=['A','B','C','A','B','C','A','B','C'];",
- "const MODES=['hide','keep'];",
- "if(saved.mode==='hide'){",
- "host.classList.add('launch-hide');",
- "},180);",
- "},saved.mode==='keep'?0:500);",
+ "const MODES=['baseline','instant'];",
+ "writeEvent('Iframe stays visible and interactive; only expansion timing differs.');",
+ "},saved.mode==='instant'?0:500);",
  "host.classList.add('expanded');",
  "host.classList.add('minimized');",
  "next.referrerPolicy='no-referrer';",
@@ -40,8 +38,9 @@ for(const token of [
 ]){
  assert.ok(js.includes(token),'missing regression guarantee: '+token);
 }
-assert.ok(js.includes("const KEY='nexus-dwt-playback-handoff-v2';"),'0ms trial results separated from older timings');
+assert.ok(js.includes("const KEY='nexus-dwt-playback-handoff-v3';"),'0ms trial results separated from older timings');
 assert.ok(html.includes('0 ms expansion')&&html.includes('500 ms expansion'),'both timing treatments labeled');
+assert.ok(!js.includes("host.classList.add('launch-hide')"),'no treatment may hide the iframe');
 assert.ok(html.includes('scale(6)'),'preserve 6x crop');
 assert.ok(html.includes('value="idle"'),'diagnose modal-with-no-play case');
 assert.ok(html.includes('value="works"'),'manual Play recovery must be reported');
