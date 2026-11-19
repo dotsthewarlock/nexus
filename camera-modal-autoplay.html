@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111f2c">
+<title>Nexus · DWT modal autoplay lab</title>
+<style>
+:root{color-scheme:dark;background:#101a25;color:#ecf4fb;font:16px/1.48 system-ui,-apple-system,Segoe UI,sans-serif}
+*{box-sizing:border-box}
+body{max-width:740px;margin:auto;padding:15px 14px 55px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px}
+h1{font-size:1.5rem;line-height:1.2;margin:14px 0}h2{font-size:1.09rem;margin:0 0 9px}p{margin:8px 0 11px}
+small,.muted{color:#bfd0df}a{color:#9bd1ff}code{overflow-wrap:anywhere}
+.card{background:#192a3a;border:1px solid #465e71;border-radius:12px;padding:15px;margin:14px 0}
+.notice{border-left:3px solid #e9c46d;padding-left:11px}.success{border-left:3px solid #76cfaf;padding-left:11px}
+button,.action{font:inherit;font-weight:650;border:1px solid #6eb7ed;border-radius:9px;background:#185f97;color:#fff;text-align:center;display:block;width:100%;padding:12px 10px;margin:9px 0;cursor:pointer;text-decoration:none}
+button.secondary,.action.secondary{background:#293e50;border-color:#798ea2}
+button:focus-visible,a:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #f6d272;outline-offset:3px}
+select,textarea{background:#122332;color:#fff;font:inherit;border:1px solid #7a92a7;border-radius:8px;padding:10px;width:100%}
+label{font-weight:600;display:block;margin:10px 0 5px}
+textarea{min-height:70px;resize:vertical}
+.fine{font-size:.88rem;color:#bfd0df}.grid{display:grid;grid-template-columns:1fr;gap:8px}
+table{border-collapse:collapse;width:100%;font-size:.87rem}th,td{text-align:left;vertical-align:top;padding:9px 6px;border-bottom:1px solid #41596b}th:last-child,td:last-child{text-align:right}
+pre{background:#0b1620;color:#dce9f5;border-radius:8px;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,monospace;max-height:360px;overflow:auto}
+dialog{color:#ecf4fb;background:#122232;border:1px solid #647f95;border-radius:13px;padding:14px;width:min(calc(100vw - 16px),820px);max-height:96dvh;overflow:auto;box-shadow:0 10px 45px #0009}
+dialog::backdrop{background:#000c}.dialog-top{display:flex;gap:10px;align-items:center;justify-content:space-between}.dialog-top h2{margin:0}.dialog-top button{width:auto;padding:8px 12px;margin:0}
+.player-frame{position:relative;aspect-ratio:16/9;background:#050910;border-radius:8px;overflow:hidden;margin:12px 0}
+.player-frame iframe{position:absolute;inset:0;border:0;width:100%;height:100%}
+@media(min-width:620px){.grid{grid-template-columns:1fr 1fr}h1{font-size:1.75rem}}
+</style>
+</head>
+<body>
+<header><strong>Nexus · camera research</strong><a href="./">Return to Nexus</a></header>
+<h1>DWT Camera · Modal Autoplay Lab</h1>
+<p class="success">The previous <strong>M1 no-referrer modal</strong> played live video after a manual in-player tap. This separate experiment tests whether the same modal can <strong>begin playback immediately when opened</strong>, with no second tap.</p>
+<p class="notice"><strong>Important:</strong> Dacast documents player-side autoplay configuration and <code>allow="autoplay"</code> iframe permission. It does not establish that the URL parameters tested below work on these live streams. Each parameterized case is an experimental hypothesis, not a documented Dacast API.</p>
+
+<section class="card">
+<h2>1. Choose camera and permutation</h2>
+<label for="camera">Camera</label>
+<select id="camera">
+<option value="4aea1c45-d402-3690-afae-fe635942da82">Canada → USA · Windsor inspection</option>
+<option value="794566d4-a75e-3cd1-6f95-2d60e54f2fdb">USA → Canada · Detroit inspection</option>
+<option value="5408b5c3-f8d1-f34b-a18a-9943047905b6">USA → Canada · Randolph Street</option>
+</select>
+<label for="variant">Autoplay permutation</label>
+<select id="variant"></select>
+<p id="explanation" class="fine"></p>
+<button id="openModal" type="button">Open modal · attempt auto-start</button>
+<p class="fine">One tap opens the modal and inserts the iframe immediately. <strong>Do not tap the player's Play button for 5–10 seconds.</strong> Observe whether the live video starts on its own. Then, if needed, tap Play to check whether manual playback still works.</p>
+</section>
+
+<section class="card">
+<h2>2. Record what actually happened</h2>
+<label for="outcome">Live video behaviour (manual observation)</label>
+<select id="outcome">
+<option value="untested">Not tested</option>
+<option value="auto_muted">Starts automatically · muted</option>
+<option value="auto_sound">Starts automatically · audio heard</option>
+<option value="auto_unsure">Starts automatically · sound unknown</option>
+<option value="tap_required">Requires a second tap on Play; then video plays</option>
+<option value="idle">Player shows, but does not start (even after tapping)</option>
+<option value="blocked">Content blocked on this website</option>
+<option value="blank">Blank / persistent loading</option>
+<option value="other">Other result</option>
+</select>
+<label for="notes">Notes for this camera/permutation (optional)</label>
+<textarea id="notes" maxlength="450" placeholder="Device/browser; response after 10 seconds; exact error if any"></textarea>
+<div class="grid">
+<button id="next" type="button" class="secondary">Next permutation</button>
+<button id="copy" type="button">Copy complete test report</button>
+</div>
+<p id="status" role="status" class="fine"></p>
+</section>
+
+<section class="card">
+<h2>3. Per-camera results</h2>
+<table><thead><tr><th>Permutation</th><th>Observed result</th></tr></thead><tbody id="results"></tbody></table>
+<button id="reset" class="secondary" type="button">Reset selected camera's results</button>
+<pre id="report"></pre>
+<p class="fine"><strong>Interpretation:</strong> Only an observed moving live feed without a second tap counts as autoplay success. An iframe <code>load</code> event is <strong>not</strong> playback confirmation. The page cannot inspect or control the cross-origin Dacast player's video element.</p>
+</section>
+
+<dialog id="videoDialog" aria-labelledby="modalTitle">
+<div class="dialog-top">
+<h2 id="modalTitle">DWT · autoplay trial</h2>
+<button id="closeModal" class="secondary" type="button">Close</button>
+</div>
+<p id="modalCaption" class="muted"></p>
+<div id="playerStage" class="player-frame"></div>
+<p id="videoState" class="fine" role="status">Waiting for player.</p>
+<a id="directLink" class="action secondary" href="https://www.dwtunnel.com/" target="_blank" rel="noopener noreferrer">Open original camera directly</a>
+<p class="fine">The external link uses the unmodified camera URL and no referrer. After closing, record whether a second in-player tap was necessary. Closing removes the iframe.</p>
+</dialog>
+
+<p class="fine">Isolated diagnostic: production Nexus and the original M1 lab are unchanged. No video proxying, capture, hidden overlay clicks, synthetic user gestures, or cross-origin player manipulation. Results are stored only in this browser tab.</p>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const ROOT='https://iframe.dacast.com/live/8b2b630f-b7c1-262d-f343-118f510224a0/';
+const CAMERAS={
+ '4aea1c45-d402-3690-afae-fe635942da82':'Canada → USA · Windsor inspection',
+ '794566d4-a75e-3cd1-6f95-2d60e54f2fdb':'USA → Canada · Detroit inspection',
+ '5408b5c3-f8d1-f34b-a18a-9943047905b6':'USA → Canada · Randolph Street'
+};
+const VARIANTS=[
+ {id:'A',label:'A · M1 control (no query)',suffix:'',desc:'Exact working M1 approach: no-referrer iframe in the modal. Control for checking that video still plays when Play is tapped.'},
+ {id:'B',label:'B · autoplay=1',suffix:'?autoplay=1',desc:'Add only an autoplay=1 URL query value. Not verified as a supported Dacast live-player setting.'},
+ {id:'C',label:'C · autoplay=true',suffix:'?autoplay=true',desc:'Compare a boolean-looking autoplay value against B. Not verified as a supported Dacast live-player setting.'},
+ {id:'D',label:'D · autoplay=1 & muted=1',suffix:'?autoplay=1&muted=1',desc:'Test whether requesting muted playback helps with browser autoplay restrictions. Query interpretation is unverified.'},
+ {id:'E',label:'E · autoplay=true & muted=true',suffix:'?autoplay=true&muted=true',desc:'Test boolean-looking autoplay/muted parameters. Query interpretation is unverified.'},
+ {id:'F',label:'F · autoplay=true & mute=true',suffix:'?autoplay=true&mute=true',desc:'Check the alternate mute parameter name while keeping the other settings fixed. Query interpretation is unverified.'}
+];
+const OUTCOMES={
+ untested:'Not tested',
+ auto_muted:'Auto-started muted',
+ auto_sound:'Auto-started with sound',
+ auto_unsure:'Auto-started; sound unknown',
+ tap_required:'Second Play tap required',
+ idle:'Player idle / manual Play failed',
+ blocked:'Content blocked',
+ blank:'Blank or loading',
+ other:'Other'
+};
+const STORE='nexus-dwt-modal-autoplay-v1';
+let stored={};
+try{const data=JSON.parse(sessionStorage.getItem(STORE)||'{}');if(data&&typeof data==='object')stored=data;}catch{}
+const records=stored.records&&typeof stored.records==='object'?stored.records:{};
+let events=[];
+const dialog=$('videoDialog');
+const camera=$('camera'),variant=$('variant'),outcome=$('outcome'),notes=$('notes');
+if(Object.hasOwn(CAMERAS,stored.camera))camera.value=stored.camera;
+for(const t of VARIANTS){
+ const opt=document.createElement('option');
+ opt.value=t.id;opt.textContent=t.label;variant.appendChild(opt);
+}
+if(VARIANTS.some(t=>t.id===stored.variant))variant.value=stored.variant;
+function currentVariant(){return VARIANTS.find(t=>t.id===variant.value)||VARIANTS[0];}
+function originalUrl(){return ROOT+camera.value;}
+function currentUrl(){return originalUrl()+currentVariant().suffix;}
+function record(){return records[camera.value]?.[variant.value]||{};}
+function persist(){
+ try{sessionStorage.setItem(STORE,JSON.stringify({camera:camera.value,variant:variant.value,records}));}catch{}
+}
+function saveFields(){
+ if(!records[camera.value]||typeof records[camera.value]!=='object')records[camera.value]={};
+ records[camera.value][variant.value]={
+  outcome:Object.hasOwn(OUTCOMES,outcome.value)?outcome.value:'untested',
+  notes:notes.value.slice(0,450)
+ };
+ persist();render();
+}
+function loadFields(){
+ const r=record();
+ outcome.value=Object.hasOwn(OUTCOMES,r.outcome)?r.outcome:'untested';
+ notes.value=typeof r.notes==='string'?r.notes.slice(0,450):'';
+ $('explanation').textContent=currentVariant().desc;
+ $('directLink').href=originalUrl();
+ persist();render();
+}
+function log(message){
+ events.push(new Date().toISOString()+' '+message);
+ events=events.slice(-30);
+ render();
+}
+function report(){
+ const lines=[
+  'Nexus DWT Modal Autoplay Lab — manual results',
+  'UTC: '+new Date().toISOString(),
+  'Origin: '+location.origin,
+  'Camera: '+CAMERAS[camera.value],
+  'Goal: video starts on modal open with NO second Play tap',
+  'Iframe setup: M1 referrerpolicy=no-referrer; allow=autoplay; encrypted-media; fullscreen; picture-in-picture; eager',
+  'Test URL query variants are experimental and NOT verified Dacast settings.'
+ ];
+ for(const t of VARIANTS){
+  const r=records[camera.value]?.[t.id]||{};
+  lines.push(t.label+': '+(OUTCOMES[r.outcome]||OUTCOMES.untested)+(r.notes?' | '+r.notes:''));
+ }
+ lines.push('Iframe load events are NOT proof of video playback.','Events:',...(events.length?events:['No events yet.']));
+ return lines.join('\n');
+}
+function render(){
+ const body=$('results');body.replaceChildren();
+ for(const t of VARIANTS){
+  const r=records[camera.value]?.[t.id]||{};
+  const tr=document.createElement('tr'),first=document.createElement('td'),second=document.createElement('td');
+  first.textContent=t.label;second.textContent=OUTCOMES[r.outcome]||OUTCOMES.untested;
+  tr.append(first,second);body.appendChild(tr);
+ }
+ $('report').textContent=report();
+}
+camera.addEventListener('change',()=>{
+ events=[];loadFields();log('Selected '+CAMERAS[camera.value]+'; each camera has separate results.');
+});
+variant.addEventListener('change',()=>loadFields());
+outcome.addEventListener('change',saveFields);
+notes.addEventListener('input',saveFields);
+$('openModal').addEventListener('click',()=>{
+ if(typeof dialog.showModal!=='function'){
+  $('status').textContent='Native modal unavailable on this browser.';
+  log('Native HTML dialog.showModal unavailable.');
+  return;
+ }
+ const id=camera.value,selected=currentVariant(),url=currentUrl();
+ $('playerStage').replaceChildren();
+ $('modalCaption').textContent=CAMERAS[id]+' · '+selected.label;
+ $('videoState').textContent='Opening player. Observe for 5–10 seconds without tapping Play.';
+ $('directLink').href=originalUrl();
+ camera.disabled=true;variant.disabled=true;
+ try{
+  dialog.showModal();
+  const frame=document.createElement('iframe');
+  frame.title=CAMERAS[id]+' DWT camera autoplay '+selected.id;
+  frame.referrerPolicy='no-referrer';
+  frame.allow='autoplay; encrypted-media; fullscreen; picture-in-picture';
+  frame.allowFullscreen=true;
+  frame.loading='eager';
+  frame.addEventListener('load',()=>log(selected.id+': iframe document loaded (NOT playback confirmation).'));
+  frame.addEventListener('error',()=>log(selected.id+': iframe element error (not provider internals).'));
+  frame.src=url;
+  $('playerStage').appendChild(frame);
+  log(selected.id+': modal opened and iframe inserted synchronously after user tap; suffix '+(selected.suffix||'[none]'));
+ }catch(e){
+  camera.disabled=false;variant.disabled=false;
+  if(dialog.open)dialog.close();
+  $('status').textContent='Modal error: '+String(e?.name||'Error');
+  log('Modal error: '+String(e?.name||'Error'));
+ }
+});
+function closeModal(){if(dialog.open)dialog.close();}
+$('closeModal').addEventListener('click',closeModal);
+dialog.addEventListener('close',()=>{
+ $('playerStage').replaceChildren();
+ $('videoState').textContent='Player removed.';
+ camera.disabled=false;variant.disabled=false;
+ log('Modal closed; iframe removed and playback session unloaded.');
+});
+$('directLink').addEventListener('click',()=>log('Original unmodified camera opened externally (not autoplay proof).'));
+$('next').addEventListener('click',()=>{
+ saveFields();
+ variant.selectedIndex=(variant.selectedIndex+1)%VARIANTS.length;
+ loadFields();$('status').textContent='Next permutation selected. Open its modal to test.';
+});
+$('copy').addEventListener('click',async()=>{
+ saveFields();
+ try{await navigator.clipboard.writeText(report());$('status').textContent='Complete report copied. Paste into the Nexus project conversation.';}
+ catch{$('status').textContent='Clipboard unavailable. Select and copy the report displayed below.';}
+});
+$('reset').addEventListener('click',()=>{
+ delete records[camera.value];events=[];
+ loadFields();$('status').textContent='Selected camera results reset.';
+});
+window.addEventListener('error',e=>log('Parent page JS error: '+String(e.message||'unknown').slice(0,140)));
+window.addEventListener('securitypolicyviolation',e=>log('Parent CSP: '+String(e.violatedDirective||'unknown').slice(0,80)));
+loadFields();
+log('Diagnostic ready; no player loaded until Open modal is tapped.');
+})();
+</script>
+</body>
+</html>
