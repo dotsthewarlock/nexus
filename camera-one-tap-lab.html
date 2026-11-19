@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101a25"><title>Nexus DWT · One-tap crop + expand lab</title>
+<style>
+:root{color-scheme:dark;font:16px/1.45 system-ui,sans-serif;background:#101a25;color:#eef4fa}*{box-sizing:border-box}
+body{max-width:730px;margin:auto;padding:16px 14px 60px}h1{font-size:1.55rem;line-height:1.18}h2{font-size:1.1rem;margin:0 0 9px}p{margin:9px 0}a{color:#9ed5ff}
+header{display:flex;justify-content:space-between;align-items:center;gap:8px}.card{padding:14px;margin:14px 0;border:1px solid #486077;border-radius:12px;background:#192b3c}.note{border-left:3px solid #e9c475;padding-left:10px}
+label{display:block;font-weight:600;margin:11px 0 5px}select,input,textarea{font:inherit;background:#102131;color:#fff;border:1px solid #879caf;border-radius:8px;padding:9px;width:100%}input[type=range]{padding:0}
+button{font:inherit;font-weight:650;padding:11px 13px;border:1px solid #78bde9;border-radius:9px;background:#195f98;color:white;cursor:pointer}button:disabled{opacity:.5}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #f9d77d;outline-offset:3px}.secondary{background:#294256;border-color:#869bad}.wide{width:100%;margin:8px 0}.fine{color:#bfd0dd;font-size:.87rem}.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+#tile{position:relative;overflow:hidden;border:2px solid #7ca9cb;border-radius:13px;background:#050b14;touch-action:manipulation;isolation:isolate}
+#tile[hidden],#backdrop[hidden]{display:none}#tile.compact{width:var(--tile-size,96px);height:var(--tile-size,96px);margin:16px auto}
+#tile.expanded{position:fixed;z-index:201;top:50%;left:50%;transform:translate(-50%,-50%);width:min(calc(100vw - 20px),850px);height:auto;aspect-ratio:16/9;max-height:75dvh;border-radius:12px;box-shadow:0 14px 50px #000b}
+#player{position:absolute;border:0;display:block;transform-origin:center center}
+#tile.compact #player{width:640px;height:360px;left:calc(50% + var(--offset-x,0px));top:calc(50% + var(--offset-y,0px));transform:translate(-50%,-50%) scale(var(--zoom,1))}
+#tile.expanded #player{width:100%;height:100%;left:0;top:0;transform:none}
+#backdrop{position:fixed;inset:0;background:#000d;z-index:200}
+#minimize{position:fixed;right:16px;top:16px;z-index:202;display:none}
+#minimize.visible{display:block}
+#state{min-height:2em}pre{background:#091521;color:#e0e9f2;border-radius:8px;padding:11px;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.45 ui-monospace,monospace;max-height:360px;overflow:auto}
+textarea{min-height:68px;resize:vertical}
+</style></head><body>
+<header><strong>Nexus · camera lab</strong><a href="./">Return to Nexus</a></header>
+<h1>One-tap native Play → Expand</h1>
+<p><strong>Experiment:</strong> crop the known-working Dacast iframe around its actual center Play button. A real tap goes directly to Dacast. If focus moves into the iframe, Nexus attempts to expand that <em>same iframe</em> after a short delay.</p>
+<p class="note"><strong>Unverified:</strong> a cropped tile does not automatically make every pixel a Play button. Only the Dacast control's real hit area can play. Focus is not a playback signal, and some browsers won't expose a usable focus transition. No synthetic clicks or cross-origin player access are used.</p>
+<section class="card">
+<h2>1. Configure the crop</h2>
+<label for="camera">Camera</label>
+<select id="camera">
+<option value="4aea1c45-d402-3690-afae-fe635942da82">Canada → USA · Windsor inspection</option>
+<option value="794566d4-a75e-3cd1-6f95-2d60e54f2fdb">USA → Canada · Detroit inspection</option>
+<option value="5408b5c3-f8d1-f34b-a18a-9943047905b6">USA → Canada · Randolph Street</option>
+</select>
+<label for="size">Square tap tile</label>
+<select id="size"><option value="64">64 × 64 px</option><option value="80">80 × 80 px</option><option value="96" selected>96 × 96 px</option><option value="112">112 × 112 px</option><option value="128">128 × 128 px</option></select>
+<label for="zoom">Player zoom: <output id="zoomValue">1.0×</output></label>
+<input id="zoom" type="range" min="0.75" max="2.5" step="0.25" value="1">
+<label for="x">Horizontal crop offset: <output id="xValue">0 px</output></label>
+<input id="x" type="range" min="-100" max="100" step="5" value="0">
+<label for="y">Vertical crop offset: <output id="yValue">0 px</output></label>
+<input id="y" type="range" min="-100" max="100" step="5" value="0">
+<label for="delay">Expand delay after iframe focus</label>
+<select id="delay"><option value="0">Immediate</option><option value="250">250 ms</option><option value="500" selected>500 ms</option><option value="900">900 ms</option><option value="1500">1500 ms</option></select>
+<label for="trigger">Expand trigger</label>
+<select id="trigger"><option value="focus">Iframe focus (experimental automatic expansion)</option><option value="manual">Separate Expand button (control)</option></select>
+<div class="grid"><button id="load">Load cropped Play tile</button><button id="unload" class="secondary" disabled>Unload</button></div>
+<p id="state" class="fine" role="status">No video loaded.</p>
+</section>
+<section class="card">
+<h2>2. Tap the cropped Dacast player</h2>
+<p class="fine">Wait until the Play icon appears in the crop, then tap it. If automatic expansion fails, use the separate Expand button. In expanded mode, use Minimize to return without reloading.</p>
+<div id="tile" class="compact" hidden><iframe id="player" title="DWT live camera cropped native Play control" referrerpolicy="no-referrer" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe></div>
+<div id="backdrop" hidden></div>
+<button id="minimize" class="secondary">Minimize</button>
+<div class="grid"><button id="expand" class="secondary" disabled>Expand manually</button><button id="arm" class="secondary" disabled>Re-arm focus detection</button></div>
+<p class="fine">The video iframe is created once per Load and only resized with CSS. Tapping outside the actual Dacast Play hit target may do nothing; experiment with zoom and offsets until the Play control occupies most of the tile.</p>
+</section>
+<section class="card">
+<h2>3. Record results</h2>
+<label for="playResult">Did the cropped tile start video with one tap?</label>
+<select id="playResult"><option value="untested">Not tested</option><option value="yes">Yes</option><option value="partial">Only part of the tile works</option><option value="no">No</option></select>
+<label for="expandResult">Did it expand automatically after that tap?</label>
+<select id="expandResult"><option value="untested">Not tested</option><option value="yes">Yes</option><option value="no">No, manual Expand needed</option><option value="false">Expanded on unrelated focus / no playback</option></select>
+<label for="continuity">Did playback continue during expansion?</label>
+<select id="continuity"><option value="untested">Not tested</option><option value="yes">Yes</option><option value="no">No</option></select>
+<label for="notes">Notes</label><textarea id="notes" maxlength="600"></textarea>
+<button id="copy" class="wide">Copy diagnostic report</button>
+<p id="copyStatus" role="status" class="fine"></p><pre id="report"></pre>
+</section>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id),ROOT='https://iframe.dacast.com/live/8b2b630f-b7c1-262d-f343-118f510224a0/';
+const names={'4aea1c45-d402-3690-afae-fe635942da82':'Windsor inspection','794566d4-a75e-3cd1-6f95-2d60e54f2fdb':'Detroit inspection','5408b5c3-f8d1-f34b-a18a-9943047905b6':'Randolph Street'};
+let loaded=false,expanded=false,armed=false,loadCount=0,events=[],pending=null,focusCount=0,previousOverflow='';
+const config=['size','zoom','x','y','delay','trigger'],observations=['playResult','expandResult','continuity','notes'];
+function log(s){events.push(new Date().toISOString()+' '+s);events=events.slice(-35);report();}
+function applyCrop(){
+ $('tile').style.setProperty('--tile-size',$('size').value+'px');
+ $('tile').style.setProperty('--zoom',$('zoom').value);
+ $('tile').style.setProperty('--offset-x',$('x').value+'px');
+ $('tile').style.setProperty('--offset-y',$('y').value+'px');
+ $('zoomValue').textContent=$('zoom').value+'×';
+ $('xValue').textContent=$('x').value+' px';
+ $('yValue').textContent=$('y').value+' px';
+}
+function report(){
+ $('report').textContent=[
+ 'Nexus DWT one-tap crop-and-expand diagnostic','UTC: '+new Date().toISOString(),
+ 'Origin: '+location.origin,'Camera: '+names[$('camera').value],
+ ...config.map(id=>id+'='+$(id).value),
+ 'Loaded='+loaded+'; iframe load events='+loadCount+'; focus signals='+focusCount,
+ ...observations.map(id=>id+'='+$(id).value),
+ 'Playback observations are manual; focus and iframe load are NOT proof of playback.',
+ 'Events:',...events
+ ].join('\n');
+}
+function cancelPending(){if(pending!==null){clearTimeout(pending);pending=null;}}
+function expand(next,why){
+ if(!loaded)return;
+ cancelPending();
+ expanded=next;
+ if(next){previousOverflow=document.body.style.overflow;document.body.style.overflow='hidden';}
+ else document.body.style.overflow=previousOverflow;
+ $('tile').classList.toggle('expanded',next);
+ $('tile').classList.toggle('compact',!next);
+ $('backdrop').hidden=!next;
+ $('minimize').classList.toggle('visible',next);
+ $('state').textContent=(next?'Expanded':'Compact')+'; same iframe retained. Observe video manually.';
+ log((next?'Expanded':'Minimized')+' via '+why+'; iframe loads='+loadCount);
+ if(next)$('minimize').focus();
+}
+function focusSignal(source){
+ if(!loaded||expanded||!armed||$('trigger').value!=='focus')return;
+ const active=document.activeElement;
+ if(active!==$('player')){log('Focus candidate ('+source+') ignored: activeElement is not iframe.');return;}
+ armed=false;focusCount++;
+ const delay=Number($('delay').value);
+ log('Iframe focus detected from '+source+'; scheduling expand after '+delay+'ms (NOT playback confirmation).');
+ pending=setTimeout(()=>{pending=null;if(loaded&&!expanded)expand(true,'iframe focus');},delay);
+}
+$('player').addEventListener('focus',()=>focusSignal('iframe focus'));
+window.addEventListener('blur',()=>{
+ if(!loaded||expanded||!armed)return;
+ setTimeout(()=>focusSignal('window blur'),0);
+});
+function unload(){
+ cancelPending();armed=false;
+ if(expanded)expand(false,'unload');
+ $('player').removeAttribute('src');loaded=false;
+ $('tile').hidden=true;$('load').disabled=false;$('unload').disabled=true;
+ $('expand').disabled=true;$('arm').disabled=true;$('camera').disabled=false;
+ $('state').textContent='Player unloaded.';log('Iframe source removed.');
+}
+$('load').addEventListener('click',()=>{
+ if(loaded)return;
+ loadCount=0;focusCount=0;loaded=true;armed=true;
+ $('player').src=ROOT+$('camera').value;
+ $('tile').hidden=false;
+ $('load').disabled=true;$('unload').disabled=false;
+ $('expand').disabled=false;$('arm').disabled=false;$('camera').disabled=true;
+ $('state').textContent='Cropped player loading; wait for Dacast Play.';
+ log('Loaded M1 no-referrer iframe; focus detection armed.');
+});
+$('player').addEventListener('load',()=>{
+ if(!loaded)return;
+ loadCount++;log('Iframe load #'+loadCount+' (NOT playback confirmation).');
+});
+$('unload').addEventListener('click',unload);
+$('expand').addEventListener('click',()=>expand(true,'manual button'));
+$('minimize').addEventListener('click',()=>{expand(false,'minimize button');armed=false;});
+$('arm').addEventListener('click',()=>{armed=true;log('Focus detection re-armed.');});
+document.addEventListener('keydown',e=>{if(expanded&&e.key==='Escape'){e.preventDefault();expand(false,'Escape');armed=false;}});
+for(const id of config)$(id).addEventListener('input',()=>{applyCrop();report();});
+for(const id of observations)$(id).addEventListener(id==='notes'?'input':'change',report);
+$('copy').addEventListener('click',async()=>{
+ try{await navigator.clipboard.writeText($('report').textContent);$('copyStatus').textContent='Report copied.';}
+ catch{$('copyStatus').textContent='Clipboard unavailable; select the report manually.';}
+});
+applyCrop();log('Ready; video not loaded.');
+})();
+</script></body></html>
