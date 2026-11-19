@@ -429,8 +429,160 @@ function syncLargeText(){
  document.documentElement.dataset.largeText=window.innerWidth/rootSize<17?'true':'false';
 }
 
+
+/* M3 route validation: diagnostic-only, hidden in Settings.
+ * Route links are built with the same production NexusRouting.prepare() call.
+ * User-observed results stay local and never become a verified routing claim.
+ */
+const ROUTE_QA_STORAGE_KEY='nexus-route-qa-v1';
+const ROUTE_QA_PLATFORMS=['android','ios','browser'];
+const ROUTE_QA_OUTCOMES=[
+ ['not_tested','Not tested'],
+ ['preview_correct','Route preview uses intended crossing'],
+ ['waypoint_ignored','Waypoint missing or ignored'],
+ ['wrong_crossing','Different crossing selected'],
+ ['cannot_open','Link would not open'],
+ ['navigation_preserved','Navigation retained crossing (observed in person)']
+];
+const ROUTE_QA_FIXTURES={
+ ca:{origin:'Detroit, Michigan, USA',destination:'Windsor, Ontario, Canada'},
+ us:{origin:'Windsor, Ontario, Canada',destination:'Detroit, Michigan, USA'}
+};
+let routeQaRecords=null;
+function routeQaKey(platform,crossing,direction){
+ if(!ROUTE_QA_PLATFORMS.includes(platform)||!IDS.includes(crossing)||!['ca','us'].includes(direction))
+  throw Error('Invalid route QA case');
+ return platform+':'+crossing+':'+direction;
+}
+function routeQaLinks(crossing,direction){
+ const f=ROUTE_QA_FIXTURES[direction];
+ if(!f)throw Error('Invalid sample direction');
+ const plan=window.NexusRouting.prepare({
+  crossing,direction,destination:{address:f.destination,country:direction},vehicle:'passenger'
+ });
+ // Reproduce the production link exactly, plus an optional second link with
+ // a public sample origin to permit off-site preview without using device GPS.
+ const fixed=new URL(plan.url);
+ fixed.searchParams.set('origin',f.origin);
+ return {actual:plan.url,preview:fixed.toString(),origin:f.origin,destination:f.destination,
+  guaranteed:plan.crossingEnforced};
+}
+function loadRouteQa(){
+ if(routeQaRecords)return routeQaRecords;
+ routeQaRecords={};
+ try{
+  const raw=localStorage.getItem(ROUTE_QA_STORAGE_KEY);
+  if(!raw||raw.length>30000)return routeQaRecords;
+  const parsed=JSON.parse(raw);
+  if(!parsed||parsed.version!==1||!parsed.results||typeof parsed.results!=='object')return routeQaRecords;
+  for(const platform of ROUTE_QA_PLATFORMS)for(const id of IDS)for(const dir of ['ca','us']){
+   const k=routeQaKey(platform,id,dir),item=parsed.results[k];
+   if(!item||!ROUTE_QA_OUTCOMES.some(x=>x[0]===item.outcome))continue;
+   routeQaRecords[k]={
+    outcome:item.outcome,
+    note:typeof item.note==='string'?item.note.slice(0,300):'',
+    updated_at:typeof item.updated_at==='string'?item.updated_at:''
+   };
+  }
+ }catch{}
+ return routeQaRecords;
+}
+function saveRouteQa(){
+ try{
+  localStorage.setItem(ROUTE_QA_STORAGE_KEY,JSON.stringify({version:1,results:loadRouteQa()}));
+  $('routeQaFeedback').textContent='Test outcome saved locally in this browser.';
+ }catch{
+  $('routeQaFeedback').textContent='Browser storage is unavailable; results will be lost when this page closes. Export them first.';
+ }
+}
+function renderRouteQa(){
+ if(!$('routeQaDetails').open)return;
+ const platform=$('routeQaPlatform').value;
+ if(!ROUTE_QA_PLATFORMS.includes(platform))return;
+ const existing=loadRouteQa();
+ $('routeQaGrid').innerHTML=IDS.flatMap(id=>['ca','us'].map(dir=>{
+  const key=routeQaKey(platform,id,dir),entry=existing[key]||{outcome:'not_tested',note:''};
+  const link=routeQaLinks(id,dir);
+  const optionHtml=ROUTE_QA_OUTCOMES.map(([value,label])=>
+   '<option value="'+value+'"'+(entry.outcome===value?' selected':'')+'>'+escape(label)+'</option>').join('');
+  const code=id+'-'+dir;
+  return '<section class="route-qa-case" aria-labelledby="routeQaHeading-'+code+'">'+
+   '<h4 id="routeQaHeading-'+code+'">'+escape(NAMES[id])+' · Into '+(dir==='ca'?'Canada':'USA')+'</h4>'+
+   '<p class="route-qa-fixture">Test city pair: '+escape(link.origin)+' → '+escape(link.destination)+'</p>'+
+   '<div class="route-qa-links">'+
+   '<a href="'+escape(link.actual)+'" target="_blank" rel="noopener noreferrer">Nexus-style link</a>'+
+   '<a href="'+escape(link.preview)+'" target="_blank" rel="noopener noreferrer">Fixed-origin preview</a></div>'+
+   '<label for="routeQaOutcome-'+code+'">Observed outcome on selected device</label>'+
+   '<select id="routeQaOutcome-'+code+'" data-routeqa-key="'+key+'" data-routeqa-field="outcome">'+optionHtml+'</select>'+
+   '<label for="routeQaNote-'+code+'">Optional test notes (no private addresses)</label>'+
+   '<textarea id="routeQaNote-'+code+'" data-routeqa-key="'+key+'" data-routeqa-field="note" maxlength="300" rows="2">'+escape(entry.note)+'</textarea>'+
+   '</section>';
+ })).join('');
+ $('routeQaFeedback').textContent='A displayed route preview does not prove that navigation will retain the requested crossing.';
+ $('routeQaReportLabel').hidden=true;
+ $('routeQaReport').hidden=true;
+}
+function routeQaInput(event){
+ const target=event.target,field=target?.dataset?.routeqaField,key=target?.dataset?.routeqaKey;
+ const platform=$('routeQaPlatform').value;
+ const allowed=IDS.some(id=>['ca','us'].some(dir=>key===routeQaKey(platform,id,dir)));
+ if(!allowed||!['outcome','note'].includes(field))return;
+ const records=loadRouteQa(),entry=records[key]||{outcome:'not_tested',note:''};
+ if(field==='outcome'){
+  if(!ROUTE_QA_OUTCOMES.some(x=>x[0]===target.value))return;
+  entry.outcome=target.value;
+ }else entry.note=String(target.value||'').slice(0,300);
+ entry.updated_at=new Date().toISOString();
+ records[key]=entry;
+ saveRouteQa();
+}
+function routeQaReport(){
+ const platform=$('routeQaPlatform').value,items=loadRouteQa();
+ return {
+  schema:'nexus-route-qa-v1',platform,created_at:new Date().toISOString(),
+  status:'Self-reported mobile test observations, not independently verified',
+  cases:IDS.flatMap(id=>['ca','us'].map(dir=>{
+   const entry=items[routeQaKey(platform,id,dir)]||{};
+   return {crossing:id,direction:dir,outcome:entry.outcome||'not_tested',
+    note:entry.note||'',updated_at:entry.updated_at||null};
+  }))
+ };
+}
+function initRouteQa(){
+ $('routeQaDetails').addEventListener('toggle',renderRouteQa);
+ $('routeQaPlatform').addEventListener('change',renderRouteQa);
+ $('routeQaGrid').addEventListener('change',routeQaInput);
+ $('routeQaGrid').addEventListener('input',e=>{
+  if(e.target?.dataset?.routeqaField==='note')routeQaInput(e);
+ });
+ $('routeQaExport').addEventListener('click',()=>{
+  $('routeQaReport').value=JSON.stringify(routeQaReport(),null,2);
+  $('routeQaReportLabel').hidden=false;
+  $('routeQaReport').hidden=false;
+  $('routeQaReport').focus();
+  $('routeQaReport').select?.();
+  $('routeQaFeedback').textContent='Report ready to copy. No automatic upload was performed.';
+ });
+ $('routeQaClear').addEventListener('click',()=>{
+  if(!window.confirm('Clear all route QA results stored in this browser?'))return;
+  routeQaRecords={};
+  try{localStorage.removeItem(ROUTE_QA_STORAGE_KEY)}catch{}
+  renderRouteQa();
+  $('routeQaFeedback').textContent='Local route QA results cleared.';
+ });
+ // Deep link for voluntary testing; normal dashboard remains unchanged.
+ const query=window.location?.search||'';
+ if(typeof URLSearchParams==='function'&&new URLSearchParams(query).get('qa')==='routes'){
+  $('settingsDialog').showModal();
+  $('routeQaDetails').open=true;
+  renderRouteQa();
+  $('routeQaPlatform').focus();
+ }
+}
+
 function init(){
  initDestinations();
+ initRouteQa();
  syncLargeText();
  window.addEventListener('resize',syncLargeText);
  updateLanes();
