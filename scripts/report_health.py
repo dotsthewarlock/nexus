@@ -6,6 +6,11 @@ import json
 import os
 import sys
 
+try:
+    from scripts import source_coverage
+except ImportError:
+    import source_coverage
+
 
 def age_minutes(stamp, now):
     try:
@@ -100,6 +105,14 @@ def main():
     else:
         lines.append(f'Elapsed since previous known published snapshot: {gap} min '
                      f'(warning heuristic: >{threshold:g} min; GitHub schedule is best-effort).')
+    lines.append('')
+    # Per-category source evidence is diagnostic, not a claim of lane support.
+    # This uses only the already-normalized snapshot and cannot refresh data.
+    lines.append('')
+    try:
+        lines.append(source_coverage.markdown(data, now))
+    except (TypeError, ValueError, KeyError, AttributeError):
+        lines.append('### Official inspection-field coverage\n\nUnable to evaluate category coverage from this snapshot.')
     lines.append('')
     lines.append('Observation age is the agency-provided measurement time, not the fetch time. Older reports are not current. Source failure never upgrades cached data.')
     output = '\n'.join(lines) + '\n'
