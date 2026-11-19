@@ -83,6 +83,7 @@ jobs:
           cp camera-navigation-lab.html site/
           cp camera-modal-viability.html site/
           cp camera-modal-autoplay.html site/
+          cp camera-pill-lifecycle.html site/
           cp camera-player-control-lab.html site/
           cp camera-mini-modal-lab.html site/
           cp camera-one-tap-lab.html site/
