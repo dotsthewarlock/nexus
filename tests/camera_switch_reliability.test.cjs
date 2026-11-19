@@ -8,7 +8,7 @@ const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
 assert.equal(scripts.length,1,'single inline diagnostic controller');
 const js=scripts[0][1];new vm.Script(js);
 for(const id of [
- 'strategy','sequence','cameraName','pill','playerHost','reopen','shade',
+ 'strategy','sequence','cameraName','pill','playerHost','reopen',
  'modalBar','minimize','restart','restartModal','manualExpand',
  'launchOutcome','reopenOutcome','notes','next','restartSequence',
  'matrix','report','copy','clearResults','external'
@@ -42,7 +42,8 @@ assert.ok(html.includes('scale(6)'),'same 6x native-play crop');
 assert.ok(!html.includes('5408b5c3-f8d1-f34b-a18a-9943047905b6'),'Randolph camera must be excluded');
 assert.ok(!html.includes('Randolph'),'UI must not mention camera C');
 assert.ok(!html.includes('isolation:isolate'),'modal host must not be trapped below backdrop');
-assert.ok(html.includes('z-index:1003')&&html.includes('z-index:1000'),'player must layer above backdrop');
+assert.ok(html.includes('z-index:1003')&&html.includes('z-index:1004'),'player and modal controls must have distinct overlay layers');
+assert.ok(!html.includes('id="shade"')&&!html.includes('#shade')&&!js.includes("$('shade')"),'no backdrop or shade allowed in this diagnostic');
 assert.ok(html.includes('value="stuck_paused"'),'record hard-paused playback failures');
 assert.ok(js.includes("const STORE='nexus-dwt-switch-reliability-v2';"),'avoid mapping prior C results to B');
 assert.ok(html.includes("180);"),'same brief gesture-settling period');
