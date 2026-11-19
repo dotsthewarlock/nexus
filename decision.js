@@ -169,6 +169,77 @@
     }
     return !uncertain&&hasEvaluated?'outside_all_published_windows':'unknown';
   }
+  // Published CBSA Canada-bound NEXUS access schedule; not a live lane status.
+  // Merge overlapping daily windows so earlier partial lane closures do not
+  // misleadingly imply all NEXUS access ends at that time.
+  function nextNexusSchedule(data,id,direction,now=Date.now()) {
+    const unknown=reason=>({kind:'unknown',reason,next:null,source:'CBSA'});
+    if(direction!=='ca')return unknown('No verified US-bound NEXUS schedule in current sources');
+    const source=data?.sources?.cbsa_hours;
+    if(source?.status!=='ok'||age(source.retrieved_at,now)>2880||
+      age(data?.generated_at,now)>SNAPSHOT_RECENT_AGE)
+      return unknown('Published CBSA schedule is missing or outdated');
+    const groups=data?.supplemental?.cbsa_nexus_hours?.[id]?.groups;
+    if(!Array.isArray(groups)||!groups.length)return unknown('No CBSA NEXUS schedule for this crossing');
+    const local=localDay(now);
+    if(!local)return unknown('Local date unavailable');
+    const y=Number(local.year),m=Number(local.month)-1,d=Number(local.day);
+    const intervals=[],uncertainDays=new Set();
+    let hasSchedule=false;
+    for(let offset=-1;offset<=8;offset++) {
+      const civil=Date.UTC(y,m,d+offset,17,0);
+      const kind=dayKind(localDay(civil));
+      for(const group of groups)for(const row of (group.rows||[])) {
+        const label=row.label||group.label||'';
+        const applies=rowApplies(label,kind);
+        if(applies===null) { uncertainDays.add(offset);continue; }
+        if(!applies)continue;
+        let start,end;
+        if(/24\s*h(?:ours?|rs?)?\b/i.test(String(row.custom||''))){start=0;end=1440;}
+        else {
+          start=toMinutes(row.start);end=toMinutes(row.end);
+          if(start===null||end===null||start>=1440||end>1440){
+            uncertainDays.add(offset);continue;
+          }
+          if(end===0)end=1440;
+          if(end<=start)end+=1440;
+        }
+        hasSchedule=true;
+        intervals.push({start:offset*1440+start,end:offset*1440+end});
+      }
+    }
+    if(!hasSchedule)return unknown('Published CBSA hours cannot be interpreted');
+    intervals.sort((a,b)=>a.start-b.start||a.end-b.end);
+    const merged=[];
+    for(const w of intervals){
+      const last=merged[merged.length-1];
+      if(last&&last.end>=w.start)last.end=Math.max(last.end,w.end);
+      else merged.push({...w});
+    }
+    const minute=local.clock;
+    const present=merged.find(w=>w.start<=minute&&minute<w.end);
+    const candidate=present
+      ? {kind:'within',event:'closes',at:present.end}
+      : {kind:'outside',event:'opens',at:merged.find(w=>w.start>minute)?.start??null};
+    if(candidate.at===null||candidate.at>8*1440)
+      return {kind:candidate.kind,next:null,reason:'No next schedule change established within the published window',source:'CBSA'};
+    // Do not assert next change if an ambiguous schedule row could change the
+    // interval before that point (notably holidays/unsupported day labels).
+    for(let day=0;day<=Math.floor(candidate.at/1440);day++){
+      if(uncertainDays.has(day))return unknown('Published hours have ambiguous day or holiday rules');
+    }
+    const dayOffset=Math.floor(candidate.at/1440);
+    const minuteOfDay=((candidate.at%1440)+1440)%1440;
+    const civil=Date.UTC(y,m,d+dayOffset,12,0);
+    const clockText=new Intl.DateTimeFormat('en-CA',{hour:'numeric',minute:'2-digit',
+      hour12:true,timeZone:'UTC'}).format(new Date(Date.UTC(2026,0,1,
+        Math.floor(minuteOfDay/60),minuteOfDay%60)));
+    const dateText=dayOffset===0?'Today':dayOffset===1?'Tomorrow':
+      new Intl.DateTimeFormat('en-CA',{weekday:'short',month:'short',day:'numeric',
+        timeZone:'UTC'}).format(new Date(civil));
+    return {kind:candidate.kind,event:candidate.event,next:dateText+' '+clockText+' ET',
+      reason:null,source:'CBSA'};
+  }
   function evaluate(data,direction,preferred,nexus,mode='conservative',now=Date.now()) {
     const id=IDS.includes(preferred)?preferred:'tunnel';
     const crossings=IDS.map(k=>crossing(data,direction,k,nexus,now));
@@ -240,6 +311,6 @@
     return null;
   }
   return {IDS,NAMES,age,reading,usable,recommendationReady,noticeKind,crossing,evaluate,publishedNexusWindow,
-    countrySide,MAX_OPERATOR_AGE,READING_CURRENT_AGE,READING_AGING_AGE,READING_STALE_AGE,READING_EXPIRE_AGE,SNAPSHOT_RECENT_AGE,
+    countrySide,nextNexusSchedule,MAX_OPERATOR_AGE,READING_CURRENT_AGE,READING_AGING_AGE,READING_STALE_AGE,READING_EXPIRE_AGE,SNAPSHOT_RECENT_AGE,
     RECOMMEND_MAX_AGE,RECOMMEND_MAX_OBSERVATION_GAP};
 });
