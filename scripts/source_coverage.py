@@ -10,6 +10,7 @@ The report never reads API credentials, makes network requests or changes JSON.
 """
 from datetime import datetime, timezone
 import math
+import re
 
 CROSSINGS = ("ambassador", "tunnel", "gordie")
 CROSSING_LABELS = {
@@ -49,10 +50,9 @@ def age_minutes(stamp, now):
 
 
 def known_port_closed(port):
-    return isinstance(port, dict) and isinstance(port.get("port_status"), str) and (
-        port["port_status"].strip().lower() == "closed" or
-        port["port_status"].strip().lower().startswith("temporarily closed")
-    )
+    return (isinstance(port, dict) and isinstance(port.get("port_status"), str)
+            and bool(re.match(r"^\s*(temporarily\s+)?closed\b",
+                              port["port_status"], flags=re.IGNORECASE)))
 
 
 def cell(data, direction, crossing, category, now):
