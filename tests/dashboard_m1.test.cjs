@@ -8,8 +8,8 @@ new vm.Script(js);
 for(const id of ['crossingRows','caHeading','usHeading','sortToggle','sortMenu','vehicleSelect','laneSelect','themeToggle','settingsDialog','detailDialog','detailCa','detailUs','detailProvenance','detailAlert','diagnosticBody','notices','sourceDetails'])
  assert.ok(html.includes('id="'+id+'"'),'missing dashboard control '+id);
 for(const label of ['Canada','USA','Passenger','Commercial'])assert.ok(html.includes(label));
-assert.match(html,/dashboard\.js\?v=m3a/);
-assert.match(html,/dashboard\.css\?v=m3a/);
+assert.match(html,/dashboard\.js\?v=m3b/);
+assert.match(html,/dashboard\.css\?v=m3b/);
 assert.match(js,/const IDS=\['ambassador','tunnel','gordie'\]/);
 assert.match(js,/D\.reading\(raw,store\.data,Date\.now\(\)\)/);
 assert.match(js,/good\(x\)!==good\(y\)/);
@@ -25,7 +25,7 @@ assert.match(css,/data-large-text="true"/,'large text must reflow table and cont
 assert.match(js,/function syncLargeText\(\)/,'font scaling must update responsive layout');
 assert.match(js,/window\.addEventListener\('resize',syncLargeText\)/,'font scaling must update on resize');
 assert.match(css,/\.settings-screen\{position:fixed/);
-assert.match(fs.readFileSync('.github/workflows/publish.yml','utf8'),/cp dashboard\.css dashboard\.js destinations\.js classic-board\.html site\//);
+assert.match(fs.readFileSync('.github/workflows/publish.yml','utf8'),/cp dashboard\.css dashboard\.js destinations\.js routing\.js classic-board\.html site\//);
 assert.match(fs.readFileSync('classic-board.html','utf8'),/id="cameraDialog"/);
 
 const injected=js.replace(/\ninit\(\);\n\}\)\(\);\s*$/,"\nwindow.__m1Test={store,classify,sortIds,cell,render,openDetail};\n})();");

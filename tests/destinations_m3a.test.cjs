@@ -3,6 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const Dest=require('../destinations.js');
+const Routing=require('../routing.js');
 const D=require('../decision.js');
 const dashboard=fs.readFileSync('dashboard.js','utf8');
 const html=fs.readFileSync('index.html','utf8');
@@ -10,15 +11,16 @@ const css=fs.readFileSync('dashboard.css','utf8');
 const workflow=fs.readFileSync('.github/workflows/publish.yml','utf8');
 new vm.Script(dashboard);
 assert.match(html,/destinations\.js\?v=m3a/);
-assert.match(html,/dashboard\.js\?v=m3a/);
+assert.match(html,/dashboard\.js\?v=m3b/);
+assert.match(html,/routing\.js\?v=m3b/);
 for(const id of ['detailMain','destinationPicker','chooseDestination','changeDestination',
  'openDirections','detailDestination','destinationPickerSaved','oneTimeDestinationForm',
  'oneTimeAddress','destinationForm','destinationKind','destinationLabel','destinationAddress',
  'destinationCountry','destinationEditingId','savedDestinations','removeAllConfirm','openDestinationSettings'])
  assert.ok(html.includes('id="'+id+'"'),'missing M3a surface '+id);
-assert.match(workflow,/cp dashboard\.css dashboard\.js destinations\.js classic-board\.html site\//);
+assert.match(workflow,/cp dashboard\.css dashboard\.js destinations\.js routing\.js classic-board\.html site\//);
 assert.match(css,/\[hidden\]\{display:none!important\}/);
-assert.doesNotMatch(dashboard,/maps\.google\.|maps\.apple\.|window\.open\(/,'M3a must not launch unverified maps');
+assert.doesNotMatch(dashboard,/window\.open\(/,'Open directions uses a standard user-clicked external anchor, not popup scripting');
 
 const memory=()=>{const values={};return {
  getItem:k=>values[k]??null,
@@ -74,13 +76,13 @@ function node(id){
   id,value:'',dataset:{},textContent:'',innerHTML:'',hidden:false,open:false,disabled:false,
   listeners:{},addEventListener(t,fn){this.listeners[t]=fn},
   focus(){this.focused=true},scrollIntoView(){},showModal(){this.open=true},close(){this.open=false},
-  setAttribute(n,v){this[n]=v},getAttribute(n){return this[n]},querySelector(){return null}
+  setAttribute(n,v){this[n]=v},getAttribute(n){return this[n]},removeAttribute(n){delete this[n]},querySelector(){return null}
  });
  return nodes.get(id);
 }
 const uiStorage=memory();
 const doc={getElementById:node,querySelectorAll(){return[]},hidden:false};
-const ctx={window:{NexusDecision:D,NexusDestinations:Dest},document:doc,localStorage:uiStorage,
+const ctx={window:{NexusDecision:D,NexusDestinations:Dest,NexusRouting:Routing},document:doc,localStorage:uiStorage,
  Date,Math,Number,Intl,console};
 vm.runInNewContext(injected,ctx,{filename:'dashboard.js'});
 const api=ctx.window.__m3aTest;
@@ -99,7 +101,9 @@ assert.equal(uiRepo.defaultFor('ca').id,home.id,'default is explicitly set');
 api.openDetail('tunnel','ca');
 assert.equal(node('detailDialog').open,true);
 assert.match(node('detailDestination').textContent,/Home.*101 Example St.*your default/);
-assert.equal(node('openDirections').disabled,true,'maps must remain disabled until validated');
+assert.equal(node('openDirections').hidden,false,'preview link is enabled for a compatible passenger destination');
+assert.match(node('openDirections').href,/^https:\/\/www\.google\.com\/maps\/dir\/\?api=1/);
+assert.match(node('routeNotValidated').textContent,/Confirm the route crosses at Detroit–Windsor Tunnel/);
 assert.equal(node('chooseDestination').hidden,true);
 assert.equal(node('changeDestination').hidden,false);
 api.openDestinationPicker();
@@ -134,4 +138,4 @@ uiRepo.remove(home.id);
 assert.equal(uiRepo.defaultFor('ca'),null);
 api.openDetail('tunnel','ca');
 assert.match(node('detailDestination').textContent,/No destination selected/,'deleted selected destination must not remain active');
-console.log('M3a tests passed: local CRUD/defaults, country filtering, storage failure, one-time privacy, disabled routes and HTML escaping.');
+console.log('M3a/M3b tests passed: local CRUD/defaults, country filtering, storage failure, one-time privacy, preview routes and HTML escaping.');
