@@ -7,7 +7,7 @@ const SHORT_NAMES={ambassador:'Ambassador',tunnel:'Tunnel',gordie:'Gordie Howe'}
 const $=id=>document.getElementById(id);
 const key='nexus-m1-sort';
 const categories={passenger:[['regular','Regular'],['nexus','NEXUS'],['ready','Ready']],commercial:[['regular','Regular'],['fast','FAST']]};
-const store={data:null,sort:'fixed',vehicle:'passenger',lane:'regular',selected:null,direction:'ca',lastFetch:null,error:null,busy:false};
+const store={data:null,sort:'fixed',vehicle:'passenger',lane:'regular',selected:null,direction:'ca',lastFetch:null,error:null,busy:false,noticesExpanded:false};
 try{const v=localStorage.getItem(key);if(['fixed','ca','us'].includes(v))store.sort=v}catch{}
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const stamp=s=>s&&Number.isFinite(Date.parse(s))?new Date(s).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'}):'Unavailable';
@@ -16,11 +16,16 @@ const primary=dir=>dir==='ca'?'cbsa':'cbp';
 const rawKey=()=>store.lane==='regular'?(store.vehicle==='passenger'?'standard':'commercial'):store.lane;
 const source=dir=>store.data?.sources?.[primary(dir)];
 function classify(id,dir){
- const src=source(dir),raw=store.data?.directions?.[dir]?.[id]?.[rawKey()];
+ const src=source(dir),port=store.data?.directions?.[dir]?.[id],raw=port?.[rawKey()];
  const srcAge=age(src?.retrieved_at),snapAge=age(store.data?.generated_at);
  const goodSource=src?.status==='ok'&&srcAge<=20&&snapAge<=20;
  const retained=src?.status==='error'&&src?.retained_previous===true;
  const unavailable=reason=>({kind:'unavailable',text:'--',minutes:null,raw,src,reason});
+ // A recent agency-reported full-port closure overrides an otherwise valid
+ // numeric booth reading, but is not proof of live physical gate operation.
+ if(goodSource&&/^\s*(temporarily\s+)?closed\b/i.test(port?.port_status||''))
+   return {kind:'closed',text:'Closed',minutes:null,raw,src,
+    reason:'Recent official source reports this direction closed. Check the operator before travel.'};
  if(store.vehicle==='passenger'&&store.lane==='nexus'&&dir==='ca')
    return {kind:'unpublished',text:'--',minutes:null,raw,src,reason:'CBSA does not publish separate Canada-bound NEXUS inspection waits. Published hours are not live lane operation.'};
  if(!raw)return unavailable('No category-specific official wait is published for this crossing and direction.');
@@ -57,6 +62,58 @@ function cell(id,dir){
    v.kind==='unpublished'?'Not published':v.kind==='unavailable'?'Unavailable':null;
  return '<div class="wait-wrap" role="cell"><button class="wait-cell" type="button" data-crossing="'+id+'" data-direction="'+dir+'" aria-label="'+escape(NAMES[id]+', into '+(dir==='ca'?'Canada':'USA')+', '+v.text+', '+(sub||'recent report'))+'"><span class="wait-value" data-kind="'+v.kind+'">'+escape(v.text)+'</span>'+laneCount+(sub?'<span class="cell-note">'+escape(sub)+'</span>':'')+'</button></div>';
 }
+/* Selected D2-07: show all material agency notices without a permanent Alerts tab.
+ * This uses recent source retrieval + snapshot timestamps, not an invented
+ * agency observation time. Notice wording must remain "source reports".
+ * NEXUS schedule countdown thresholds remain Proposed and are not enabled.
+ */
+function collectNotices(data,now=Date.now()){
+ if(!data||D.age(data.generated_at,now)>20)return [];
+ const notices=[];
+ for(const id of IDS)for(const dir of ['ca','us']){
+  const agency=dir==='ca'?'CBSA':'CBP',src=data.sources?.[dir==='ca'?'cbsa':'cbp'];
+  const port=data.directions?.[dir]?.[id];
+  if(!port||src?.status!=='ok'||D.age(src.retrieved_at,now)>20)continue;
+  const prefix=NAMES[id]+' · '+(dir==='ca'?'Canada':'USA');
+  if(/^\s*(temporarily\s+)?closed\b/i.test(port.port_status||'')){
+   notices.push({id,dir,type:'closure',priority:0,
+    text:prefix+' · '+agency+' reports port closed'});
+  }else if(D.noticeKind(port.notice)==='operational'){
+   notices.push({id,dir,type:'advisory',priority:1,
+    text:prefix+' · '+agency+' operational advisory'});
+  }
+ }
+ notices.sort((a,b)=>a.priority-b.priority||
+  IDS.indexOf(a.id)-IDS.indexOf(b.id)||
+  (a.dir===b.dir?0:a.dir==='ca'?-1:1));
+ return notices;
+}
+function renderNotices(){
+ const all=collectNotices(store.data);
+ const first=all[0]||null;
+ $('notices').hidden=!first;
+ if(!first){
+  store.noticesExpanded=false;
+  $('noticeText').textContent='';
+  $('noticesMore').hidden=true;
+  $('noticesList').hidden=true;
+  $('noticesList').innerHTML='';
+  return;
+ }
+ $('noticeText').textContent=first.text;
+ $('noticeOpen').dataset.crossing=first.id;
+ $('noticeOpen').dataset.direction=first.dir;
+ const remaining=all.slice(1);
+ const more=$('noticesMore');
+ more.hidden=!remaining.length;
+ more.textContent=(store.noticesExpanded?'Hide':'Show')+' '+remaining.length+' more '+(remaining.length===1?'notice':'notices');
+ more.setAttribute('aria-expanded',String(store.noticesExpanded&&!!remaining.length));
+ $('noticesList').hidden=!store.noticesExpanded||!remaining.length;
+ $('noticesList').innerHTML=remaining.length&&store.noticesExpanded?
+  remaining.map(n=>'<button type="button" class="notice-list-button" data-crossing="'+n.id+
+   '" data-direction="'+n.dir+'">'+escape(n.text)+' <span aria-hidden="true">›</span></button>').join('')
+  :'';
+}
 function render(){
  $('caHeading').textContent='Canada'+(store.sort==='ca'?' ↓':'');
  $('usHeading').textContent='USA'+(store.sort==='us'?' ↓':'');
@@ -84,20 +141,7 @@ function render(){
    (missingCount?' · '+missingCount+' unavailable':'');
  $('summary').textContent=store.error?freshness+' · '+store.error:freshness;
  $('sourceDetails').setAttribute('aria-label','Official source freshness: '+freshness+'. Open diagnostics');
- const notices=[];
- for(const id of IDS)for(const dir of ['ca','us']){
-  const p=store.data?.directions?.[dir]?.[id],src=source(dir);
-  if(src?.status!=='ok'||age(src.retrieved_at)>20||age(store.data?.generated_at)>20)continue;
-  if(p?.port_status&&/^\s*(temporarily\s+)?closed\b/i.test(p.port_status))
-    notices.push({id,dir,text:NAMES[id]+' · '+(dir==='ca'?'Canada':'USA')+' port reported closed'});
-  else if(p?.notice&&D.noticeKind(p.notice)==='operational')
-    notices.push({id,dir,text:NAMES[id]+' · '+(dir==='ca'?'Canada':'USA')+' advisory'});
- }
- store.notice=notices[0]||null;
- $('notices').hidden=!store.notice;
- $('noticeText').textContent=store.notice?.text||'';
- $('noticeOpen').dataset.crossing=store.notice?.id||'';
- $('noticeOpen').dataset.direction=store.notice?.dir||'';
+ renderNotices();
 
  renderDiagnostics();
  if($('detailDialog').open&&store.selected)renderDetail();
@@ -334,7 +378,14 @@ function renderDetail(){
  $('detailProvenance').innerHTML='<p>Official source: '+escape(dir==='ca'?'CBSA':'CBP')+'</p><p>Source status: '+escape(v.src?.status||'unavailable')+'</p><p>Observation: '+escape(stamp(v.raw?.observation_at))+'</p><p>Retrieved: '+escape(stamp(v.src?.retrieved_at))+'</p><p>Snapshot published: '+escape(stamp(store.data?.generated_at))+'</p>';
  const sched=dir==='ca'&&store.vehicle==='passenger'&&store.lane==='nexus'&&D.nextNexusSchedule?D.nextNexusSchedule(store.data,id,'ca',Date.now()):null;
  $('detailSchedule').hidden=!sched;
- if(sched)$('detailSchedule').textContent='Published NEXUS schedule: '+sched.kind+(sched.next?' · next '+sched.next:'')+'. This does not confirm a live lane.';
+ if(sched){
+  const event=sched.event==='closes'?'scheduled closing':sched.event==='opens'?'scheduled opening':'next transition';
+  const description=sched.kind==='unknown'
+   ?'Canada-bound NEXUS hours are unavailable or ambiguous in the published CBSA schedule.'
+   :'CBSA published Canada-bound NEXUS hours: '+(sched.kind==='within'?'within a possible service window':'outside published service windows')+
+     (sched.next?' · next '+event+' '+sched.next+'.':'.');
+  $('detailSchedule').textContent=description+' Published hours are not proof of live lane operation; exceptions may apply.';
+ }
  $('cameraViewer').href='./classic-board.html';
  renderDestinationAction();
 }
@@ -402,6 +453,8 @@ function init(){
  $('laneSelect').addEventListener('change',e=>{store.lane=e.target.value;render()});
  $('crossingRows').addEventListener('click',e=>{const b=e.target.closest('[data-crossing]');if(b)openDetail(b.dataset.crossing,b.dataset.direction||'ca')});
  $('noticeOpen').addEventListener('click',e=>{const {crossing:id,direction:dir}=e.currentTarget.dataset;if(id)openDetail(id,dir||'ca')});
+ $('noticesMore').addEventListener('click',()=>{store.noticesExpanded=!store.noticesExpanded;renderNotices()});
+ $('noticesList').addEventListener('click',e=>{const b=e.target.closest('button[data-crossing][data-direction]');if(b)openDetail(b.dataset.crossing,b.dataset.direction)});
  $('sourceDetails').addEventListener('click',e=>{store.settingsTrigger=e.currentTarget;$('settingsDialog').showModal();$('settingsTitle').focus()});
  $('settingsOpen').addEventListener('click',e=>{store.settingsTrigger=e.currentTarget;$('settingsDialog').showModal();$('settingsTitle').focus()});
  $('detailClose').addEventListener('click',()=>closeDialog('detailDialog'));
