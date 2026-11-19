@@ -14,7 +14,7 @@ for(const id of [
  'cameraZoomSurface','cameraZoomControls','cameraZoomHint'
 ]) assert.ok(html.includes('id="'+id+'"'),'missing modal UI '+id);
 for(const scale of [1,2,3,4]) assert.ok(html.includes('data-scale="'+scale+'"'));
-assert.ok(html.includes('board.js?v=board5')&&html.includes('board.css?v=board5'));
+assert.ok(html.includes('board.js?v=board6')&&html.includes('board.css?v=board6'));
 assert.ok(css.includes('touch-action: none')&&css.includes('.camera-metrics'));
 assert.ok(html.includes('id="cameraDetails"'),'source and schedule details must collapse');
 assert.ok(html.includes('id="cameraSourceDetails"'));
@@ -159,7 +159,7 @@ api.setDirection('ca');api.openCamera('tunnel');
 assert.equal(dialog.open,true);
 assert.equal(el('cameraZoomSurface').hidden,true);
 assert.match(el('cameraNexusSchedule').textContent,/published NEXUS hours/i);
-assert.equal(el('cameraNexusWait').textContent,'—','CBSA does not report NEXUS waits');
+assert.equal(el('cameraNexusWait').textContent,'Not published','CBSA does not report NEXUS waits');
 let prevented=false;
 dialog.emit('cancel',{preventDefault(){prevented=true}});
 assert.equal(prevented,true);

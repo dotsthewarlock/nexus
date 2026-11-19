@@ -26,7 +26,8 @@ assert.ok(js.includes("if(raw.status==='closed')")||js.includes("raw.status==='c
 assert.ok(js.includes('lastFetch')&&js.includes('renderDiagnostics()'));
 assert.ok(js.includes('removeAttribute(\'src\')'),'camera must unload on close');
 assert.ok(css.includes('grid-template-columns')&&css.includes('@media (max-width: 720px)'));
-assert.ok(html.includes('board.js?v=board5')&&html.includes('board.css?v=board5'));
+assert.ok(html.includes('board.js?v=board6')&&html.includes('board.css?v=board6'));
+assert.ok(!html.includes('cameraNexusWait">—')&&!html.includes('cameraRegularWait">—'));
 assert.ok(workflow.includes('cp board.css board.js legacy.html site/'), 'board and legacy page must be published');
 assert.ok(workflow.includes('cp index.html styles.css app.js decision.js camera-diagnostics.html site/'), 'original camera scripts must remain deployed');
 console.log('Border-status board static checks passed: direction, three rows, lanes, unavailable semantics, cameras, deployment.');
@@ -99,56 +100,75 @@ assert.ok(!html.includes('board-footer'),'remove redundant persistent legend');
 assert.equal((ui.match(/data-camera="gordie"/g)||[]).length,1);
 assert.ok(/data-camera="gordie"[^>]*disabled/.test(ui),'GH camera disabled');
 
-// Do not promote a historical observation even if the latest JSON was just published.
+// 20-minute boundary means historical, not a broken-looking placeholder.
 let old=api.entry(lane(0,21,2),'regular');
-assert.equal(old.display,'—','old zero is not No Delay');
-assert.match(old.status,/^Last update /,'historical report must show agency clock');
+assert.equal(old.display,'0','historic zero remains numeric but is no longer No Delay');
+assert.equal(old.unit,'min');
+assert.match(old.status,/^Reported 21m ago/);
 assert.equal(old.historical,true);
 assert.match(old.lanes,/last reported/);
+assert.equal(api.entry(lane(6,20,2),'regular').display,'6','20-minute boundary is historical');
+assert.equal(api.entry(lane(6,20,2),'regular').historical,true);
+assert.equal(api.entry(lane(6,19,2),'regular').display,'6','19-minute observation remains current');
+assert.equal(api.entry(lane(6,19,2),'regular').historical,false);
 api.render();
-assert.match(node('crossingRows').innerHTML,/No Delay/,'other fresh readings stay visible');
-assert.equal(api.entry(lane(6,20,2),'regular').display,'—','20-minute boundary is not current');
-assert.equal(api.entry(lane(6,19,2),'regular').display,'6','19-minute observation still visible');
+assert.match(node('crossingRows').innerHTML,/No Delay/);
 
-// Source retrieval and site publication must ALSO be recent.
+// A source/snapshot check older than 20 minutes cannot upgrade an observation.
+// Valid last-known reports remain marked as historical until expiry.
 data.sources.cbp.retrieved_at=stamp(25);api.setData(data);
-assert.equal(api.entry(lane(6,1),'regular').display,'—','overdue source cannot display current wait');
+let olderFetch=api.entry(lane(6,1),'regular');
+assert.equal(olderFetch.display,'6');
+assert.equal(olderFetch.historical,true);
 data.sources.cbp.retrieved_at=stamp(0);
 data.generated_at=stamp(25);api.setData(data);
-assert.equal(api.entry(lane(6,1),'regular').display,'—','overdue snapshot cannot display current wait');
+assert.equal(api.entry(lane(6,1),'regular').display,'6','older snapshot becomes historical');
+assert.equal(api.entry(lane(6,1),'regular').historical,true);
 data.generated_at=stamp(0);
-data.sources.cbp.status='error';api.setData(data);
-assert.equal(api.entry(lane(6,1),'regular').display,'—','failed source cannot display live wait');
-data.sources.cbp.status='ok';api.setData(data);
 
-// CBP closed is only current when dated and fresh; absent timestamps are not proof.
+// Errors without retained-last-success provenance cannot display numeric waits.
+data.sources.cbp.status='error';api.setData(data);
+assert.equal(api.entry(lane(6,1),'regular').display,'Unavailable');
+data.sources.cbp.status='error';
+data.sources.cbp.retained_previous=true;
+data.sources.cbp.last_success_at=stamp(25);api.setData(data);
+const retained=api.entry(lane(6,1),'regular');
+assert.equal(retained.display,'6');
+assert.equal(retained.historical,true);
+data.sources.cbp.status='ok';delete data.sources.cbp.retained_previous;
+delete data.sources.cbp.last_success_at;api.setData(data);
+
+// Live closure is distinct from a historical / undated closure.
 const closure={status:'closed',observation_at:stamp(6),lanes_open:null};
 assert.equal(api.entry(closure,'nexus').display,'Closed');
-assert.equal(api.entry({...closure,observation_at:stamp(30)},'nexus').display,'—');
-assert.equal(api.entry({...closure,observation_at:null},'nexus').display,'—');
+assert.equal(api.entry({...closure,observation_at:stamp(30)},'nexus').display,'Closure unverified');
+assert.equal(api.entry({...closure,observation_at:null},'nexus').display,'Closure unverified');
 
-// Canada-bound NEXUS is not supplied; do not borrow Tunnel operator counts.
+// Canada-bound NEXUS wait/count are unsupported, not broken or accidentally zero.
 api.setDirection('ca');
-let caNexus=api.entry(lane(0,1,3),'nexus');
-assert.equal(caNexus.display,'—');
-assert.equal(caNexus.lanes,'Lanes not reported');
-const caUi=node('crossingRows').innerHTML;
-assert.ok(caUi.includes('Not reported by CBSA'));
-
-// Undated or stale closure stays visible as a caution, not a proven live closure.
+const caNexus=api.entry(lane(0,1,3),'nexus');
+assert.equal(caNexus.display,'Not published');
+assert.equal(caNexus.lanes,'Lanes not published');
+assert.ok(node('crossingRows').innerHTML.includes('Not published'));
 api.setDirection('us');
+
+// Undated source values and fully expired reports must never show numbers.
 data.directions.us.ambassador.nexus={status:'closed',lanes_open:null,observation_at:null};
 api.setData(data);
-const undated=api.entry(data.directions.us.ambassador.nexus,'nexus');
-assert.equal(undated.display,'—','undated closure must not appear live');
-assert.match(undated.status,/Closure reported.*time missing/);
-api.render();
-assert.match(node('crossingRows').innerHTML,/Closure reported/);
+assert.equal(api.entry(data.directions.us.ambassador.nexus,'nexus').display,'Closure unverified');
+assert.match(api.entry(data.directions.us.ambassador.nexus,'nexus').status,/Report time unknown/);
 data.directions.us.ambassador.standard=lane(0,26,2);
-api.setData(data);
-api.render();
-assert.match(node('crossingRows').innerHTML,/2 lanes \(last report\)/,'older lane count must be plainly historical');
-assert.match(node('crossingRows').innerHTML,/Last update /,'stale wait should show agency time');
+api.setData(data);api.render();
+assert.match(node('crossingRows').innerHTML,/2 lanes \(last report\)/);
+assert.match(node('crossingRows').innerHTML,/Reported 26m ago/);
+assert.doesNotMatch(node('crossingRows').innerHTML,/>—</,'never render dash placeholders');
+const expired=api.entry(lane(5,125,2),'regular');
+assert.equal(expired.display,'Unavailable');
+assert.match(expired.status,/Last report/);
+assert.equal(expired.lanes,'Lanes not reported');
+assert.equal(api.entry({status:'reported',minutes:8,lanes_open:2},'regular').display,'Unavailable');
+assert.equal(api.entry(null,'regular').display,'Not reported');
+assert.equal(api.entry({status:'not_applicable',observation_at:stamp(1)},'regular').display,'Not applicable');
 
 // The compact status shows last successful *official* retrieval, not when the
 // browser downloaded GitHub's JSON or when the agency measured a wait.
@@ -166,8 +186,8 @@ assert.match(node('diagnosticBody').innerHTML,/Browser downloaded snapshot/);
 data.directions.us.tunnel.standard=lane(12,135,2);
 api.setData(data);api.render();
 assert.equal(node('statusDot').dataset.state,'warn');
-assert.match(node('summary').textContent,/1 older agency report/);
-assert.match(node('crossingRows').innerHTML,/Official report 2h/);
+assert.match(node('summary').textContent,/Older report/);
+assert.match(node('crossingRows').innerHTML,/Report 2h/);
 assert.equal((node('crossingRows').innerHTML.match(/crossing-report-warning/g)||[]).length,1);
 
 // CBSA has its own direction and its unpublished NEXUS fields never trigger
@@ -182,7 +202,7 @@ data.sources.cbp.last_success_at=stamp(48);
 data.sources.cbp.retrieved_at=stamp(48);
 api.setData(data);api.render();
 assert.match(node('summary').textContent,/collection delayed/);
-assert.doesNotMatch(node('summary').textContent,/older agency report/);
+assert.doesNotMatch(node('summary').textContent,/Older report/);
 assert.doesNotMatch(node('crossingRows').innerHTML,/class="crossing-report-warning"/);
 
 // A failed official retrieval must not treat the failed attempt as successful.
