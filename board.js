@@ -72,9 +72,12 @@
   // It does not say the lane is physically open or that a NEXUS wait exists.
   function scheduleMoment(next,closing){
     if(typeof next!=='string'||!next)return null;
-    const match=/^(Today|Tomorrow) (\d{1,2}):(\d{2}) (AM|PM) ET$/.exec(next);
+    // en-CA commonly formats meridiem as "a.m." / "p.m.", not "AM/PM".
+    const normalized=next.replace(/[\u00a0\u202f]/g,' ');
+    const match=/^(Today|Tomorrow) (\d{1,2}):(\d{2})\s+([ap])\.?m\.?\s+ET$/i.exec(normalized);
     if(!match)return next;
-    const [,day,hourText,minutes,meridiem]=match;
+    const [,day,hourText,minutes,initial]=match;
+    const meridiem=initial.toUpperCase()+'M';
     const hour=Number(hourText),midnight=hour===12&&minutes==='00'&&meridiem==='AM';
     const noon=hour===12&&minutes==='00'&&meridiem==='PM';
     const time=midnight?'midnight':noon?'noon':hour+(minutes==='00'?'':':'+minutes)+' '+meridiem;

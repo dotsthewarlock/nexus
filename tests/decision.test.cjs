@@ -132,4 +132,45 @@ check(D.publishedNexusWindow(hours(wedEarly,overnight),'tunnel','ca',wedEarly),'
 let sunEarly=at('2026-11-22T06:00:00Z'); // Sun 1 AM
 check(D.publishedNexusWindow(hours(sunEarly,overnight),'tunnel','ca',sunEarly),'outside_all_published_windows','no Sat-to-Sun overnight weekday window');
 check(D.publishedNexusWindow(hours(wed,schedule),'tunnel','us',wed),'unknown','NEXUS CA hours not valid USA bound');
+
+const namedLanes=[
+ {label:'Lane One\\nMonday to Friday\\n(except Holidays)',start:'07:00',end:'00:00'},
+ {label:'Lane One\\nWeekends and Holidays',start:'08:00',end:'22:00'},
+ {label:'Lane Two\\nMonday to Friday\\n(except holidays)',start:'14:00',end:'21:00'},
+ {label:'Lane Three\\nMonday to Friday\\n(except holidays)',start:'15:00',end:'19:00'}
+];
+function ambassadorHours(atTime,rows=namedLanes){
+ const s=hours(atTime,rows);
+ s.supplemental.cbsa_nexus_hours={
+  ambassador:{groups:[{label:'Dedicated NEXUS lanes towards Canada',rows}]}
+ };
+ return s;
+}
+const abAt=(str)=>{const when=at(str);return D.scheduledNexusLaneCount(
+  ambassadorHours(when),'ambassador','ca',when);};
+check(abAt('2026-11-19T17:00:00Z'),1,'Ambassador weekday noon: Lane One scheduled');
+check(abAt('2026-11-19T21:00:00Z'),3,'Ambassador weekday 4 PM: three distinct lanes scheduled');
+check(abAt('2026-11-20T01:00:00Z'),2,'Ambassador weekday 8 PM: two lanes scheduled');
+check(abAt('2026-11-20T04:00:00Z'),1,'Ambassador weekday 11 PM: Lane One only');
+check(abAt('2026-11-19T11:00:00Z'),null,'before the published lane schedule');
+check(abAt('2026-11-21T21:00:00Z'),1,'weekend lane one is counted once');
+check(abAt('2026-11-22T04:00:00Z'),null,'after weekend schedule closes');
+check(abAt('2026-12-25T17:00:00Z'),1,'holiday uses lane-one holiday schedule');
+check(abAt('2026-12-28T17:00:00Z'),null,'ambiguous observed holiday has no estimated count');
+check(abAt('2026-03-08T18:00:00Z'),1,'DST weekend schedule uses Windsor local time');
+const unknownWhen=at('2028-01-04T17:00:00Z');
+check(D.scheduledNexusLaneCount(ambassadorHours(unknownWhen),'ambassador','ca',unknownWhen),
+  null,'unverified holiday-calendar year never claims scheduled lanes');
+const unnumbered=[...namedLanes,{label:'Monday to Friday',start:'07:00',end:'22:00'}];
+check(D.scheduledNexusLaneCount(ambassadorHours(wed,unnumbered),'ambassador','ca',wed),
+  null,'unnumbered CBSA lane hours cannot be counted');
+check(D.scheduledNexusLaneCount(ambassadorHours(wed),'gordie','ca',wed),
+  null,'Gordie Howe lane count not derivable from crossing-hours schedule');
+check(D.scheduledNexusLaneCount(ambassadorHours(wed),'ambassador','us',wed),
+  null,'Canada-bound schedule must never be assigned to the USA direction');
+const outdatedAb=ambassadorHours(wed);
+outdatedAb.sources.cbsa_hours.retrieved_at=iso(wed-49*60*60000);
+check(D.scheduledNexusLaneCount(outdatedAb,'ambassador','ca',wed),
+  null,'outdated CBSA schedule cannot yield lane count');
+
 console.log(`RC1.4.8 decision-engine checks passed: ${checks}`);

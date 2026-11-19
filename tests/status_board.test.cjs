@@ -63,7 +63,7 @@ const sandbox={
   Intl,Date,Number,Math,Error,Promise
 };
 const instrumented=js.replace("  render();refresh();",
-  "  window.__boardTest={entry,render,setData:(x)=>{data=x;busy=false;loadError='';},setDirection:(x)=>{direction=x;render();}};\n  render();refresh();");
+  "  window.__boardTest={entry,render,scheduleMoment,setData:(x)=>{data=x;busy=false;loadError='';},setDirection:(x)=>{direction=x;render();}};\n  render();refresh();");
 assert.notEqual(instrumented,js,'missing board entry point');
 vm.runInNewContext(instrumented,sandbox,{filename:'board.js'});
 const api=sandbox.window.__boardTest;
@@ -147,9 +147,9 @@ assert.equal(api.entry({...closure,observation_at:null},'nexus').display,'Closur
 // Canada-bound NEXUS wait/count are unsupported, not broken or accidentally zero.
 api.setDirection('ca');
 const caNexus=api.entry(lane(0,1,3),'nexus');
-assert.equal(caNexus.display,'Not published');
-assert.equal(caNexus.lanes,'Lanes not published');
-assert.ok(node('crossingRows').innerHTML.includes('Not published'));
+assert.equal(caNexus.display,'Hours unverified');
+assert.equal(caNexus.lanes,'Lanes not verified');
+assert.ok(node('crossingRows').innerHTML.includes('Hours unverified'));
 api.setDirection('us');
 
 // Undated source values and fully expired reports must never show numbers.
@@ -213,5 +213,56 @@ api.setData(data);api.render();
 assert.match(node('summary').textContent,/CBP check failed · last successful check 48m ago/);
 assert.equal(node('statusDot').dataset.state,'error');
 assert.doesNotMatch(node('crossingRows').innerHTML,/class="crossing-report-warning"/);
+
+
+// Canada-bound NEXUS cells use the official *schedule*, not a fabricated
+// NEXUS inspection wait. All three crossings must have visible context even
+// when the Gordie Howe camera is unavailable.
+data=payload();
+const allDayRows=[{label:'7 days per week',start:'00:00',end:'00:00'}];
+const group=(rows)=>({groups:[{label:'Dedicated NEXUS lanes towards Canada',rows}]});
+data.sources.cbsa_hours={status:'ok',retrieved_at:stamp(1)};
+data.sources.dwt={status:'ok',retrieved_at:stamp(1)};
+data.supplemental={
+  cbsa_nexus_hours:{
+    ambassador:group([{label:'Lane One\\n7 days per week',start:'00:00',end:'00:00'}]),
+    tunnel:group(allDayRows),
+    gordie:group(allDayRows)
+  },
+  dwt:{ca:{observation_at:stamp(1),lane_counts:{nexus:2}}}
+};
+api.setData(data);api.setDirection('ca');
+const caBoard=node('crossingRows').innerHTML;
+assert.equal((caBoard.match(/Within scheduled hours/g)||[]).length>=3,true,
+  'all three crossings have published schedule context');
+assert.ok(caBoard.includes('1 lane scheduled'),'Ambassador count must be explicitly scheduled');
+assert.ok(caBoard.includes('2 NEXUS lanes listed (operator)'),'Tunnel count must be operator-attributed');
+assert.equal(api.entry(null,'nexus','gordie').lanes,'Lanes not verified',
+  'Gordie Howe NEXUS count unavailable, not assumed zero');
+assert.match(api.entry(null,'nexus','tunnel').status,/wait not published/,
+  'no separate NEXUS wait is invented');
+
+data.sources.dwt.retrieved_at=stamp(25);api.setData(data);
+assert.equal(api.entry(null,'nexus','tunnel').lanes,'Lanes not verified',
+  'stale operator counts are not displayed');
+data.sources.cbsa_hours.retrieved_at=stamp(3000);api.setData(data);
+assert.equal(api.entry(null,'nexus','ambassador').display,'Hours unverified');
+assert.equal(api.entry(null,'nexus','tunnel').display,'Hours unverified');
+assert.equal(api.entry(null,'nexus','gordie').display,'Hours unverified');
+data.sources.cbsa_hours.retrieved_at=stamp(1);
+data.sources.cbsa_hours.status='error';api.setData(data);
+assert.equal(api.entry(null,'nexus','ambassador').display,'Hours unverified',
+  'retained schedule must not imply live operation');
+data.sources.cbsa_hours.status='ok';
+data.supplemental.cbsa_nexus_hours={};api.setData(data);
+assert.equal(api.entry(null,'nexus','gordie').display,'Hours unverified',
+  'missing schedule must never default to open');
+api.setDirection('us');
+assert.equal(api.entry(lane(3,5,1),'nexus').display,'3','US-bound waits unchanged');
+
+// Compact formatting works with actual en-CA meridiem, midnight and tomorrow.
+assert.equal(api.scheduleMoment('Today 10:00 p.m. ET',true),'10 PM');
+assert.equal(api.scheduleMoment('Tomorrow 12:00 a.m. ET',true),'midnight');
+assert.equal(api.scheduleMoment('Tomorrow 8:00 a.m. ET',false),'tomorrow 8 AM');
 
 console.log('20-minute source-provenance, zero-delay, historical and 3-row UI behavior tests passed.');
