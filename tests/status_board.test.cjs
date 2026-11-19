@@ -91,7 +91,7 @@ const ui=node('crossingRows').innerHTML;
 assert.equal((ui.match(/class="crossing-row"/g)||[]).length,3,'exactly 3 crossing cards');
 assert.equal((ui.match(/class="reading-main"/g)||[]).length,6,'exactly 2 waits per crossing');
 assert.ok(ui.includes('No Delay'),'No Delay visible on board');
-assert.ok(!ui.includes('Updated 5m ago'),'routine timestamps should not clutter the main board');
+assert.ok(!ui.includes('class="reading-hint" data-state="current">Updated 5m ago'),'routine observation age should not take a separate visible line');
 assert.ok(!ui.includes('CBP · Last report'),'duplicate per-row retrieval status was removed');
 assert.ok(html.includes('id="aboutReadings"'),'general caveats belong in progressive disclosure');
 assert.ok(html.includes('Technical diagnostics'));
