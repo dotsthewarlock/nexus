@@ -70,6 +70,8 @@ dialog::backdrop{background:#000d}
 <option value="api_button">Only plays after Nexus API Play button</option>
 <option value="blocked">Content blocked on this website</option>
 <option value="idle">Player appears but does not play</option>
+<option value="api_no_ready">API instance exists; onReady() never fires</option>
+<option value="api_setup_failed">API script or initialization failed</option>
 <option value="blank">Blank / loading indefinitely</option>
 <option value="other">Other result</option>
 </select>
@@ -133,13 +135,13 @@ const TESTS=[
 const OUTCOMES={
  untested:'Not tested',auto_muted:'Autostart muted',auto_sound:'Autostart with sound',auto_unknown:'Autostart; sound unknown',
  tap_required:'In-player tap required',api_button:'Nexus API button required',blocked:'Content blocked',
- idle:'Visible but idle',blank:'Blank / loading',other:'Other'
+ idle:'Visible but idle',api_no_ready:'API onReady not fired',api_setup_failed:'API setup failed',blank:'Blank / loading',other:'Other'
 };
 const STORE='nexus-dwt-control-lab-v1';
 let saved={};
 try{const obj=JSON.parse(sessionStorage.getItem(STORE)||'{}');if(obj&&typeof obj==='object')saved=obj;}catch{}
 let records=saved.records&&typeof saved.records==='object'?saved.records:{};
-let events=[],generation=0,activePlayer=null,playerReady=false,scriptPromise=null,readyTimer=null,apiPhase='not_started';
+let events=[],generation=0,activePlayer=null,playerReady=false,scriptPromise=null,readyTimer=null,apiPhase='not_started',apiDetail='No API test run yet.';
 const dlg=$('dialog');
 for(const t of TESTS){
  const option=document.createElement('option');
@@ -176,6 +178,7 @@ function log(message){
 }
 function setApiPhase(phase,detail){
  apiPhase=phase;
+ apiDetail=detail;
  $('apiStatus').textContent='API status: '+detail;
  log('API status ['+phase+']: '+detail);
 }
@@ -186,7 +189,7 @@ function report(){
   'Origin: '+location.origin,
   'Camera: '+CAMERAS[$('camera').value],
   'Goal: no second in-player tap after opening modal.',
-  'Current API phase: '+apiPhase+', ready event observed: '+playerReady,
+  'Last API phase: '+apiPhase+' | '+apiDetail,
   'Observations are manual; iframe load and JS script load are NOT proof of video playback.'
  ];
  for(const t of TESTS){
@@ -327,14 +330,14 @@ function cleanup(){
  if(activePlayer&&typeof activePlayer.dispose==='function'){
   try{activePlayer.dispose();}catch(e){log('Player dispose failed: '+String(e?.name||'Error'));}
  }
- activePlayer=null;playerReady=false;apiPhase='not_started';
+ activePlayer=null;playerReady=false;
  $('apiPlay').hidden=true;
  $('apiStatus').hidden=true;
  $('apiHelp').hidden=true;
  $('camera').disabled=false;$('case').disabled=false;
  $('videoState').textContent='Player unloaded.';
 }
-$('camera').addEventListener('change',()=>{events=[];load();log('Changed camera; previous camera results preserved separately.');});
+$('camera').addEventListener('change',()=>{events=[];apiPhase='not_started';apiDetail='No API test run for this camera in this session.';load();log('Changed camera; previous camera results preserved separately.');});
 $('case').addEventListener('change',load);
 $('outcome').addEventListener('change',save);
 $('notes').addEventListener('input',save);
@@ -344,6 +347,7 @@ $('open').addEventListener('click',()=>{
  }
  cleanup();
  const t=current(),token=generation;
+ if(!['api_muted','api_sound'].includes(t.type)){apiPhase='not_applicable';apiDetail='Iframe test, not JavaScript API.';}
  $('camera').disabled=true;$('case').disabled=true;
  $('caption').textContent=CAMERAS[$('camera').value]+' · '+t.id+' · '+t.name;
  $('direct').href=directUrl();
