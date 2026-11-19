@@ -26,7 +26,7 @@ assert.ok(js.includes("if(raw.status==='closed')")||js.includes("raw.status==='c
 assert.ok(js.includes('lastFetch')&&js.includes('renderDiagnostics()'));
 assert.ok(js.includes('removeAttribute(\'src\')'),'camera must unload on close');
 assert.ok(css.includes('grid-template-columns')&&css.includes('@media (max-width: 720px)'));
-assert.ok(html.includes('board.js?v=board3')&&html.includes('board.css?v=board3'));
+assert.ok(html.includes('board.js?v=board4')&&html.includes('board.css?v=board4'));
 assert.ok(workflow.includes('cp board.css board.js legacy.html site/'), 'board and legacy page must be published');
 assert.ok(workflow.includes('cp index.html styles.css app.js decision.js camera-diagnostics.html site/'), 'original camera scripts must remain deployed');
 console.log('Border-status board static checks passed: direction, three rows, lanes, unavailable semantics, cameras, deployment.');
@@ -91,6 +91,11 @@ const ui=node('crossingRows').innerHTML;
 assert.equal((ui.match(/class="crossing-row"/g)||[]).length,3,'exactly 3 crossing cards');
 assert.equal((ui.match(/class="reading-main"/g)||[]).length,6,'exactly 2 waits per crossing');
 assert.ok(ui.includes('No Delay'),'No Delay visible on board');
+assert.ok(!ui.includes('Updated 5m ago'),'routine timestamps should not clutter the main board');
+assert.ok(!ui.includes('CBP · Last report'),'duplicate per-row retrieval status was removed');
+assert.ok(html.includes('id="aboutReadings"'),'general caveats belong in progressive disclosure');
+assert.ok(html.includes('Technical diagnostics'));
+assert.ok(!html.includes('board-footer'),'remove redundant persistent legend');
 assert.equal((ui.match(/data-camera="gordie"/g)||[]).length,1);
 assert.ok(/data-camera="gordie"[^>]*disabled/.test(ui),'GH camera disabled');
 
@@ -100,6 +105,8 @@ assert.equal(old.display,'—','old zero is not No Delay');
 assert.match(old.status,/^Last update /,'historical report must show agency clock');
 assert.equal(old.historical,true);
 assert.match(old.lanes,/last reported/);
+api.render();
+assert.match(node('crossingRows').innerHTML,/No Delay/,'other fresh readings stay visible');
 assert.equal(api.entry(lane(6,20,2),'regular').display,'—','20-minute boundary is not current');
 assert.equal(api.entry(lane(6,19,2),'regular').display,'6','19-minute observation still visible');
 
@@ -127,4 +134,14 @@ assert.equal(caNexus.display,'—');
 assert.equal(caNexus.lanes,'Lanes not reported');
 const caUi=node('crossingRows').innerHTML;
 assert.ok(caUi.includes('Not reported by CBSA'));
+
+// Undated or stale closure stays visible as a caution, not a proven live closure.
+api.setDirection('us');
+data.directions.us.ambassador.nexus={status:'closed',lanes_open:null,observation_at:null};
+api.setData(data);
+const undated=api.entry(data.directions.us.ambassador.nexus,'nexus');
+assert.equal(undated.display,'—','undated closure must not appear live');
+assert.match(undated.status,/Closure reported.*time missing/);
+api.render();
+assert.match(node('crossingRows').innerHTML,/Closure reported/);
 console.log('20-minute source-provenance, zero-delay, historical and 3-row UI behavior tests passed.');
