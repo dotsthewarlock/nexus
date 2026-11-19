@@ -102,5 +102,7 @@ assert.match(node('noticeText').textContent,/Ambassador Bridge.*Canada port repo
 assert.equal(node('noticeOpen').dataset.direction,'ca','notice must preserve affected country direction');
 assert.equal((node('crossingRows').innerHTML.match(/class="crossing-row"/g)||[]).length,3);
 assert.equal((node('crossingRows').innerHTML.match(/class="wait-cell"/g)||[]).length,6);
+assert.match(node('crossingRows').innerHTML,/aria-label="Gordie Howe International Bridge">Gordie Howe<\/span>/,'short visible name must retain full spoken name');
+assert.match(node('summary').textContent,/CBSA checked.*CBP checked/,'source summary must disclose separate source check ages');
 assert.doesNotMatch(node('crossingRows').innerHTML,/data-crossing="ambassador" aria-label="Details/,'crossing title must not silently open Canada');
 console.log('M1 dashboard fixture tests passed: zero, both directions, lanes, unsupported, missing, stale, closure, sort, notices.');
