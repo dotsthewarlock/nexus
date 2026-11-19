@@ -70,19 +70,21 @@ if(typeof document!=='undefined')(() => {
   }
   function position(){
     if(!frame||host.hidden)return;
-    if(state==='initial-ready'||state==='launching')setLayerRect(pill);
-    else if(state==='resume-ready')setLayerRect(target);
+    const initial=state==='initial-ready'||state==='launching';
+    const pendingNative=state==='resuming'&&active?.kind==='resume';
+    const resumeTarget=state==='resume-ready'||pendingNative;
+    if(initial)setLayerRect(pill);
+    else if(resumeTarget)setLayerRect(target);
     else setLayerRect(slot);
     const variant=resumePolicy($('candidate').value);
-    const initial=state==='initial-ready'||state==='launching';
-    const compact=initial||state==='resume-ready'&&variant.shape!=='full';
+    const compact=initial||(resumeTarget&&variant.shape!=='full');
+    host.classList.toggle('under-launcher',initial);
     host.classList.toggle('expanded',!compact);
     host.style.setProperty('--crop-zoom',String(initial?6:variant.zoom));
-    host.style.borderRadius=state==='resume-ready'&&variant.shape==='round'?'50%':'11px';
-    if(state==='resume-ready'&&variant.shape==='full')host.style.borderRadius='11px';
+    host.style.borderRadius=resumeTarget&&variant.shape==='round'?'50%':'11px';
     face.dataset.shape=variant.shape;
     face.style.borderRadius=variant.shape==='round'?'50%':'11px';
-    face.hidden=state!=='resume-ready'||!['pill','round'].includes(variant.shape);
+    face.hidden=!resumeTarget||!['pill','round'].includes(variant.shape);
   }
   function renderHistory(){
     const ul=$('history');ul.replaceChildren();
@@ -103,8 +105,10 @@ if(typeof document!=='undefined')(() => {
   function render(){
     const modal=state==='playing'||state==='launching'||state==='resuming'||state==='expired'||state==='resume-ready'||state==='resume-wait';
     shade.hidden=!modal;main.inert=modal;document.body.classList.toggle('modal-open',modal);
-    cutoff.hidden=!['expired','resume-ready','resume-wait'].includes(state);
-    pill.hidden=modal;
+    const pendingNative=state==='resuming'&&active?.kind==='resume';
+    cutoff.hidden=!['expired','resume-ready','resume-wait'].includes(state)&&!pendingNative;
+    // Preserve the launch rect during the focus-to-modal handoff.
+    pill.hidden=modal&&state!=='launching';
     $('prepare').disabled=modal;
     for(const id of ['candidate','camera','handoff','prewarm'])$(id).disabled=modal;
     $('manualOpen').disabled=modal;
@@ -116,7 +120,7 @@ if(typeof document!=='undefined')(() => {
     cutoff.dataset.shape=variant.shape;
     $('controlResume').hidden=variant.prewarm;
     $('rearm').hidden=state!=='expired'||!variant.prewarm;
-    target.hidden=state!=='resume-ready';
+    target.hidden=state!=='resume-ready'&&!pendingNative;
     if(state==='expired') {
       $('expiredTitle').textContent='Preview ended';
       $('expiredDescription').textContent=variant.prewarm?'Preparing native Resume control in this modal…':'Regular Resume needs a second Play tap.';
