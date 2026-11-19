@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101b29">
+<title>Nexus · DWT miniature-to-modal camera lab</title>
+<style>
+:root{font:16px/1.48 system-ui,-apple-system,Segoe UI,sans-serif;color:#edf4fb;background:#101a25;color-scheme:dark}
+*{box-sizing:border-box}
+body{max-width:760px;margin:0 auto;padding:16px 14px 65px}
+h1{font-size:1.56rem;line-height:1.2;margin:15px 0}h2{font-size:1.13rem;margin:0 0 9px}
+p{margin:8px 0 12px}.fine{color:#becfdd;font-size:.87rem}
+a{color:#9fd3ff}header{display:flex;gap:12px;align-items:center;justify-content:space-between}
+.card{background:#1a2a3a;border:1px solid #455b70;border-radius:12px;padding:15px;margin:14px 0}
+.note{border-left:3px solid #e9be6c;padding-left:10px}
+.success{border-left:3px solid #77d3ae;padding-left:10px}
+label{display:block;font-weight:600;margin:10px 0 5px}
+button,select,textarea{font:inherit}
+button{color:white;background:#185f97;border:1px solid #71bbef;border-radius:9px;padding:11px 13px;cursor:pointer;font-weight:650}
+button.secondary{background:#2b4154;border-color:#8097ab}
+button:disabled{opacity:.5;cursor:default}
+button:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid #ffdb77;outline-offset:3px}
+select,textarea{width:100%;border:1px solid #8599aa;background:#102230;color:white;border-radius:8px;padding:10px}
+textarea{resize:vertical;min-height:62px}
+.wide{display:block;width:100%;margin:10px 0}
+.grid{display:grid;grid-template-columns:1fr;gap:8px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.48 ui-monospace,monospace;background:#0a1520;border-radius:8px;padding:12px;max-height:360px;overflow:auto}
+#shade{position:fixed;inset:0;background:#000d;z-index:100}
+#shade[hidden]{display:none}
+.viewer{width:min(100%,280px);background:#142435;border:1px solid #66849b;border-radius:11px;padding:9px;box-shadow:0 5px 18px #0005}
+.viewer[hidden]{display:none}
+.viewer.expanded{position:fixed;z-index:101;left:50%;top:50%;transform:translate(-50%,-50%);width:min(calc(100vw - 20px),850px);max-height:95dvh;overflow:auto;padding:12px;box-shadow:0 13px 44px #000c}
+.viewer-head{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:8px}
+.viewer-head strong{font-size:.86rem}
+.viewer-head button{font-size:.82rem;padding:7px 11px}
+.stage{position:relative;aspect-ratio:16/9;width:100%;background:#02070d;border-radius:6px;overflow:hidden}
+.stage iframe{position:absolute;inset:0;border:0;width:100%;height:100%}
+.preview-hit{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#091b2773;border:2px solid #83bde8;color:white;border-radius:6px;cursor:pointer;font-weight:700;text-align:center;padding:12px;min-height:0}
+.preview-hit[hidden]{display:none}
+.preview-hit span{border-radius:8px;padding:10px;background:#155b91e8}
+.modal-actions{display:none;justify-content:flex-end;gap:8px;margin-top:10px}
+.viewer.expanded .modal-actions{display:flex}
+.viewer.expanded .preview-hit{display:none!important}
+#closeExpanded{display:none}
+.viewer.expanded #closeExpanded{display:inline-block}
+.viewer.expanded #expand{display:none}
+@media(min-width:570px){.grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header><strong>Nexus · camera experiments</strong><a href="./">Back to Nexus</a></header>
+<h1>DWT · Compact Live Tile → Modal Lab</h1>
+<p class="success"><strong>Purpose:</strong> Load the known-working DWT player in a small tile, then enlarge it without creating another iframe. Confirm whether an already-playing feed continues seamlessly.</p>
+<p class="note">The tile cannot start Dacast playback on its own: the previous autoplay tests failed. Two interaction modes below distinguish a <strong>playable miniature</strong> from a <strong>one-tap expand button</strong>. They cannot offer both functions on the same touch target because an overlay captures taps instead of passing them into the cross-origin player.</p>
+
+<section class="card">
+<h2>1. Select camera and miniature behaviour</h2>
+<label for="camera">Camera</label>
+<select id="camera">
+<option value="4aea1c45-d402-3690-afae-fe635942da82">Canada → USA · Windsor inspection</option>
+<option value="794566d4-a75e-3cd1-6f95-2d60e54f2fdb">USA → Canada · Detroit inspection</option>
+<option value="5408b5c3-f8d1-f34b-a18a-9943047905b6">USA → Canada · Randolph Street</option>
+</select>
+<label for="mode">Miniature interaction</label>
+<select id="mode">
+<option value="interactive">A · Interactive miniature: tap Dacast Play, expand separately</option>
+<option value="button">B · Whole miniature is an Expand button, Play in modal</option>
+</select>
+<p id="modeInfo" class="fine"></p>
+<div class="grid">
+<button id="load" type="button">Load compact video tile</button>
+<button id="unload" type="button" class="secondary" disabled>Unload video</button>
+</div>
+<p id="state" class="fine" role="status">Video not loaded. No iframe has been created.</p>
+</section>
+
+<section class="card">
+<h2>2. Live tile</h2>
+<p class="fine">Mode A: Tap Play <strong>inside the miniature</strong>, then press Expand. Mode B: Tap anywhere on the miniature to expand, then tap Play in the enlarged player. Observe whether a playing video survives expanding and collapsing.</p>
+<div id="viewer" class="viewer" hidden>
+<div class="viewer-head">
+<strong id="viewerName">DWT · Live camera</strong>
+<button id="expand" type="button" aria-label="Expand camera">Expand <span aria-hidden="true">⤢</span></button>
+<button id="closeExpanded" type="button" class="secondary" aria-label="Minimize camera">Minimize</button>
+</div>
+<div class="stage">
+<div id="frameHost" style="position:absolute;inset:0"></div>
+<button id="previewHit" type="button" class="preview-hit" hidden><span>Expand live camera</span></button>
+</div>
+<div class="modal-actions"><button id="modalMinimize" type="button" class="secondary">Back to miniature</button></div>
+</div>
+<div id="shade" hidden></div>
+<p class="fine">The video container stays at exactly the same location in the document. Expanding uses CSS only; it does not move, replace, or reset the iframe. An iframe <code>load</code> event after expansion is logged but cannot establish playback state.</p>
+</section>
+
+<section class="card">
+<h2>3. Record actual playback</h2>
+<label for="miniResult">A · Did the video play inside the miniature after tapping Dacast Play?</label>
+<select id="miniResult">
+<option value="untested">Not tested</option>
+<option value="yes">Yes, moving video in miniature</option>
+<option value="no">No, only played after expansion</option>
+<option value="blocked">Content blocked or blank</option>
+</select>
+<label for="expandResult">Did enlarging an already-playing feed preserve playback?</label>
+<select id="expandResult">
+<option value="untested">Not tested</option>
+<option value="yes">Yes, playback continued without another Play tap</option>
+<option value="pause">Paused or stopped; manual Play needed again</option>
+<option value="reload">Player reloaded when expanded</option>
+<option value="unknown">Cannot determine</option>
+</select>
+<label for="collapseResult">Did minimizing preserve playback?</label>
+<select id="collapseResult">
+<option value="untested">Not tested</option>
+<option value="yes">Yes, playback continued in miniature</option>
+<option value="pause">Paused; manual Play needed again</option>
+<option value="reload">Player reloaded when minimized</option>
+<option value="unknown">Cannot determine</option>
+</select>
+<label for="buttonResult">B · Tapping the miniature as a button</label>
+<select id="buttonResult">
+<option value="untested">Not tested</option>
+<option value="expands">Expanded correctly; Play needed inside enlarged modal</option>
+<option value="starts">Expanded and video started without a second tap</option>
+<option value="failed">Did not expand or player unusable</option>
+</select>
+<label for="notes">Notes (optional)</label>
+<textarea id="notes" maxlength="700" placeholder="Android Chrome / installed PWA; whether controls work at 280px; visible player interruptions"></textarea>
+<div class="grid">
+<button id="copy" type="button" class="wide">Copy full diagnostic report</button>
+<button id="reset" type="button" class="secondary wide">Reset selected camera results</button>
+</div>
+<p id="copyState" role="status" class="fine"></p>
+<pre id="report"></pre>
+</section>
+
+<p class="fine">Research only. Does not modify the Nexus dashboard. No video capture, proxy, stream extraction, synthetic clicks or player API. Only official DWT-linked Dacast URLs are loaded, with the no-referrer policy that worked in M1.</p>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const ROOT='https://iframe.dacast.com/live/8b2b630f-b7c1-262d-f343-118f510224a0/';
+const CAMERAS={
+ '4aea1c45-d402-3690-afae-fe635942da82':'Canada → USA · Windsor inspection',
+ '794566d4-a75e-3cd1-6f95-2d60e54f2fdb':'USA → Canada · Detroit inspection',
+ '5408b5c3-f8d1-f34b-a18a-9943047905b6':'USA → Canada · Randolph Street'
+};
+const STORE='nexus-dwt-mini-modal-lab-v1';
+const FIELDS=['miniResult','expandResult','collapseResult','buttonResult','notes'];
+let session={};
+try{const obj=JSON.parse(sessionStorage.getItem(STORE)||'{}');if(obj&&typeof obj==='object')session=obj;}catch{}
+let records=session.records&&typeof session.records==='object'?session.records:{};
+let frame=null,loadCount=0,events=[],expanded=false,lastFocus=null,previousOverflow='';
+if(Object.hasOwn(CAMERAS,session.camera))$('camera').value=session.camera;
+function cameraId(){return $('camera').value;}
+function currentRecord(){return records[cameraId()]||{};}
+function log(message){events.push(new Date().toISOString()+' '+message);events=events.slice(-25);updateReport();}
+function persist(){
+ try{sessionStorage.setItem(STORE,JSON.stringify({camera:cameraId(),records}));}catch{}
+}
+function save(){
+ const data={};
+ for(const id of FIELDS)data[id]=id==='notes'?$('notes').value.slice(0,700):$(id).value;
+ records[cameraId()]=data;persist();updateReport();
+}
+function restore(){
+ const data=currentRecord();
+ for(const id of FIELDS){if(typeof data[id]==='string')$(id).value=data[id];else $(id).value=id==='notes'?'':'untested';}
+ persist();updateReport();
+}
+function report(){
+ const data=currentRecord(),lines=[
+  'Nexus DWT miniature-to-modal playback lab — manual report',
+  'UTC: '+new Date().toISOString(),
+  'Origin: '+location.origin,
+  'Camera: '+CAMERAS[cameraId()],
+  'Interaction mode: '+$('mode').selectedOptions[0].textContent,
+  'Loaded iframe: '+Boolean(frame)+', iframe load events this session: '+loadCount,
+  'Strategy: CSS-only expand/collapse of SAME iframe DOM element; no reparenting.',
+  'Miniature playback: '+(data.miniResult||'untested'),
+  'Expand preserved playback: '+(data.expandResult||'untested'),
+  'Minimize preserved playback: '+(data.collapseResult||'untested'),
+  'Whole-tile button: '+(data.buttonResult||'untested'),
+  'Notes: '+(data.notes||'None'),
+  'All playback outcomes are manually observed. Iframe load does NOT mean video played.',
+  'Events:',...(events.length?events:['No events yet'])
+ ];return lines.join('\n');
+}
+function updateReport(){$('report').textContent=report();}
+function updateMode(){
+ const isButton=$('mode').value==='button';
+ $('modeInfo').textContent=isButton
+  ?'Mode B: whole miniature receives the tap; the iframe is interactive only when enlarged. No autoplay expected.'
+  :'Mode A: Dacast Play can receive taps in the miniature. The separate Expand button changes only the container layout.';
+ $('previewHit').hidden=!isButton||!frame||expanded;
+ log('Mode changed to '+$('mode').value+' (iframe retained when loaded).');
+}
+function setExpanded(next){
+ if(!frame)return;
+ expanded=Boolean(next);
+ if(expanded){
+  lastFocus=document.activeElement;
+  previousOverflow=document.body.style.overflow;
+  document.body.style.overflow='hidden';
+ }
+ $('viewer').classList.toggle('expanded',expanded);
+ $('shade').hidden=!expanded;
+ $('previewHit').hidden=expanded||$('mode').value!=='button';
+ $('viewer').setAttribute('role',expanded?'dialog':'region');
+ if(expanded)$('viewer').setAttribute('aria-modal','true');
+ else $('viewer').removeAttribute('aria-modal');
+ if(!expanded)document.body.style.overflow=previousOverflow;
+ $('state').textContent=expanded
+  ?'Expanded: same iframe object, '+loadCount+' document load events. Observe playback manually.'
+  :'Miniature: same iframe object, '+loadCount+' document load events. Observe playback manually.';
+ log((expanded?'Expanded':'Minimized')+' using CSS only; same iframe DOM object='+Boolean(frame&&frame.isConnected)+', loads='+loadCount+'.');
+ if(expanded)$('closeExpanded').focus();
+ else if(lastFocus&&typeof lastFocus.focus==='function')lastFocus.focus();
+}
+function unload(){
+ if(expanded)setExpanded(false);
+ $('frameHost').replaceChildren();
+ frame=null;loadCount=0;
+ $('viewer').hidden=true;
+ $('load').disabled=false;$('unload').disabled=true;$('camera').disabled=false;
+ $('previewHit').hidden=true;
+ $('state').textContent='Iframe unloaded. The current stream session was ended.';
+ log('Removed iframe; streaming session ended.');
+}
+$('load').addEventListener('click',()=>{
+ if(frame)return;
+ const camera=cameraId(),iframe=document.createElement('iframe');
+ iframe.title=CAMERAS[camera]+' DWT live camera';
+ iframe.referrerPolicy='no-referrer';
+ iframe.allow='autoplay; encrypted-media; fullscreen; picture-in-picture';
+ iframe.allowFullscreen=true;
+ iframe.loading='eager';
+ iframe.addEventListener('load',()=>{
+  if(iframe!==frame)return;
+  loadCount++;
+  log('Iframe document load #'+loadCount+' (NOT playback proof), expanded='+expanded+'.');
+  $('state').textContent='Iframe loaded (not proof of video). Tap Play inside the Dacast player if needed.';
+ });
+ iframe.addEventListener('error',()=>log('Outer iframe element error; cannot inspect Dacast internals.'));
+ iframe.src=ROOT+camera;
+ frame=iframe;
+ $('viewer').hidden=false;
+ $('viewerName').textContent=CAMERAS[camera];
+ $('frameHost').appendChild(iframe);
+ $('load').disabled=true;$('unload').disabled=false;$('camera').disabled=true;
+ $('state').textContent='Miniature iframe created; awaiting load. Autoplay not guaranteed.';
+ $('previewHit').hidden=$('mode').value!=='button';
+ log('Created exactly one M1 no-referrer iframe in miniature. Camera='+CAMERAS[camera]);
+});
+$('unload').addEventListener('click',unload);
+$('mode').addEventListener('change',updateMode);
+$('camera').addEventListener('change',()=>{events=[];restore();log('Camera changed; separate results loaded.');});
+$('expand').addEventListener('click',()=>setExpanded(true));
+$('previewHit').addEventListener('click',()=>setExpanded(true));
+$('closeExpanded').addEventListener('click',()=>setExpanded(false));
+$('modalMinimize').addEventListener('click',()=>setExpanded(false));
+$('shade').addEventListener('click',()=>setExpanded(false));
+document.addEventListener('keydown',event=>{
+ if(expanded&&event.key==='Escape'){event.preventDefault();setExpanded(false);}
+});
+for(const id of FIELDS)$(id).addEventListener(id==='notes'?'input':'change',save);
+$('copy').addEventListener('click',async()=>{
+ save();
+ try{await navigator.clipboard.writeText(report());$('copyState').textContent='Report copied to clipboard.';}
+ catch{$('copyState').textContent='Clipboard unavailable; select and copy the report below.';}
+});
+$('reset').addEventListener('click',()=>{
+ delete records[cameraId()];events=[];restore();$('copyState').textContent='Results reset for selected camera.';
+});
+window.addEventListener('error',e=>log('Parent JS error: '+String(e.message||'unknown').slice(0,130)));
+restore();
+updateMode();
+log('Ready. No video loaded until user presses Load compact video tile.');
+})();
+</script>
+</body>
+</html>
