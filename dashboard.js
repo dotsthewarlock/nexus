@@ -129,11 +129,23 @@ function renderDestinationAction(){
   :'No destination selected for trips into '+countryName(store.direction)+'.';
  $('chooseDestination').hidden=!!dest;
  $('changeDestination').hidden=!dest;
- $('openDirections').hidden=!dest;
- $('openDirections').disabled=true; // Crossing enforcement remains unverified (M3b).
- $('routeNotValidated').textContent=dest
-  ?'Directions are not enabled yet. M3b must validate routing through the selected crossing on target devices.'
-  :'Choose a destination first. Nexus will not open a route before crossing-specific routing is validated.';
+ let route=null,error=null;
+ if(dest&&window.NexusRouting){
+  try{route=window.NexusRouting.prepare({
+   crossing:store.selected,direction:store.direction,destination:dest,vehicle:store.vehicle
+  })}catch(e){error=String(e.message||'Unable to prepare directions')}
+ }
+ const link=$('openDirections');
+ link.hidden=!route;
+ if(route){
+  link.href=route.url;
+  link.setAttribute('aria-label','Open Google Maps directions to '+dest.label+'. Confirm route crosses at '+NAMES[store.selected]);
+ }else link.removeAttribute('href');
+ $('routeNotValidated').textContent=route
+  ?route.guidance+' The map ETA is separate from official inspection waits.'
+  :dest
+   ?(error||'Directions are unavailable. Verify your destination and try again.')
+   :'Choose a destination first. Nexus will not choose a destination without your input.';
 }
 function openDestinationPicker(){
  const dir=store.direction,items=destinationRepo?.forCountry(dir)||[];
