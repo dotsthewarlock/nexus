@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f5f7fa"><title>Nexus · Camera Pill Lifecycle Lab</title>
+<style>
+:root{font:16px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:#172737;background:#f5f7fa}
+*{box-sizing:border-box}body{margin:0 auto;max-width:720px;padding:18px 16px 60px}header{display:flex;justify-content:space-between;gap:14px;align-items:center}a{color:#165c90}
+h1{font-size:1.55rem;line-height:1.18;margin:20px 0 10px}h2{font-size:1.05rem;margin:0 0 8px}p{margin:9px 0}
+.card{background:white;border:1px solid #d8e1e9;border-radius:16px;padding:17px;margin:15px 0;box-shadow:0 2px 9px #1232}
+.small{font-size:.87rem;color:#4a6074}.controls{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin:12px 0}label{display:block;font-weight:650;margin:10px 0 5px}
+select,textarea{font:inherit;border:1px solid #9fb1c0;border-radius:9px;padding:9px;background:white;color:inherit;width:100%}
+textarea{min-height:65px}button{font:inherit;cursor:pointer;padding:10px 13px;border-radius:10px;border:1px solid #92a7b9;background:#fff;color:inherit;font-weight:600}
+button.primary{background:#17669c;border-color:#17669c;color:#fff}button:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #d18b1c;outline-offset:3px}button:disabled{opacity:.5}
+.camera-slot{position:relative;display:inline-block;width:152px;height:54px;border-radius:13px;margin:6px 0 10px}
+.camera-shell{position:absolute;inset:0;border:1.5px solid #b9c7d2;border-radius:13px;background:white;box-shadow:0 1px 3px #0a233114}
+.camera-label{position:absolute;inset:0;display:flex;justify-content:center;align-items:center;gap:9px;color:#152c41;font-weight:700;pointer-events:none;z-index:1}
+.camera-label svg{width:21px;height:21px;stroke:currentColor;stroke-width:1.8;fill:none}
+.camera-slot.launching .camera-label{opacity:0}.spinner{display:none;width:20px;height:20px;border:2.5px solid #9cbbc9;border-top-color:#145982;border-radius:50%;animation:spin .8s linear infinite}
+.camera-slot.launching .spinner{display:block}.camera-slot.launching .camera-shell{background:#fff}
+@keyframes spin{to{transform:rotate(360deg)}}
+#playerHost{position:absolute;inset:0;border-radius:13px;overflow:hidden;z-index:2}
+#frame{position:absolute;width:480px;height:270px;max-width:none;border:0;top:50%;left:50%;transform:translate(-50%,-50%) scale(6);transform-origin:center;opacity:.018}
+#playerHost.active{position:fixed;inset:0;margin:auto;width:min(calc(100vw - 20px),850px);height:auto;aspect-ratio:16/9;top:clamp(76px,14dvh,140px);bottom:auto;left:0;right:0;border-radius:12px;z-index:1003;background:#07131e;box-shadow:0 8px 35px #0007}
+#playerHost.active #frame{width:100%;height:100%;top:0;left:0;transform:none;opacity:1}
+#playerHost.collapsed{pointer-events:none;visibility:hidden}
+#reopen{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent;border-radius:13px;z-index:3;display:none}
+.camera-slot.minimized #reopen{display:block}
+#playerHost.launching{pointer-events:none;opacity:0}
+#playerHost.active{pointer-events:auto;visibility:visible}
+#shade{position:fixed;inset:0;background:#071521d9;z-index:1000;display:none}
+#shade.open{display:block}
+.modalBar{position:fixed;z-index:1004;left:10px;right:10px;top:12px;max-width:850px;margin:auto;display:none;align-items:center;gap:10px;justify-content:space-between;color:#fff}
+.modalBar.open{display:flex}.modalBar button{background:#203748;color:white;border-color:#8ba6bc}
+.modalFoot{position:fixed;z-index:1004;left:15px;right:15px;bottom:max(18px,env(safe-area-inset-bottom));max-width:850px;margin:auto;display:none;color:#cbdbe6;gap:8px;justify-content:center;font-size:.85rem}
+.modalFoot.open{display:flex}body.modal-open{overflow:hidden}
+.stat{background:#eff4f8;border-radius:10px;padding:11px;margin:10px 0;font-size:.9rem}
+pre{font:12px/1.55 ui-monospace,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;background:#eef2f5;border-radius:9px;padding:11px;max-height:330px;overflow:auto}
+@media(min-width:700px){.modalBar{top:28px}#playerHost.active{top:110px}}
+</style>
+</head><body>
+<header><strong>Nexus · Camera Research</strong><a href="./">Back to Nexus</a></header>
+<h1>Camera Pill · One-Tap Lifecycle Lab</h1>
+<p class="small">Isolated test of a single Camera control that looks <strong>identical</strong> before first launch and after minimizing. The only intended visual change is the brief first-launch spinner and expanded modal.</p>
+<section class="card">
+<h2>Test camera</h2>
+<label for="camera">Stream</label>
+<select id="camera">
+<option value="4aea1c45-d402-3690-afae-fe635942da82">Canada → USA · Windsor inspection</option>
+<option value="794566d4-a75e-3cd1-6f95-2d60e54f2fdb">USA → Canada · Detroit inspection</option>
+<option value="5408b5c3-f8d1-f34b-a18a-9943047905b6">USA → Canada · Randolph Street</option>
+</select>
+<p class="small">The iframe is created once when a camera is selected. Changing camera resets the experiment.</p>
+<div id="slot" class="camera-slot" aria-label="Camera launcher">
+<div class="camera-shell"></div>
+<div class="camera-label" aria-hidden="true">
+<svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg><span>Camera</span><span id="spinner" class="spinner"></span>
+</div>
+<div id="playerHost"><iframe id="frame" title="DWT live camera play target" referrerpolicy="no-referrer" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe></div>
+<button type="button" id="reopen" aria-label="Reopen camera modal"></button>
+</div>
+<p id="stateText" class="stat" role="status">Idle · first tap should reach the cropped Dacast Play control.</p>
+<p class="small"><strong>First tap:</strong> the cropped native Dacast player receives the tap. On suspected iframe focus, the page displays a 1.5-second loading transition and expands. <strong>Subsequent taps:</strong> the identical-looking Camera pill opens the retained player immediately.</p>
+<div class="controls">
+<button id="manualExpand" type="button">Open modal manually</button>
+<button id="reset" type="button">Reset player</button>
+</div>
+<p class="small">Manual open is a diagnostic escape hatch if the crop or focus detection fails; it does not count as a successful one-tap launch.</p>
+</section>
+
+<section class="card">
+<h2>Observed outcome</h2>
+<label for="firstResult">First tap</label>
+<select id="firstResult">
+<option value="not_tested">Not tested</option>
+<option value="one_tap">Dacast plays and modal expands from one tap</option>
+<option value="expand_no_play">Modal expands but video does not play</option>
+<option value="play_no_expand">Video plays but modal does not expand</option>
+<option value="no_response">First tap has no useful effect</option>
+<option value="blocked">Player content blocked</option>
+<option value="other">Other</option>
+</select>
+<label for="reopenResult">Minimize and reopen</label>
+<select id="reopenResult">
+<option value="not_tested">Not tested</option>
+<option value="instant_playing">Instant reopen, video remained playing</option>
+<option value="instant_paused">Instant reopen, video paused or needs Play</option>
+<option value="reload">Player reloaded on reopen</option>
+<option value="failure">Reopen failed</option>
+<option value="other">Other</option>
+</select>
+<label for="notes">Notes</label>
+<textarea id="notes" maxlength="600" placeholder="Device/browser, launch behavior, visible video state"></textarea>
+<div class="controls"><button class="primary" id="copy">Copy full diagnostic report</button></div>
+<p id="copyStatus" class="small" role="status"></p>
+<pre id="report"></pre>
+</section>
+
+<div id="shade" aria-hidden="true"></div>
+<div id="modalBar" class="modalBar"><strong>DWT · Live camera</strong><button type="button" id="minimize">Minimize</button></div>
+<div id="modalFoot" class="modalFoot"><span id="modalCaption">Native Dacast camera stream · no-referrer iframe</span></div>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const ROOT='https://iframe.dacast.com/live/8b2b630f-b7c1-262d-f343-118f510224a0/';
+const CAMERAS={
+ '4aea1c45-d402-3690-afae-fe635942da82':'Canada → USA · Windsor inspection',
+ '794566d4-a75e-3cd1-6f95-2d60e54f2fdb':'USA → Canada · Detroit inspection',
+ '5408b5c3-f8d1-f34b-a18a-9943047905b6':'USA → Canada · Randolph Street'
+};
+const state={mode:'idle',firstTap:null,iframeFocus:null,launches:0,reopens:0,manualOpens:0};
+const events=[];let handoffTimer=null;let focusArmed=false;
+const frame=$('frame'),host=$('playerHost'),slot=$('slot');
+const store='nexus-camera-pill-lifecycle-v1';
+function note(s){events.push(new Date().toISOString()+' '+s);if(events.length>35)events.shift();render();}
+function display(s){$('stateText').textContent=s;render();}
+function clearHandoff(){if(handoffTimer!==null){clearTimeout(handoffTimer);handoffTimer=null;}}
+function expand(kind){
+ clearHandoff();
+ if(state.mode==='expanded')return;
+ if(kind==='manual')state.manualOpens++;
+ if(kind==='reopen')state.reopens++;
+ state.mode='expanded';focusArmed=false;
+ slot.classList.remove('launching','minimized');
+ host.classList.remove('launching','collapsed');
+ host.classList.add('active');
+ document.body.classList.add('modal-open');
+ $('shade').classList.add('open');$('modalBar').classList.add('open');$('modalFoot').classList.add('open');
+ display('Expanded · '+(kind==='first'?'first-tap handoff':kind==='manual'?'manual diagnostic open':'instant reopen')+'. Check actual video playback.');
+ note('Modal expanded; iframe retained, not reparented.');
+}
+function beginHandoff(signal){
+ if(!focusArmed || state.mode!=='idle')return;
+ focusArmed=false;state.iframeFocus=signal;
+ state.mode='launching';state.launches++;
+ slot.classList.add('launching');host.classList.add('launching');
+ display('First-tap signal ('+signal+'). Showing 1500 ms spinner before modal expansion.');
+ note('Possible native player interaction detected via '+signal+'; NOT proof that video started.');
+ handoffTimer=setTimeout(()=>expand('first'),1500);
+}
+frame.addEventListener('focus',()=>beginHandoff('iframe focus'));
+window.addEventListener('blur',()=>{
+ if(!focusArmed || state.mode!=='idle')return;
+ setTimeout(()=>{
+  if(state.mode==='idle' && document.activeElement===frame)beginHandoff('window blur + iframe activeElement');
+ },0);
+});
+const arm=()=>{
+ if(state.mode==='idle'){
+  focusArmed=true;
+  state.firstTap=new Date().toISOString();
+  note('Pointer reached first-launch crop. Awaiting iframe focus; no synthetic Play tap.');
+  setTimeout(()=>{if(state.mode==='idle'&&focusArmed){focusArmed=false;note('No iframe focus detected. Try manual open to inspect player geometry.');}},2500);
+ }
+};
+host.addEventListener('pointerdown',arm);
+host.addEventListener('touchstart',arm,{passive:true});
+function minimize(){
+ if(state.mode!=='expanded')return;
+ state.mode='minimized';
+ document.body.classList.remove('modal-open');
+ $('shade').classList.remove('open');$('modalBar').classList.remove('open');$('modalFoot').classList.remove('open');
+ host.classList.remove('active','launching');host.classList.add('collapsed');
+ slot.classList.remove('launching');slot.classList.add('minimized');
+ display('Minimized · same white Camera pill; player iframe retained and visually hidden.');
+ note('Modal minimized; iframe kept mounted. Playback continuity must be manually observed.');
+}
+$('minimize').addEventListener('click',minimize);
+$('reopen').addEventListener('click',()=>expand('reopen'));
+$('manualExpand').addEventListener('click',()=>{
+ if(state.mode==='minimized')expand('manual');
+ else if(state.mode==='idle'){focusArmed=false;expand('manual');}
+});
+function reset(){
+ clearHandoff();focusArmed=false;
+ state.mode='idle';state.firstTap=null;state.iframeFocus=null;state.launches=0;state.reopens=0;state.manualOpens=0;
+ document.body.classList.remove('modal-open');
+ $('shade').classList.remove('open');$('modalBar').classList.remove('open');$('modalFoot').classList.remove('open');
+ slot.classList.remove('minimized','launching');host.classList.remove('active','collapsed','launching');
+ frame.src=ROOT+$('camera').value;
+ display('Idle · first tap should reach cropped native Play control.');
+ note('Camera iframe loaded/reset; iframe load is not evidence of playback.');
+}
+frame.addEventListener('load',()=>note('Iframe load event (NOT playback confirmation).'));
+frame.addEventListener('error',()=>note('Iframe element error; cross-origin player details unavailable.'));
+$('reset').addEventListener('click',reset);
+$('camera').addEventListener('change',()=>{
+ $('firstResult').value='not_tested';$('reopenResult').value='not_tested';$('notes').value='';
+ reset();note('Camera switched to '+CAMERAS[$('camera').value]);
+});
+function report(){
+ return [
+  'Nexus DWT Camera Pill Lifecycle Lab — manual results',
+  'UTC: '+new Date().toISOString(),
+  'Origin: '+location.origin,
+  'Camera: '+CAMERAS[$('camera').value],
+  'Visual states: idle and minimized use identical Camera pill',
+  'Mechanism: 6x centred native iframe crop, referrerpolicy=no-referrer; focus-triggered 1500 ms handoff; same iframe retained on minimize',
+  'Current state: '+state.mode,
+  'First-tap outcome: '+$('firstResult').selectedOptions[0].textContent,
+  'Minimize/reopen outcome: '+$('reopenResult').selectedOptions[0].textContent,
+  'Handoff signal: '+(state.iframeFocus||'none'),
+  'Handoffs: '+state.launches+'; instant reopens: '+state.reopens+'; manual diagnostic opens: '+state.manualOpens,
+  'Notes: '+($('notes').value||'None'),
+  'Iframe focus and load do NOT prove playback. Real playback must be observed manually.',
+  'Events:',...(events.length?events:['None'])
+ ].join('\n');
+}
+function render(){$('report').textContent=report();}
+for(const id of ['firstResult','reopenResult','notes'])$(id).addEventListener('change',render);
+$('notes').addEventListener('input',render);
+$('copy').addEventListener('click',async()=>{
+ try{await navigator.clipboard.writeText(report());$('copyStatus').textContent='Copied. Paste into the Nexus project conversation.';}
+ catch{$('copyStatus').textContent='Clipboard unavailable. Select the report below and copy manually.';}
+});
+window.addEventListener('pagehide',()=>{clearHandoff();});
+reset();
+})();
+</script>
+</body></html>
