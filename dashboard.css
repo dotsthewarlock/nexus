@@ -13,3 +13,15 @@
 .settings-screen{position:fixed;inset:0;width:100vw;height:100dvh;max-width:none;max-height:none;border:0;border-radius:0}
 .settings-body{height:100%;max-height:100%;padding-bottom:40px}
 @media(max-width:300px){.controls{grid-template-columns:44px minmax(0,1fr)}.controls #laneSelect{grid-column:1/-1}.comparison{overflow-x:auto}.crossing-name{font-size:.72rem}.table-header,.crossing-row{min-width:260px}.wait-value{font-size:.86rem}}
+
+/* M1 accessibility: at enlarged text sizes, the table reflows into two country cells below each crossing. */
+.wait-value{font-size:clamp(1rem,4.3vw,1.4rem)}
+.table-header>div,.crossing-name,.cell-note{min-width:0;overflow-wrap:anywhere}
+:root[data-large-text="true"] .controls{grid-template-columns:44px minmax(0,1fr);row-gap:8px}
+:root[data-large-text="true"] .controls select:last-child{grid-column:1/-1}
+:root[data-large-text="true"] .table-header,:root[data-large-text="true"] .crossing-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+:root[data-large-text="true"] .table-header>div:first-child{display:none}
+:root[data-large-text="true"] .crossing-name{grid-column:1/-1;padding:10px 12px;border-bottom:1px solid var(--line)}
+:root[data-large-text="true"] .wait-wrap{border-left:0}
+:root[data-large-text="true"] .wait-wrap + .wait-wrap{border-left:1px solid var(--line)}
+:root[data-large-text="true"] .wait-cell{min-height:62px}
