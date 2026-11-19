@@ -42,6 +42,8 @@ jobs:
         run: node tests/camera_diagnostics.test.cjs
       - name: Alternative camera diagnostic tests
         run: node tests/camera_alternatives.test.cjs
+      - name: DWT Camera Lab 3 tests
+        run: node tests/camera_lab_v3.test.cjs
       - name: Recover last published snapshot for stale-only fallback
         run: |
           # Best effort; cached prior reports never become fresh observations.
@@ -67,6 +69,7 @@ jobs:
           mkdir -p site/data
           cp index.html styles.css app.js decision.js camera-diagnostics.html site/
           cp camera-alternatives.html site/
+          cp camera-lab-v3.html site/
           cp data/live.json site/data/live.json
           touch site/.nojekyll
       - uses: actions/configure-pages@v5

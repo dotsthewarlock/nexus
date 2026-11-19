@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#111d29">
+  <title>Nexus | DWT Camera Lab 3</title>
+  <style>
+    :root{color-scheme:dark;font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;background:#101a24;color:#eaf2fa}
+    *{box-sizing:border-box}body{margin:0 auto;padding:15px 13px 42px;max-width:740px}
+    a{color:#a2d4ff}header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    h1{font-size:1.44rem;line-height:1.22;margin:16px 0 7px}h2{font-size:1.06rem;margin:0 0 8px}
+    p{margin:6px 0 12px}.muted,small{color:#b3c6d6}.card{padding:15px;margin:14px 0;border-radius:12px;border:1px solid #43586c;background:#192837}
+    button,.action{font:inherit;font-weight:650;color:#fff;background:#22659d;border:1px solid #72b3e8;border-radius:9px;display:block;width:100%;padding:12px 10px;text-align:center;text-decoration:none;cursor:pointer;margin:7px 0}
+    button.secondary,.action.secondary{background:#283b4c;border-color:#607a91}button:disabled{opacity:.5;cursor:default}
+    :focus-visible{outline:3px solid #ffdb80;outline-offset:2px}
+    label{display:block;font-weight:600;margin:7px 0 4px}select,textarea{font:inherit;color:inherit;width:100%;padding:10px;border-radius:8px;border:1px solid #718da4;background:#101d2a}textarea{resize:vertical;min-height:65px}
+    .test-row{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid #354c60}
+    .test-row:last-child{border:0}.test-row>div{min-width:0;flex:1}.test-row a{width:auto;min-width:66px;font-weight:600;padding:8px 10px;border:1px solid #63839c;border-radius:7px;text-decoration:none;text-align:center}
+    .test-row[aria-current="true"] a{border-color:#a2d4ff;background:#22425c}
+    .state{font-size:.87rem;color:#aac4d8;margin-top:2px}
+    .player{position:relative;aspect-ratio:16/9;overflow:auto;background:#050b12;border:1px solid #547086;border-radius:9px;margin:11px 0}
+    .mount{min-height:100%;width:100%;position:relative}.mount iframe{display:block;width:100%;height:100%;border:0;position:absolute;inset:0}
+    .mount .dacast-video,.mount .dc-video{max-width:100%}
+    .status{font-size:.91rem;color:#b8e2ff;min-height:22px}
+    pre{max-height:185px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#0a141e;border-radius:8px;padding:10px;font:12px/1.5 ui-monospace,SFMono-Regular,monospace}
+    .twocol{display:grid;grid-template-columns:1fr;gap:10px}@media(min-width:550px){.twocol{grid-template-columns:1fr 1fr}}
+    .note{border-left:3px solid #ddb75e;padding-left:10px}.result-block{margin:13px 0}
+    html.case-active #playbackCard[hidden]{display:block!important}.mount iframe.legacy{position:static;width:512px;height:288px;max-width:none}
+  </style>
+  <script>
+    window.__cameraLabErrors=[];
+    if(new URLSearchParams(location.search).has('run'))document.documentElement.classList.add('case-active');
+    function cameraLabEarly(type,detail){
+      const text=String(detail||'').slice(0,240).replace(/https?:\/\/\S+/g,'[url]');
+      window.__cameraLabErrors.push(new Date().toISOString()+' '+type+': '+text);
+      if(window.__cameraLabErrors.length>25)window.__cameraLabErrors.shift();
+    }
+    window.addEventListener('error',e=>cameraLabEarly('window.error',e.message||'resource error'),true);
+    window.addEventListener('unhandledrejection',e=>cameraLabEarly('unhandledrejection',e.reason?.message||String(e.reason)),true);
+    window.addEventListener('securitypolicyviolation',e=>cameraLabEarly('CSP',e.violatedDirective+' '+e.blockedURI),true);
+  </script>
+</head>
+<body>
+<header><strong>Nexus | Camera Lab 3</strong><a href="./">Back to Nexus</a></header>
+<h1>DWT live video: supported playback tests</h1>
+<p class="muted">Fresh diagnostic page. No production camera changes. Each test reloads in its own clean document. Observe actual playback; script and iframe load events are not proof.</p>
+<section class="card">
+  <h2>1. Choose one stream</h2>
+  <label for="stream">Camera</label>
+  <select id="stream">
+    <option value="4aea1c45-d402-3690-afae-fe635942da82">Canada to USA | Windsor inspection</option>
+    <option value="794566d4-a75e-3cd1-6f95-2d60e54f2fdb">USA to Canada | Detroit inspection</option>
+    <option value="5408b5c3-f8d1-f34b-a18a-9943047905b6">USA to Canada | Randolph Street</option>
+  </select>
+  <small>Changing streams clears recorded results to avoid mixing cameras.</small>
+</section>
+<section class="card">
+  <h2>2. Run a test</h2>
+  <p class="muted">A-E test documented JavaScript configurations. F-G are iframe comparisons. H-I test the practical direct-viewing options. Start with A, then B-E.</p>
+  <div id="tests"></div>
+</section>
+<section class="card" id="playbackCard" hidden>
+  <h2 id="testTitle">Active test</h2>
+  <p id="testDescription" class="muted"></p>
+  <div class="player" id="playerStage"><div class="mount" id="playerMount">
+    <script>
+      // Parser-time insertion is intentionally separate from runtime insertion.
+      // Both Dacast scripts are documented embed patterns, not source extraction.
+      (function(){
+        const modes=['parser-ui','parser-legacy'];
+        const params=new URLSearchParams(location.search);
+        const mode=params.get('run');
+        const permitted=['4aea1c45-d402-3690-afae-fe635942da82','794566d4-a75e-3cd1-6f95-2d60e54f2fdb','5408b5c3-f8d1-f34b-a18a-9943047905b6'];
+        if(!modes.includes(mode))return;
+        const id=permitted.includes(params.get('camera'))?params.get('camera'):permitted[0];
+        const content='8b2b630f-b7c1-262d-f343-118f510224a0-live-'+id;
+        const ui=mode==='parser-ui';
+        const host=ui?'prod-player.dacast.com':'player.dacast.com';
+        const cls=ui?'dc-video':'dacast-video';
+        // document.write during HTML parsing creates a parser-inserted script.
+        // Split the end tag so this source's enclosing script remains intact.
+        const markup=(ui?'<div style="min-height:270px;min-width:480px;width:100%;position:relative;aspect-ratio:1.78">':'')+
+          '<scr'+'ipt id="'+content+'" class="'+cls+'" '+
+          (ui?'style="position:absolute;top:0;left:0;width:100%;height:100%"':'width="100%" height="100%"')+
+          ' src="https://'+host+'/js/player.js?contentId='+content+'"></scr'+'ipt>'+
+          (ui?'</div>':'');
+        document.write(markup);
+      })();
+    </script>
+  </div></div>
+  <p id="playerStatus" class="status" role="status">Loading player...</p>
+  <div class="result-block">
+    <label for="result">What actually happened?</label>
+    <select id="result">
+      <option value="not_tested">Not tested / not yet observed</option>
+      <option value="plays">Video plays</option>
+      <option value="blocked">Content blocked on this website</option>
+      <option value="blank">Blank / no player visible</option>
+      <option value="player_no_video">Player visible, but no video</option>
+      <option value="other">Other error or behaviour</option>
+    </select>
+    <div class="twocol">
+      <button id="next">Save result and next test</button>
+      <button id="stop" class="secondary">Return to test list</button>
+    </div>
+  </div>
+  <h2>Local diagnostics</h2>
+  <pre id="events">No events recorded yet.</pre>
+  <small>Browser security prevents reading the interior of cross-origin iframes. Console/network may contain additional provider errors not visible here.</small>
+</section>
+<section class="card">
+  <h2>3. Copy results</h2>
+  <label for="notes">Notes (optional)</label>
+  <textarea id="notes" maxlength="600" placeholder="Which player showed a blank area? Exact visible error? Browser/device details? "></textarea>
+  <div class="twocol">
+    <button id="copy">Copy full report</button>
+    <button id="reset" class="secondary">Reset results</button>
+  </div>
+  <p id="copyStatus" role="status"></p>
+  <pre id="report"></pre>
+</section>
+<p class="muted"><small>Only documented embeds and normal direct links are tested. No hidden stream endpoints, authentication bypasses, proxying, recording or retransmission. A successful Dacast embed does not grant redistribution rights.</small></p>
+<script>
+(function(){
+  'use strict';
+  const ID='8b2b630f-b7c1-262d-f343-118f510224a0';
+  const CAMERAS={
+    '4aea1c45-d402-3690-afae-fe635942da82':'Canada to USA | Windsor inspection',
+    '794566d4-a75e-3cd1-6f95-2d60e54f2fdb':'USA to Canada | Detroit inspection',
+    '5408b5c3-f8d1-f34b-a18a-9943047905b6':'USA to Canada | Randolph Street'
+  };
+  const CASES=[
+    {id:'parser-ui',label:'A | JS embed: UI script, parser-inserted',desc:'Dacast modern UI snippet with prod-player host and dc-video class; created during HTML parsing.'},
+    {id:'parser-legacy',label:'B | JS embed: legacy API script, parser-inserted',desc:'Dacast legacy/API snippet using player host and dacast-video class; created during HTML parsing.'},
+    {id:'dynamic-ui',label:'C | JS embed: modern script, dynamically inserted',desc:'Dacast UI-style embed with the documented responsive wrapper and script geometry; inserted after page load.'},
+    {id:'api-default',label:'D | JavaScript Player API: explicit init',desc:'Load player.js without contentId, then initialize window.dacast(contentId, target). Collect documented ready, play and error events.'},
+    {id:'api-sized',label:'E | JavaScript Player API: explicit dimensions',desc:'Programmatic init with a configured width and height; compares with D for initialization/sizing issues.'},
+    {id:'iframe-ui',label:'F | Dacast UI iframe snippet',desc:'Official Dacast responsive iframe-style markup with autoplay/encrypted-media permissions. Expected to remain blocked if iframe protection is active.'},
+    {id:'iframe-legacy',label:'G | Dacast API iframe snippet',desc:'Fixed-size legacy iframe with no extra allow permissions. Expected low value; included to close off the main documented iframe variant.'},
+    {id:'direct-same',label:'H | Direct Dacast: same tab',desc:'Open the known-working direct URL in the same tab, then use Back to return. This is not an embed.'},
+    {id:'direct-new',label:'I | Direct Dacast: new tab',desc:'Open direct video in a new tab and switch back. This is not an embed.'}
+  ];
+  const $=id=>document.getElementById(id);
+  const params=new URLSearchParams(location.search);
+  const run=CASES.find(c=>c.id===params.get('run'))||null;
+  const requestedCamera=params.get('camera');
+  const camera=Object.hasOwn(CAMERAS,requestedCamera)?requestedCamera:Object.keys(CAMERAS)[0];
+  const STORE='nexus-dwt-camera-lab-v3';
+  const log=[];
+  function logEvent(message){
+    log.push(new Date().toISOString()+' '+String(message).slice(0,280));
+    if(log.length>35)log.shift();
+    $('events').textContent=log.join('\n')||'No events';
+  }
+  const allowed=['not_tested','plays','blocked','blank','player_no_video','other'];
+  function recover(){
+    try{const d=JSON.parse(sessionStorage.getItem(STORE)||'{}');return d&&d.camera===camera&&typeof d.results==='object'?d:{camera,results:{},notes:''};}
+    catch{return {camera,results:{},notes:''};}
+  }
+  let state=recover();
+  function persist(){
+    state.notes=$('notes').value.slice(0,600);
+    if(run&&allowed.includes($('result').value))state.results[run.id]=$('result').value;
+    try{sessionStorage.setItem(STORE,JSON.stringify(state));}catch{}
+    refreshReport();
+  }
+  function directUrl(){return 'https://iframe.dacast.com/live/'+ID+'/'+camera;}
+  function contentId(){return ID+'-live-'+camera;}
+  function href(mode){return '?camera='+encodeURIComponent(camera)+(mode?'&run='+encodeURIComponent(mode):'');}
+  $('stream').value=camera;
+  $('stream').addEventListener('change',()=>{
+    try{sessionStorage.removeItem(STORE);}catch{}
+    location.assign('?camera='+encodeURIComponent($('stream').value));
+  });
+  $('notes').value=typeof state.notes==='string'?state.notes.slice(0,600):'';
+  $('notes').addEventListener('input',persist);
+  function diagnosticReport(){
+    const lines=['Nexus DWT Camera Lab 3 - manual results','UTC: '+new Date().toISOString(),
+      'Origin: '+location.origin,'Camera: '+CAMERAS[camera]];
+    for(const c of CASES)lines.push(c.label+': '+(state.results[c.id]||'not_tested'));
+    lines.push('Notes: '+(state.notes||'None'),'Active case: '+(run?.id||'None'),'Local diagnostic events:');
+    lines.push(...(log.length?log:['None in this document']));
+    lines.push(...(window.__cameraLabErrors||[]));
+    lines.push('Script and iframe load events are NOT proof of playback.');
+    return lines.join('\n');
+  }
+  function refreshReport(){$('report').textContent=diagnosticReport();}
+  function renderTests(){
+    const root=$('tests');root.replaceChildren();
+    CASES.forEach(c=>{
+      const row=document.createElement('div');row.className='test-row';row.setAttribute('aria-current',String(run?.id===c.id));
+      const text=document.createElement('div');
+      const strong=document.createElement('strong');strong.textContent=c.label;
+      const stateLine=document.createElement('div');stateLine.className='state';stateLine.textContent='Recorded: '+(state.results[c.id]||'not tested');
+      text.append(strong,stateLine);
+      const link=document.createElement('a');link.href=href(c.id);link.textContent=run?.id===c.id?'Running':'Run';
+      row.append(text,link);root.append(row);
+    });
+  }
+  $('copy').addEventListener('click',async()=>{
+    persist();const result=diagnosticReport();
+    try{await navigator.clipboard.writeText(result);$('copyStatus').textContent='Copied. Paste the report into your Nexus conversation.';}
+    catch{$('copyStatus').textContent='Clipboard unavailable. Select the report text below.';}
+  });
+  $('reset').addEventListener('click',()=>{
+    try{sessionStorage.removeItem(STORE);}catch{}
+    location.assign(href(''));
+  });
+  $('stop').addEventListener('click',()=>{persist();location.assign(href(''));});
+  $('next').addEventListener('click',()=>{
+    persist();const index=CASES.findIndex(c=>c.id===run?.id);
+    location.assign(href(CASES[index+1]?.id||''));
+  });
+  $('result').addEventListener('change',()=>{persist();renderTests();});
+  function observeDom(){
+    const el=$('playerMount');
+    logEvent('DOM: iframe='+el.querySelectorAll('iframe').length+', video='+el.querySelectorAll('video').length+', descendants='+el.querySelectorAll('*').length+', dacastGlobal='+typeof window.dacast);
+  }
+  function scriptTest({host,cls,ui}){
+    const wrapper=document.createElement('div');
+    wrapper.style.cssText=ui?'min-height:270px;min-width:480px;width:100%;position:relative;aspect-ratio:1.78':'width:100%;height:100%';
+    const script=document.createElement('script');
+    script.id=contentId();script.className=cls;
+    if(ui)script.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%';
+    else{script.setAttribute('width','100%');script.setAttribute('height','100%');}
+    script.src='https://'+host+'/js/player.js?contentId='+encodeURIComponent(contentId());
+    script.addEventListener('load',()=>{logEvent('Player embed script load event (not video proof)');observeDom();});
+    script.addEventListener('error',()=>logEvent('Player embed script network error'));
+    wrapper.appendChild(script);$('playerMount').appendChild(wrapper);
+    logEvent('Inserted UI-style script: '+host+' class='+cls);
+  }
+  function initApi(sized){
+    const el=document.createElement('div');el.id='dacast-target';el.style.cssText='min-height:260px;max-width:100%;height:100%';
+    $('playerMount').appendChild(el);
+    const script=document.createElement('script');script.src='https://prod-player.dacast.com/js/player.js';
+    script.onload=()=>{
+      logEvent('Dacast Player API library script loaded; window.dacast='+typeof window.dacast);
+      if(typeof window.dacast!=='function'){logEvent('No callable global dacast() found.');return;}
+      try{
+        const instance=sized?window.dacast(contentId(),'dacast-target',{width:'640px',height:'360px'}):window.dacast(contentId(),'dacast-target');
+        logEvent('dacast() invoked; instance='+typeof instance);
+        if(!instance){logEvent('API did not return a player instance');return;}
+        for(const [event,handler] of [['onReady',()=>logEvent('Dacast onReady callback')],['onPlay',()=>logEvent('Dacast onPlay callback')],['onError',e=>logEvent('Dacast onError: '+String(e?.message||e?.code||e?.type||'error').slice(0,100))]]){
+          if(typeof instance[event]==='function'){
+            try{instance[event](handler);}catch(e){logEvent(event+' registration failed: '+String(e.message).slice(0,100));}
+          }else logEvent(event+' unavailable');
+        }
+        observeDom();
+      }catch(e){logEvent('dacast() init threw: '+String(e.message).slice(0,160));}
+    };
+    script.onerror=()=>logEvent('Dacast Player API script failed to load');
+    document.body.appendChild(script);
+    logEvent('Requested documented JS API library; explicit init '+(sized?'640x360':'default'));
+  }
+  function iframeTest(ui){
+    const frame=document.createElement('iframe');
+    frame.title='DWT Dacast playback test';
+    frame.src=directUrl();frame.setAttribute('frameborder','0');
+    frame.setAttribute('scrolling','no');
+    frame.allowFullscreen=true;
+    if(ui){frame.allow='autoplay;encrypted-media';}
+    else{frame.classList.add('legacy');frame.width='512';frame.height='288';}
+    frame.onload=()=>logEvent('Iframe document loaded; NOT evidence video plays');
+    frame.onerror=()=>logEvent('Iframe element error event');
+    $('playerMount').appendChild(frame);
+    logEvent('Started documented '+(ui?'UI':'legacy API')+' iframe');
+  }
+  function runCase(){
+    if(!run)return;
+    $('playbackCard').hidden=false;
+    $('testTitle').textContent=run.label;
+    $('testDescription').textContent=run.desc;
+    $('result').value=allowed.includes(state.results[run.id])?state.results[run.id]:'not_tested';
+    logEvent('Loaded test '+run.id+' on '+location.origin);
+    if(run.id==='parser-ui'||run.id==='parser-legacy'){
+      logEvent('Dacast parser-time script was inserted before controller initialization');
+      observeDom();
+    }else if(run.id==='dynamic-ui')scriptTest({host:'prod-player.dacast.com',cls:'dc-video',ui:true});
+    else if(run.id==='api-default')initApi(false);
+    else if(run.id==='api-sized')initApi(true);
+    else if(run.id==='iframe-ui')iframeTest(true);
+    else if(run.id==='iframe-legacy')iframeTest(false);
+    else if(run.id==='direct-same'){
+      $('playerStage').hidden=true;
+      const link=document.createElement('button');link.textContent='Open Dacast in this tab';link.onclick=()=>{persist();location.assign(directUrl());};$('playbackCard').insertBefore(link,$('playerStatus'));
+      logEvent('H: direct navigation requires a separate tap. Use browser Back to return.');
+    }else if(run.id==='direct-new'){
+      $('playerStage').hidden=true;
+      const link=document.createElement('a');link.className='action';link.textContent='Open Dacast in new tab';link.target='_blank';link.rel='noopener noreferrer';link.href=directUrl();$('playbackCard').insertBefore(link,$('playerStatus'));
+      logEvent('I: direct new-tab URL ready. Return manually after viewing.');
+    }
+    if(run.id==='direct-same'||run.id==='direct-new')$('playerStatus').textContent='Direct player previously played. Record how easy it is to return to Nexus.';
+    else $('playerStatus').textContent='Try Play if shown; inspect the visible video and record your observation.';
+    if(!run.id.startsWith('direct')){
+      setTimeout(observeDom,1500);
+      setTimeout(()=>{
+        observeDom();
+        for(const e of window.__cameraLabErrors||[])logEvent('Browser: '+e);
+      },5000);
+    }
+  }
+  renderTests();runCase();refreshReport();
+})();
+</script>
+</body>
+</html>
