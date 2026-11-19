@@ -22,6 +22,8 @@
     gordie:{us:{provider:'Ontario 511',official:'https://511on.ca/?SelectedLayers=Cameras',views:[]},
       ca:{provider:'MDOT Mi Drive',official:'https://mdotjboss.state.mi.us/MiDrive/map?cameras=true',views:[]}}
   };
+  const TUNNEL_VIEWS=[...CAMERAS.tunnel.us.views,...CAMERAS.tunnel.ca.views];
+  const TUNNEL_HANDOFF_MS=0; // Queue expansion after the native tap without an added delay.
   const defaults={direction:'us', favorites:{us:null,ca:null}, selected:{us:'tunnel',ca:'gordie'},
     destinations:{home:'',work:''}, destinationChoice:'work',theme:'system',nexus:true,recommendation:'conservative'};
   const safeText = x=>String(x??'').slice(0,280);
@@ -37,7 +39,8 @@
   let prefs=load(), tripOverride=null, customDestination='', routeOrigin='', data=null, lastClientFetch='', loadError='', busy=false;
   let lastRefreshRequest=0,refreshCooldownUntil=0,refreshFeedback='';
   const MANUAL_REFRESH_COOLDOWN_MS=30000, AUTO_REFRESH_MS=120000;
-  let camera=null, cameraIndex=0, cameraTimeout=null, manuallySelectedDirection=false;
+  let camera=null, cameraIndex=0, manuallySelectedDirection=false;
+  let tunnelFrame=null, tunnelIndex=-1, tunnelDirection=null, tunnelGeneration=0, tunnelHandoffTimer=null, tunnelMode='idle';
   // The camera is a cross-origin iframe; zoom/pan the visible bridge frame, never its internal DOM.
   const BRIDGE_DEFAULT_ZOOM=4;
   // Viewport shifts toward the TOP and LEFT of the camera image. Values are
@@ -99,7 +102,8 @@
     setText('navigateText',destination().trim()?'Preview route':'Set destination');
     const tunnelCamera=activeId()==='tunnel';
     setText('heroCameraText',tunnelCamera?'Cameras':'Camera');
-    $('heroCamera').setAttribute('aria-label',tunnelCamera?'Open embedded Detroit–Windsor Tunnel camera':`Open ${NAMES[activeId()]} camera`);
+    $('heroCamera').setAttribute('aria-label',tunnelCamera?'Open Detroit–Windsor Tunnel camera':`Open ${NAMES[activeId()]} camera`);
+    syncTunnelLauncher();
     renderHeroFreshness(home);
     renderAlternatives(evaluation);
     renderDataStatus();renderEvents();renderDetails();renderDiagnostics();
@@ -291,9 +295,6 @@
   }
   // The camera images come from a cross-origin operator. Only the iframe's
   // outer rectangle can be scaled; no attempt is made to inspect its contents.
-  function cancelCameraTimer(){
-    if(cameraTimeout!==null){clearTimeout(cameraTimeout);cameraTimeout=null;}
-  }
   function bridgePanLimits(){
     const frame=$('cameraFrame'),stage=$('cameraStage');
     return {x:Math.max(0,(frame.offsetWidth*bridgeZoom.scale-stage.clientWidth)/2),
@@ -350,7 +351,6 @@
     setBridgeScale(bridgeZoom.scale===1?BRIDGE_DEFAULT_ZOOM:1);
   }
   function unloadCamera(){
-    cancelCameraTimer();
     showBridgeZoom(false);
     $('cameraFrame').removeAttribute('src');
     $('cameraFrame').hidden=true;
@@ -365,8 +365,6 @@
     cameraIndex=index;unloadCamera();
     const view=camera.views[index];
     $('cameraViews').querySelectorAll('button').forEach((b,i)=>b.setAttribute('aria-pressed',String(i===index)));
-    $('cameraContinue').hidden=true;
-    $('cameraWatch').hidden=true;
     if(!view){
       $('cameraFallback').hidden=false;
       setText('cameraFallbackText','No verified embeddable inspection camera. Open the official approach-camera map.');
@@ -383,58 +381,142 @@
       $('cameraReload').lastChild.textContent=' Reload camera';
       return;
     }
-    // Retain the original Watch Live handler as a fallback when autoplay is
-    // blocked or the interval expires. Tab selections attempt loading directly.
     $('cameraFrame').hidden=true;
     $('cameraFallback').hidden=false;
-    $('cameraWatch').hidden=false;
-    setText('cameraFallbackText','Try the official Tunnel video inside Nexus. If blocked, open the official camera page below.');
+    setText('cameraFallbackText','No verified embedded camera for this crossing. Open the official camera map.');
   }
-  function startTunnelVideo(){
-    if(camera?.kind!=='video')return;
-    const view=camera.views[cameraIndex];
+  // Tunnel player state is separate from the existing bridge/link <dialog>.
+  // The iframe begins under the visible Camera button and expands in the same
+  // DOM position. Cross-origin focus is only an interaction signal, not proof
+  // that Dacast started actual video playback.
+  function cancelTunnelHandoff(){
+    if(tunnelHandoffTimer!==null){clearTimeout(tunnelHandoffTimer);tunnelHandoffTimer=null;}
+  }
+  function stopTunnelCamera(){
+    cancelTunnelHandoff();
+    tunnelGeneration++;
+    if(tunnelFrame){tunnelFrame.remove();tunnelFrame=null;}
+    tunnelIndex=-1;tunnelDirection=null;tunnelMode='idle';
+    $('tunnelPlayerHost').classList.remove('is-expanded');
+    $('tunnelPlayerHost').replaceChildren();
+    $('tunnelCameraLauncher').classList.remove('is-minimized','is-stopped');
+    $('tunnelCameraHead').hidden=true;$('tunnelCameraFoot').hidden=true;
+    document.body.classList.remove('tunnel-camera-open');
+  }
+  function mountTunnelCamera(index){
+    const view=TUNNEL_VIEWS[index];
     if(!view)return;
-    cancelCameraTimer();
-    $('cameraFallback').hidden=true;
-    $('cameraWatch').hidden=true;
-    $('cameraContinue').hidden=true;
-    // Reassign from a clean iframe navigation so Retry genuinely reloads the
-    // provider's original embed. Never synthesize a click within the iframe.
-    $('cameraFrame').removeAttribute('src');
-    $('cameraFrame').hidden=false;
-    $('cameraFrame').src=view.embed;
-    $('cameraReload').hidden=false;
-    $('cameraReload').lastChild.textContent=' Retry video';
-    if(view.limit){
-      // Retain the working version's 15-second iframe viewing cycle. The
-      // countdown starts on the load attempt, not confirmed video playback.
-      cameraTimeout=setTimeout(()=>{
-        unloadCamera();
-        $('cameraFallback').hidden=false;
-        $('cameraReload').hidden=true;
-        setText('cameraFallbackText','Viewing interval complete');
-        $('cameraContinue').hidden=false;
-      },view.limit*1000);
-    }
+    const keepExpanded=tunnelMode==='expanded',keepMinimized=tunnelMode==='minimized';
+    cancelTunnelHandoff();tunnelGeneration++;
+    if(tunnelFrame)tunnelFrame.remove();
+    const frame=document.createElement('iframe'),generation=tunnelGeneration;
+    frame.title='Detroit–Windsor Tunnel · '+view.title;
+    frame.allow='autoplay; encrypted-media; fullscreen; picture-in-picture';
+    frame.allowFullscreen=true;
+    frame.referrerPolicy='no-referrer';
+    frame.loading='eager';
+    frame.addEventListener('focus',()=>beginTunnelHandoff(frame,generation));
+    frame.src=view.embed;
+    tunnelFrame=frame;tunnelIndex=index;
+    $('tunnelPlayerHost').replaceChildren(frame);
+    tunnelMode=keepExpanded?'expanded':keepMinimized?'minimized':'idle';
+    $('tunnelCameraTitle').textContent=view.title;
+    $('tunnelCameraDirect').href=view.embed;
+    $('tunnelCameraHint').textContent=keepExpanded?
+      'Tap the native Play button for the newly selected camera.':
+      'If video is not moving, tap native Play inside the expanded view.';
+    $('tunnelCameraTabs').querySelectorAll('button').forEach((b,i)=>b.setAttribute('aria-pressed',String(i===index)));
   }
+  function syncTunnelLauncher(){
+    const launcher=$('tunnelCameraLauncher');
+    if(activeId()!=='tunnel'){
+      if(tunnelFrame||tunnelMode!=='idle')stopTunnelCamera();
+      launcher.classList.remove('is-tunnel');
+      return;
+    }
+    launcher.classList.add('is-tunnel');
+    if(tunnelDirection!==prefs.direction){
+      stopTunnelCamera();
+      tunnelDirection=prefs.direction;
+    }
+    if(!tunnelFrame&&tunnelMode!=='stopped')mountTunnelCamera(prefs.direction==='us'?0:1);
+  }
+  function beginTunnelHandoff(frame,generation){
+    if(tunnelMode!=='idle'||frame!==tunnelFrame||generation!==tunnelGeneration)return;
+    tunnelMode='launching';
+    // A zero-delay task allows the real iframe click to complete; it is not
+    // synthetic playback, and no onload/focus event proves that video plays.
+    tunnelHandoffTimer=setTimeout(()=>{
+      if(tunnelMode==='launching'&&frame===tunnelFrame&&generation===tunnelGeneration)
+        expandTunnelCamera('native');
+    },TUNNEL_HANDOFF_MS);
+  }
+  function expandTunnelCamera(kind){
+    if(!tunnelFrame||tunnelMode==='expanded')return;
+    cancelTunnelHandoff();
+    tunnelMode='expanded';
+    $('tunnelCameraLauncher').classList.remove('is-minimized','is-stopped');
+    $('tunnelPlayerHost').classList.add('is-expanded');
+    $('tunnelCameraHead').hidden=false;$('tunnelCameraFoot').hidden=false;
+    document.body.classList.add('tunnel-camera-open');
+    if(kind==='reopen')$('tunnelCameraHint').textContent='Live iframe retained; reopen does not reload the camera.';
+  }
+  function minimizeTunnelCamera(){
+    if(tunnelMode!=='expanded')return;
+    tunnelMode='minimized';
+    $('tunnelPlayerHost').classList.remove('is-expanded');
+    $('tunnelCameraLauncher').classList.add('is-minimized');
+    $('tunnelCameraHead').hidden=true;$('tunnelCameraFoot').hidden=true;
+    document.body.classList.remove('tunnel-camera-open');
+    // Keep the exact iframe mounted so the live session can reopen instantly.
+  }
+  function openTunnelFromButton(){
+    if(tunnelMode==='minimized'){expandTunnelCamera('reopen');return;}
+    if(!tunnelFrame){
+      $('tunnelCameraLauncher').classList.remove('is-stopped');
+      tunnelDirection=prefs.direction;
+      mountTunnelCamera(prefs.direction==='us'?0:1);
+    }
+    // Keyboard/recovery path: show full-size native player for a direct Play.
+    expandTunnelCamera('manual');
+  }
+  window.addEventListener('blur',()=>{
+    const frame=tunnelFrame,generation=tunnelGeneration;
+    setTimeout(()=>{
+      if(frame&&document.activeElement===frame)beginTunnelHandoff(frame,generation);
+    },0);
+  });
+  $('tunnelCameraTabs').innerHTML=TUNNEL_VIEWS.map((v,i)=>
+    '<button type="button" data-index="'+i+'" aria-pressed="false">'+esc(v.title.replace(' inspection',''))+'</button>').join('');
+  $('tunnelCameraTabs').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
+    if(tunnelMode==='expanded')mountTunnelCamera(Number(b.dataset.index));
+  }));
+  $('tunnelCameraMinimize').addEventListener('click',minimizeTunnelCamera);
+  $('tunnelCameraStop').addEventListener('click',()=>{
+    stopTunnelCamera();
+    tunnelMode='stopped';
+    $('tunnelCameraLauncher').classList.add('is-stopped');
+  });
+  $('tunnelCameraRetry').addEventListener('click',()=>{
+    if(tunnelMode==='expanded'&&tunnelIndex>=0)mountTunnelCamera(tunnelIndex);
+  });
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&tunnelMode==='expanded'){e.preventDefault();minimizeTunnelCamera();}
+  });
+  window.addEventListener('pagehide',stopTunnelCamera);
   function openCamera(id){
+    if(id==='tunnel'){openTunnelFromButton();return;}
     closeCamera();camera=CAMERAS[id]?.[prefs.direction];if(!camera)return;
-    camera.kind=id==='ambassador'?'bridge':id==='tunnel'?'video':'links';
+    camera.kind=id==='ambassador'?'bridge':'links';
     $('cameraDialog').classList.toggle('camera-modal--bridge',camera.kind==='bridge');
     setText('cameraTitle',NAMES[id]);
     setText('cameraDescription',`${prefs.direction==='us'?'Canada → USA':'USA → Canada'} · Official camera view`);
     setText('cameraProvider',camera.provider);$('cameraOfficial').href=camera.official;
     $('cameraViews').innerHTML=camera.views.map((v,i)=>`<button type="button" data-index="${i}" aria-pressed="${i===0}">${esc(v.title)}</button>`).join('');
     $('cameraViews').hidden=camera.views.length<2;
-    $('cameraViews').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>{
-      activateCamera(Number(b.dataset.index));
-      if(camera?.kind==='video')startTunnelVideo();
-    }));
+    $('cameraViews').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>activateCamera(Number(b.dataset.index))));
     $('cameraDialog').showModal();
     activateCamera(0);
-    // Attempt the same original Dacast iframe as Watch Live immediately within
-    // the user's camera-button gesture. Autoplay is not guaranteed by Dacast.
-    if(camera.kind==='video')startTunnelVideo();
   }
   $('cameraZoomControls').querySelectorAll('button').forEach(b=>b.addEventListener('click',()=>setBridgeScale(Number(b.dataset.scale))));
   const zoomSurface=$('cameraZoomSurface');
@@ -493,12 +575,7 @@
   $('copyLink').addEventListener('click',async()=>{routeOrigin=$('originRoute').value.trim().slice(0,180);const dest=$('destinationRoute').value.trim().slice(0,180);if(prefs.destinationChoice==='custom')customDestination=dest;else prefs.destinations[prefs.destinationChoice]=dest;
     const link=buildShareUrl();try{await navigator.clipboard.writeText(link);setText('copyLink','Copied');}catch{window.prompt('Copy this trip link:',link);}setTimeout(()=>setText('copyLink','Copy trip link'),1700);});
   $('closeCamera').addEventListener('click',closeCamera);
-  $('cameraReload').addEventListener('click',()=>{
-    if(camera?.kind==='video')startTunnelVideo();
-    else activateCamera(cameraIndex);
-  });
-  $('cameraContinue').addEventListener('click',startTunnelVideo);
-  $('cameraWatch').addEventListener('click',startTunnelVideo);
+  $('cameraReload').addEventListener('click',()=>activateCamera(cameraIndex));
   $('cameraDialog').addEventListener('close',()=>{unloadCamera();camera=null;$('cameraDialog').classList.remove('camera-modal--bridge');});
   for(const id of ['settingsDialog','routeDialog','cameraDialog'])$(id).addEventListener('click',e=>{if(e.target===$(id))$(id).close();});
   if(matchMedia('(prefers-color-scheme: dark)').addEventListener)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(prefs.theme==='system')applyTheme();});
