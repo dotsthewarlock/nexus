@@ -40,6 +40,29 @@ for(const token of [
  assert.ok(js.includes(token),'missing preset/diagnostic behaviour: '+token);
 }
 assert.ok(!js.includes("appendChild($('player')"),'zoom/expand must not move iframe');
+for(const id of ['shape','dimensionValue']){
+ assert.ok(html.includes('id="'+id+'"'),'missing shape UI '+id);
+}
+for(const shape of ['rounded','circle','pill','rectangle','triangle']){
+ assert.ok(html.includes('<option value="'+shape+'"'),'missing shape '+shape);
+}
+for(const p of ['H','I','J','K','L','M','N']){
+ assert.ok(html.includes('<option value="'+p+'"'),'missing shape trial preset '+p);
+ assert.ok(js.includes(p+':{shape:'),'preset shape not configured: '+p);
+}
+for(const token of [
+ "'--tile-width'",
+ "'--tile-height'",
+ "'--tile-radius'",
+ "'--tile-clip'",
+ "shape==='triangle'?'polygon(0% 0%,100% 50%,0% 100%)':'none'",
+ "shape==='pill'?1.65:shape==='rectangle'?1.45:1",
+ "armed=$('trigger').value==='focus'",
+ "const config=['shape','size','zoom','x','y','delay','trigger']"
+])assert.ok(js.includes(token),'missing shape preservation: '+token);
+assert.ok(html.includes('clip-path:none;box-shadow:0 14px 50px'),'expanded modal must remove crop mask');
+assert.ok(!html.includes('id="previewHit"'),'no overlay should intercept native Play tap');
+assert.ok(!js.includes("dispatchEvent("),'no synthetic Dacast click');
 assert.ok(workflow.includes('node tests/camera_one_tap.test.cjs'));
 assert.ok(workflow.includes('cp camera-one-tap-lab.html site/'));
 console.log('One-tap lab static checks passed.');
