@@ -69,7 +69,7 @@ function render(){
  const historicalCount=readings.filter(v=>v.kind==='stale').length;
  const missingCount=readings.filter(v=>v.kind==='unavailable').length;
  const exceptions=readings.some(v=>['stale','closed','unavailable'].includes(v.kind));
- const healthy=sourceRecent&&!exceptions;
+ const healthy=sourceRecent&&!exceptions&&!store.error;
  const noData=!store.data||!Number.isFinite(snap);
  $('statusDot').dataset.state=healthy?'ok':noData?'error':'warn';
  const ageLabel=(key,name)=>{
