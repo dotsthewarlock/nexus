@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="./board.css?v=board5">
 <style>
 [hidden]{display:none!important}
+*[hidden]{display:none!important}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,sans-serif;font-size:14px}
 main{max-width:780px;padding:17px 14px 52px;margin:0 auto}
@@ -57,6 +58,7 @@ button:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible
 #resumeFace[data-shape="native"],#resumeFace[data-shape="full"]{display:none!important}
 #resumeFace svg{width:19px;height:19px;fill:currentColor;stroke:none}
 #playerLayer{position:fixed;z-index:1012;overflow:hidden;border-radius:11px;background:#071522;pointer-events:auto}
+#playerLayer.under-launcher{z-index:9}
 #playerLayer iframe{position:absolute;top:50%;left:50%;border:0;width:480px;height:270px;max-width:none;transform:translate(-50%,-50%) scale(var(--crop-zoom,6));transform-origin:center}
 #playerLayer.expanded{border-radius:11px}
 #playerLayer.expanded iframe{top:0;left:0;width:100%;height:100%;transform:none}
