@@ -14,6 +14,14 @@ The primary screen is a compact border-status viewer with an **Into USA / Into C
 - **Tunnel:** A recent tunnel-operator NEXUS lane count may be labeled as operator-listed, separate from CBSA inspection wait and live lane availability.
 - Gordie Howe's camera remains disabled until a verifiable official camera feed is available. Camera playback on real devices remains subject to provider/browser restrictions.
 
+### Current UX defaults
+
+- Main screen: three equally weighted crossings, NEXUS/Regular values and lane counts, direction control, and camera buttons. Routine update timestamps are kept as accessible metadata rather than repeated visible status lines.
+- An outdated wait shows the **agency observation time** on the affected metric. An undated reported closure stays visibly historical or uncertain, never promoted to a confirmed current closure. Canada-bound NEXUS inspection data remain explicitly unpublished.
+- General reading caveats and source/collection diagnostics are progressive disclosures below the board. Exceptional source status stays visible without expansion.
+- Camera modal is **camera-first**: a compact NEXUS/Regular summary above the video, with schedule and precise source timestamps available in expandable details below. The existing 4× Ambassador zoom/pan, backdrop dismissal, iframe teardown and official links remain.
+- Source eligibility, the 20-minute freshness policy, CBSA published-hours semantics, GitHub Actions collection and external camera endpoints remain unchanged. No extra account, personalization or feature settings are introduced.
+
 ### Current-display trust policy
 
 - Show a numeric wait **only when the official agency observation is younger than 20 minutes**, the source retrieval is younger than 20 minutes, the published snapshot is younger than 20 minutes, and the source reports a valid observation. At exactly 20 minutes, it is no longer current.
