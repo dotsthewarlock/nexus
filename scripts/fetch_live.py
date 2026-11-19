@@ -18,6 +18,10 @@ import re
 import sys
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
+try:
+    from scripts import ontario_511
+except ModuleNotFoundError:
+    import ontario_511
 
 UTC = timezone.utc
 EASTERN = ZoneInfo('America/Toronto')
@@ -26,7 +30,7 @@ CBSA_CSV_URL = 'https://www.cbsa-asfc.gc.ca/bwt-taf/bwt-eng.csv'
 CBSA_HTML_URL = 'https://www.cbsa-asfc.gc.ca/bwt-taf/menu-eng.html'
 CBSA_HOURS_URL = 'https://www.cbsa-asfc.gc.ca/data/cbsa-offices-services-bureaux-asfc-en.json'
 DWT_URL = 'https://api.dwtunnel.com/api/traffic/conditionspublic'
-ONTARIO_511_URL = 'https://511on.ca/api/v2/get/event'
+ONTARIO_511_URL = ontario_511.ENDPOINTS['ontario511'][1]
 CROSSING_NAMES = {
     'ambassador': ('ambassador bridge',),
     'tunnel': ('windsor detroit tunnel', 'detroit windsor tunnel', 'windsor tunnel'),
@@ -406,7 +410,8 @@ def empty_snapshot():
             'previous_snapshot_at': None,
         },
         'sources': {},
-        'supplemental': {'dwt': {}, 'ontario511_events': [], 'cbsa_nexus_hours': {}},
+        'supplemental': {'dwt': {}, 'ontario511_events': [], 'ontario511_construction': [],
+                         'ontario511_road_conditions': [], 'ontario511_alerts': [], 'cbsa_nexus_hours': {}},
         'directions': {'us': {}, 'ca': {}},
         'disclaimer': 'Official border inspection wait estimates only; road approach delays excluded.',
     }
@@ -464,12 +469,13 @@ def retain_on_failure(result, previous):
     if previous is None:
         return
     directions={'cbp':'us','cbsa':'ca'}
-    supplemental={'dwt':'dwt','cbsa_hours':'cbsa_nexus_hours','ontario511':'ontario511_events'}
+    supplemental={'dwt':'dwt','cbsa_hours':'cbsa_nexus_hours',
+        **{key: field for key, (_, _, field) in ontario_511.ENDPOINTS.items()}}
     for key in (*directions, *supplemental):
         source=result['sources'].get(key, {})
         if source.get('status') != 'error':
             continue
-        ttl = 120 if key in directions else 30 if key in ('dwt','ontario511') else 2880
+        ttl = 120 if key in directions else 30 if key == 'dwt' or key in ontario_511.ENDPOINTS else 2880
         prior_success=successful_before(previous,key,ttl)
         if not prior_success:
             continue
@@ -565,22 +571,38 @@ def collect(cbp_text=None, cbsa_text=None, cbsa_format='auto', dwt_text=None, on
     except Exception as exc:
         result['sources']['dwt'] = {'status': 'error', 'retrieved_at': now_utc(), 'url': DWT_URL,
                                     'error': f'{type(exc).__name__}: {str(exc)[:160]}'}
-    key = os.getenv('ONTARIO_511_KEY', '').strip()
-    try:
-        if ontario_events_text is not None or (key and not fixture_mode):
-            from urllib.parse import urlencode
-            url = ONTARIO_511_URL + '?' + urlencode({'key': key, 'format': 'json', 'lang': 'en'})
-            raw = ontario_events_text if ontario_events_text is not None else get_text(url)
-            result['supplemental']['ontario511_events'] = normalize_ontario_events(raw)
-            stamp=now_utc()
-            result['sources']['ontario511'] = {'status': 'ok', 'retrieved_at': stamp, 'last_success_at': stamp,
-                                                'url': ONTARIO_511_URL, 'coverage': len(result['supplemental']['ontario511_events'])}
-        else:
-            result['sources']['ontario511'] = {'status': 'not_configured' if not key else 'not_collected', 'url': ONTARIO_511_URL}
-    except Exception as exc:
-        # Do not log API keys, response URLs, or credentials.
-        result['sources']['ontario511'] = {'status': 'error', 'retrieved_at': now_utc(), 'url': ONTARIO_511_URL,
-                                            'error': type(exc).__name__}
+    # The key only exists in this server-side GitHub Actions process.
+    key = os.getenv('ONTARIO_511_API_KEY', '').strip()
+    fixture_inputs = {'ontario511': ontario_events_text}
+    for name, (kind, endpoint, field) in ontario_511.ENDPOINTS.items():
+        raw_fixture = fixture_inputs.get(name)
+        try:
+            if raw_fixture is not None or (key and not fixture_mode):
+                if raw_fixture is None:
+                    from urllib.parse import urlencode
+                    # The credential-bearing URL is NEVER placed in output or logs.
+                    request_url = endpoint + '?' + urlencode({'key': key, 'format': 'json', 'lang': 'en'})
+                    raw = get_text(request_url)
+                else:
+                    raw = raw_fixture
+                result['supplemental'][field] = ontario_511.normalize(raw, kind)
+                stamp = now_utc()
+                result['sources'][name] = {
+                    'status': 'ok', 'retrieved_at': stamp, 'last_success_at': stamp,
+                    'url': endpoint, 'attribution': ontario_511.ATTRIBUTION,
+                    'coverage': len(result['supplemental'][field]),
+                }
+            else:
+                result['sources'][name] = {
+                    'status': 'not_collected' if fixture_mode and key else 'not_configured' if not key else 'not_collected',
+                    'url': endpoint, 'attribution': ontario_511.ATTRIBUTION,
+                }
+        except Exception as exc:
+            # Never format exception messages; urllib errors can contain the key.
+            result['sources'][name] = {
+                'status': 'error', 'retrieved_at': now_utc(), 'url': endpoint,
+                'attribution': ontario_511.ATTRIBUTION, 'error': type(exc).__name__,
+            }
     retain_on_failure(result, previous)
     return result
 
