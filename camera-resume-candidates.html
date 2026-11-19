@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f7fa">
+<meta name="robots" content="noindex,nofollow">
+<title>Nexus · In-modal Resume candidate lab</title>
+<link rel="stylesheet" href="./board.css?v=board5">
+<style>
+[hidden]{display:none!important}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,sans-serif;font-size:14px}
+main{max-width:780px;padding:17px 14px 52px;margin:0 auto}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.top span{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+a{color:var(--accent)}h1{font-size:24px;letter-spacing:-.03em;margin:17px 0 8px}h2{font-size:16px;margin:0 0 10px}p{line-height:1.5;margin:9px 0 12px}
+.muted{color:var(--muted)}.small{font-size:12px;line-height:1.45;color:var(--muted)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:15px;padding:16px;margin:15px 0}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.field{min-width:0}.field label{display:block;margin:2px 0 6px;font-size:12px;font-weight:650}
+.field select,.field textarea{font:inherit;color:var(--ink);background:var(--surface);width:100%;min-height:44px;padding:11px;border:1px solid var(--line);border-radius:10px}
+.field textarea{min-height:92px;resize:vertical}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:11px 0}
+.actions button,.button{background:var(--accent);color:var(--surface);border:1px solid var(--accent);font-size:13px;font-weight:700;border-radius:9px;padding:10px 14px;min-height:44px;cursor:pointer}
+.actions .secondary,.button.secondary{background:var(--surface);color:var(--ink);border-color:var(--line)}
+button:disabled{opacity:.5;cursor:default}
+button:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.warning{border-left:3px solid var(--warn);padding-left:11px;font-size:13px}
+.launch-row{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin:13px 0}
+#launcherPill{position:relative;z-index:10;width:148px;height:52px;flex:none;background:var(--surface);border-radius:11px;pointer-events:none}
+#launcherLabel{position:absolute;inset:0;z-index:13;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:11px;display:flex;justify-content:center;align-items:center;gap:8px;font-weight:700;pointer-events:none;user-select:none}
+#launcherLabel svg{width:19px;height:19px;stroke:currentColor;stroke-width:1.8;fill:none}
+#launchStatus{flex:1;min-width:165px;line-height:1.5;color:var(--muted);font-size:13px}
+.history{list-style:none;padding:0;margin:10px 0;display:grid;gap:9px}
+.history li{border:1px solid var(--line);border-radius:10px;padding:10px;font-size:12px;line-height:1.5}
+.history strong{display:block;font-size:13px;margin-bottom:3px}
+.log{white-space:pre-wrap;overflow-wrap:anywhere;max-height:200px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:10px;font:11px/1.5 ui-monospace,monospace}
+#reportFallback{width:100%;min-height:160px;margin-top:8px;font:11px/1.5 ui-monospace,monospace;border:1px solid var(--line);border-radius:9px;background:var(--bg);color:var(--ink)}
+#modalShade{position:fixed;inset:0;z-index:1000;background:#061320dc;display:grid;place-items:center;padding:12px;overflow-y:auto}
+#modalCard{width:min(730px,100%);max-height:96dvh;overflow-y:auto;border:1px solid var(--line);border-radius:15px;background:var(--surface);color:var(--ink);padding:14px;box-shadow:0 20px 80px #0007}
+.modal-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:9px}
+.modal-top h2{font-size:17px;margin:0}.modal-top p{font-size:12px;color:var(--muted);margin:2px 0 0}
+.modal-video{position:relative;width:100%;aspect-ratio:16 / 9;background:#091a2a;border-radius:11px;overflow:hidden;display:grid;align-items:center;justify-items:center}
+#cutoffArea{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;color:#eef5fb;text-align:center;padding:14px}
+#cutoffArea h3{margin:0;font-size:18px}
+#cutoffArea p{color:#cad9e5;font-size:12px;max-width:260px;margin:0;line-height:1.4}
+#resumeTarget{width:148px;height:52px;border-radius:11px;flex:none;position:relative;background:#172b3e}
+#cutoffArea[data-shape="round"] #resumeTarget{width:80px;height:80px;border-radius:50%}
+#cutoffArea[data-shape="native"] #resumeTarget{height:74px}
+#cutoffArea[data-shape="full"] #resumeTarget{width:100%;height:100%;position:absolute;inset:0;border-radius:0}
+#cutoffArea[data-shape="full"]{padding:0}
+#cutoffArea[data-shape="full"] h3,#cutoffArea[data-shape="full"] p{position:absolute;left:0;right:0;pointer-events:none;z-index:1}
+#cutoffArea[data-shape="full"] h3{top:4px}#cutoffArea[data-shape="full"] p{bottom:2px;margin:auto;background:#0b172ab0}
+#resumeFace{position:fixed;z-index:1013;display:flex;justify-content:center;align-items:center;gap:8px;background:#fff;color:#163149;border-radius:11px;font-weight:750;border:1px solid #fff;box-shadow:0 1px 3px #0717222b;pointer-events:none;user-select:none}
+#resumeFace[data-shape="round"]{border-radius:50%;flex-direction:column;gap:2px;font-size:12px}
+#resumeFace[data-shape="native"],#resumeFace[data-shape="full"]{display:none!important}
+#resumeFace svg{width:19px;height:19px;fill:currentColor;stroke:none}
+#playerLayer{position:fixed;z-index:1012;overflow:hidden;border-radius:11px;background:#071522;pointer-events:auto}
+#playerLayer iframe{position:absolute;top:50%;left:50%;border:0;width:480px;height:270px;max-width:none;transform:translate(-50%,-50%) scale(var(--crop-zoom,6));transform-origin:center}
+#playerLayer.expanded{border-radius:11px}
+#playerLayer.expanded iframe{top:0;left:0;width:100%;height:100%;transform:none}
+#cutoffArea .control-button{border:1px solid #fff;background:#f5f8fc;color:#132c40;border-radius:9px;padding:10px 13px;min-height:44px;font:700 13px system-ui;z-index:2;cursor:pointer}
+#cutoffArea .control-button:disabled{opacity:.5}
+#modalMeta{display:flex;justify-content:space-between;align-items:center;gap:9px;flex-wrap:wrap;margin-top:11px}
+#modalMeta strong{font-size:19px;font-variant-numeric:tabular-nums}
+#modalMeta .actions{margin:0}
+#modalStatus{color:var(--muted);font-size:12px;margin:10px 0}
+#modalCard .field{margin-top:9px}
+#modalCard .field select{max-width:100%}
+.modal-bottom{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;margin-top:10px;font-size:12px}
+body.modal-open{overflow:hidden}
+@media(max-width:520px){main{padding:14px 11px 45px}.panel{padding:12px}.grid{grid-template-columns:1fr}#modalCard{padding:10px}.modal-top{min-height:52px}#modalMeta strong{font-size:16px}.actions button{flex:1 1 125px}}
+</style>
+</head>
+<body>
+<main id="main">
+<header class="top"><span>Nexus · camera test only</span><a href="./">Back to Nexus dashboard</a></header>
+<h1>In-modal Resume candidate lab</h1>
+<p class="muted">Six approaches to keeping the camera modal open after a nine-second preview. Every trial uses the existing Dacast URLs and cropped native-Play technique. No synthetic clicks or hidden access to player controls.</p>
+<p class="warning">An iframe can load without video playing. The first Play tap and subsequent Resume taps are observations you must judge. Prepared players may consume data <strong>before</strong> a tap; the test automatically releases unused players after 15 seconds.</p>
+<section class="panel" aria-labelledby="setupTitle">
+<h2 id="setupTitle">1 · Choose a candidate</h2>
+<div class="grid">
+<div class="field"><label for="camera">DWT camera</label><select id="camera">
+<option value="us">Windsor inspection · into USA</option><option value="ca">Detroit inspection · into Canada</option><option value="randolph">Randolph Street · into Canada</option>
+</select></div>
+<div class="field"><label for="candidate">In-modal Resume method</label><select id="candidate">
+<option value="pill6">A · 6× cropped Play, white Resume pill</option>
+<option value="round6">B · 6× cropped Play, round Resume</option>
+<option value="pill4">C · 4× cropped Play, white Resume pill</option>
+<option value="native6">D · 6× cropped Play, no visual mask</option>
+<option value="full">E · Full Dacast player, tap native Play</option>
+<option value="control">F · Regular Resume reload (two-tap control)</option>
+</select></div>
+<div class="field"><label for="prewarm">Wait before preparing next Resume</label><select id="prewarm">
+<option value="250">250 ms · quick prewarm</option><option value="1500">1.5 seconds · delayed</option><option value="3500">3.5 seconds · delayed</option>
+</select></div>
+<div class="field"><label for="handoff">Expansion after iframe focus</label><select id="handoff">
+<option value="500">500 ms · previously successful</option><option value="0">0 ms · immediate</option><option value="1500">1500 ms · conservative</option>
+</select></div>
+</div>
+<div class="actions"><button type="button" id="prepare">Prepare first cropped Camera control</button><button type="button" class="secondary" id="manualOpen">Open player manually (fallback)</button><button type="button" class="secondary" id="stop">Stop / unload</button></div>
+<p class="small">First launch is identical in all six modes: 480×270 iframe, 6× crop under the Camera label, then expand that same iframe. Each Resume candidate is prepared inside the existing modal after the 9s cutoff. Candidate F is the control: a conventional button that reloads the iframe but needs an additional Dacast Play tap.</p>
+</section>
+<section class="panel">
+<h2>2 · Tap the Camera control</h2>
+<div class="launch-row">
+<div id="launcherPill" aria-label="Native Dacast Play launcher" role="group"><div id="launcherLabel" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg>Camera</div></div>
+<div id="launchStatus" role="status">Press Prepare, then tap Camera once to start native Play.</div>
+</div>
+<p class="small">The Camera and Resume labels do not intercept taps. The Dacast player receives them directly. A separate fallback remains available when cross-origin focus does not trigger expansion.</p>
+</section>
+<section class="panel">
+<h2>3 · Compare repeated sessions</h2>
+<p class="small">Record whether the very first Resume works without another Play tap, then test two further Resume cycles on the same camera. Change candidates between trials; each transition unloads the previous player.</p>
+<ul class="history" id="history"><li>No sessions recorded.</li></ul>
+<div class="field"><label for="notes">Additional observations</label><textarea id="notes" maxlength="2000" placeholder="A: one tap succeeded 3/3, roughly 4 seconds to motion. B: crop not aligned. F: required two taps…"></textarea></div>
+<div class="actions"><button type="button" id="copy">Copy diagnostic report</button><button type="button" id="clear" class="secondary">Clear results</button></div>
+<p id="copyStatus" role="status" class="small"></p>
+<textarea id="reportFallback" readonly hidden aria-label="Manual-copy report"></textarea>
+</section>
+<details class="panel"><summary><strong>Event log and limitations</strong></summary>
+<p class="small">Iframe focus is a user-interaction signal, not a playback confirmation. The nine-second timer starts at focus for native-Play candidates; candidate F starts at its Resume button click. Idle prepared players are unloaded after 15 seconds. No third-party playback telemetry or bandwidth measurement is available.</p>
+<pre class="log" id="log"></pre>
+</details>
+<p class="small">Independent diagnostic; publishing this page does not change the production dashboard, grant camera reuse permission or modify original video feeds.</p>
+</main>
+<div id="modalShade" hidden>
+ <div id="modalCard" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-top"><div><h2 id="modalTitle">Tunnel camera</h2><p id="modalSubtitle">Nine-second preview · original Dacast player</p></div><button class="button secondary" id="closeModal" type="button">Close</button></div>
+  <div class="modal-video" id="videoSlot"><div id="cutoffArea" hidden>
+    <h3 id="expiredTitle">Preview ended</h3><p id="expiredDescription">Preparing your next preview…</p>
+    <div id="resumeTarget"></div>
+    <button id="rearm" class="control-button" type="button" hidden>Re-arm native Play</button>
+    <button id="controlResume" class="control-button" type="button" hidden>Resume video</button>
+  </div></div>
+  <div id="modalMeta"><div><strong id="timer">9.0s</strong><div class="small" id="timerLabel">Time remaining from Play focus</div></div>
+  <div class="actions"><button type="button" id="markMoving" class="secondary">Mark moving video</button><button type="button" id="fallbackFull" class="secondary">Open full player</button></div></div>
+  <div class="field"><label for="outcome">Result for most recent session</label><select id="outcome">
+    <option value="untested">Not rated</option><option value="one-tap">One tap, moving video</option><option value="extra-play">Needed a second native Play tap</option><option value="no-motion">Player opened, no moving video</option><option value="crop-miss">Crop missed native Play</option><option value="no-handoff">Play worked but modal did not expand</option><option value="blocked">Provider blocked / unavailable</option><option value="other">Other or uncertain</option>
+  </select></div>
+  <p id="modalStatus" role="status">Camera not loaded.</p>
+  <div class="modal-bottom"><a href="https://www.dwtunnel.com/" target="_blank" rel="noopener noreferrer">Official tunnel camera</a><span class="small">All viewing sessions stop at 9 seconds</span></div>
+ </div>
+</div>
+<div id="playerLayer" hidden></div>
+<div id="resumeFace" hidden aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m8 5 12 7-12 7z"/></svg><span>Resume</span></div>
+<script src="./camera-resume-candidates.js?v=1" defer></script>
+</body>
+</html>
