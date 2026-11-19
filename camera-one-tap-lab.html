@@ -192,6 +192,8 @@ function applyPreset(){
  const p=PRESETS[$('preset').value]||PRESETS.O;
  cancelPending();setFeedback(false);
  for(const id of config){const value=p[id]??VISUAL_DEFAULTS[id];if(value!==undefined)$(id).value=value;}
+ for(const id of observations)$(id).value=id==='notes'?'':'untested';
+ $('saveState').textContent='New permutation selected; record fresh observations before saving.';
  armed=loaded&&p.trigger==='focus';
  applyCrop();
  log('Applied preset '+$('preset').value+', '+(armed?'armed for next iframe focus':'manual Expand control')+'.');
