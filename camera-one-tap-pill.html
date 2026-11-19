@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#f4f7fa">
+<title>Nexus · DWT one-tap Camera pill lab</title>
+<style>
+:root{font:15px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#102638;background:#f4f7fa}
+*{box-sizing:border-box}
+body{margin:0 auto;max-width:750px;padding:22px 16px 65px}
+header{display:flex;justify-content:space-between;gap:12px;align-items:center}
+header strong{font-size:19px}a{color:#155a94}
+h1{font-size:24px;line-height:1.18;letter-spacing:-.5px;margin:26px 0 9px}
+h2{font-size:17px;margin:0 0 10px}
+p{margin:7px 0 13px}
+.card{background:#fff;border:1px solid #dce5ed;border-radius:16px;padding:19px;margin:15px 0;box-shadow:0 10px 34px rgba(17,42,66,.05)}
+.muted,small{color:#5d6d7f}
+label{display:block;font-weight:680;margin:10px 0 6px}
+select,textarea{background:#f0f5f9;border:1px solid #cbd8e4;border-radius:10px;font:inherit;color:inherit;padding:11px;width:100%}
+textarea{min-height:65px;resize:vertical}
+button{font:inherit;cursor:pointer}
+:focus-visible{outline:3px solid #ffae43;outline-offset:3px}
+.button{padding:11px 14px;border-radius:11px;background:#fff;border:1px solid #dce5ed;color:#102638;font-weight:700;min-height:46px}
+.button.primary{color:#fff;background:#155889;border-color:#155889}
+.button-row{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0}
+.button-row>*{flex:1;min-width:130px}
+.camera-row{display:flex;gap:15px;align-items:center;flex-wrap:wrap;margin:18px 0}
+.camera-pill{width:150px;height:54px;position:relative;flex:none;border-radius:11px;background:#fff;border:1px solid #dce5ed;box-shadow:0 2px 6px #16314b0a}
+.camera-face{position:absolute;inset:0;z-index:100;border-radius:10px;background:#fff;display:flex;align-items:center;justify-content:center;gap:9px;color:#102638;font-size:14px;font-weight:720;pointer-events:none;user-select:none}
+.camera-face svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.reopen{position:absolute;inset:0;z-index:120;border:0;border-radius:10px;background:transparent;color:transparent;width:100%;height:100%}
+.launch-mask{position:absolute;inset:0;z-index:130;background:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:8px;color:#102638;font-size:12px;font-weight:700}
+.spinner{width:18px;height:18px;border:2px solid #bbccdc;border-top-color:#155889;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.camera-note{flex:1;min-width:180px;font-size:13px;color:#5d6d7f}
+.camera-note strong{display:block;color:#102638;font-size:13px;margin-bottom:3px}
+#playerLayer{position:fixed;z-index:90;overflow:hidden;border-radius:10px;background:#07121b;pointer-events:auto}
+#playerLayer iframe{position:absolute;border:0;width:640px;height:360px;left:50%;top:50%;transform:translate(-50%,-50%) scale(6);transform-origin:center center}
+#playerLayer.expanded{z-index:1100;border-radius:9px}
+#playerLayer.expanded iframe{width:100%;height:100%;left:0;top:0;transform:none}
+#playerLayer.debug-crop{z-index:105}
+#modalBackdrop{position:fixed;inset:0;z-index:1000;background:#071421cc;display:flex;align-items:center;justify-content:center;overflow-y:auto;padding:12px}
+.modal-card{width:min(690px,100%);max-height:96dvh;overflow:auto;background:#fff;border-radius:17px;box-shadow:0 28px 70px #0006;padding:15px}
+.modal-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:12px}
+.modal-top h2{font-size:20px;margin:0}
+.modal-top p{font-size:12px;color:#607287;margin:3px 0}
+.modal-target{aspect-ratio:16/9;position:relative;background:#07121b;border-radius:9px}
+.modal-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;font-size:12px;color:#5d6d7f}
+.modal-foot a{font-size:12px}
+.status{font-size:13px;line-height:1.45;color:#4f6275}
+.status strong{color:#102638}
+pre{background:#10202f;color:#eaf2f8;padding:13px;border-radius:10px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:325px;overflow:auto;font:12px/1.5 ui-monospace,SFMono-Regular,monospace}
+.checkbox-row{display:flex;align-items:center;gap:8px;font-size:13px;margin:9px 0}
+.checkbox-row input{width:19px;height:19px}
+.notice{border-left:3px solid #c58c35;padding-left:11px;font-size:13px}
+[hidden]{display:none!important}
+@media(max-width:420px){body{padding:15px 12px 55px}.card{padding:15px}.modal-card{padding:11px}}
+@media(prefers-reduced-motion:reduce){.spinner{animation:none}}
+</style>
+</head>
+<body>
+<header><strong>Nexus · Camera Test</strong><a href="./">Back to Nexus</a></header>
+<h1>One-tap camera pill · lifecycle test</h1>
+<p class="muted">The <strong>same white Camera pill</strong> is displayed before first use and after minimizing. First tap aims at the Dacast Play control through the pill; subsequent taps reopen the same player instantly.</p>
+
+<section class="card">
+<h2>Test the launch button</h2>
+<label for="camera">DWT camera</label>
+<select id="camera">
+<option value="4aea1c45-d402-3690-afae-fe635942da82">Canada → USA · Windsor inspection</option>
+<option value="794566d4-a75e-3cd1-6f95-2d60e54f2fdb">USA → Canada · Detroit inspection</option>
+<option value="5408b5c3-f8d1-f34b-a18a-9943047905b6">USA → Canada · Randolph Street</option>
+</select>
+<div class="camera-row">
+ <div id="cameraPill" class="camera-pill">
+   <div id="cameraFace" class="camera-face" aria-hidden="true">
+    <svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"></rect><path d="m16 10 5-3v10l-5-3"></path></svg>
+    <span>Camera</span>
+   </div>
+   <button id="reopen" class="reopen" type="button" hidden aria-label="Reopen live camera">Camera</button>
+   <div id="launchMask" class="launch-mask" hidden aria-hidden="true"><span class="spinner"></span>Opening camera…</div>
+ </div>
+ <div class="camera-note">
+  <strong id="stateLabel">Idle · native Play target</strong>
+  <span id="stateDescription">Wait briefly for the player to load, then tap the white Camera pill once.</span>
+ </div>
+</div>
+<p class="status" id="playerStatus" role="status">The player is being prepared behind the pill. This is not a playback indicator.</p>
+<div class="button-row">
+ <button class="button" id="manualExpand" type="button">Manually expand (diagnostic)</button>
+ <button class="button" id="reset" type="button">Reset player</button>
+</div>
+<label class="checkbox-row" for="debugCrop"><input id="debugCrop" type="checkbox"> Reveal live player crop (debug only)</label>
+<p class="notice">For the initial tap, no Nexus click handler intercepts the gesture. The transparent-to-input visual label covers a 6× centred crop of the real Dacast iframe. An iframe focus signal triggers the 1.5-second handoff; focus alone is <strong>not proof of video playback</strong>.</p>
+</section>
+
+<section class="card">
+<h2>Record manual observations</h2>
+<label for="firstResult">First tap</label>
+<select id="firstResult">
+<option value="untested">Not tested</option>
+<option value="one_tap">One tap started video and automatically opened modal</option>
+<option value="modal_no_play">Modal automatically opened, but second Play tap needed</option>
+<option value="manual_expand">Video started, but automatic expansion failed</option>
+<option value="no_play">First tap did not start video</option>
+<option value="blocked">Provider showed content blocked</option>
+<option value="other">Other result</option>
+</select>
+<label for="reopenResult">After minimizing</label>
+<select id="reopenResult">
+<option value="untested">Not tested</option>
+<option value="instant">Same pill reopened instantly; video continued</option>
+<option value="paused">Reopened instantly; video paused / needed Play</option>
+<option value="reloaded">Player reloaded or restarted</option>
+<option value="failed">Reopening failed</option>
+<option value="other">Other result</option>
+</select>
+<label for="notes">Optional notes</label>
+<textarea id="notes" maxlength="500" placeholder="Device, browser, timing, first-tap position, playback behaviour"></textarea>
+<div class="button-row">
+ <button class="button primary" id="copy" type="button">Copy diagnostic report</button>
+</div>
+<p id="copyStatus" class="status" role="status"></p>
+<pre id="report"></pre>
+</section>
+
+<div id="playerLayer" aria-label="DWT camera player"></div>
+<div id="modalBackdrop" hidden>
+ <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal-top">
+   <div><h2 id="modalTitle">DWT · Live Camera</h2><p id="modalCamera"></p></div>
+   <button id="minimize" class="button" type="button" aria-label="Minimize camera">Minimize</button>
+  </div>
+  <div id="modalTarget" class="modal-target" aria-hidden="true"></div>
+  <div class="modal-foot">
+   <span>Minimize retains the player; same Camera pill reopens it.</span>
+   <a id="external" target="_blank" rel="noopener noreferrer">Open direct feed</a>
+  </div>
+ </div>
+</div>
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const ROOT='https://iframe.dacast.com/live/8b2b630f-b7c1-262d-f343-118f510224a0/';
+const CAMERAS={
+ '4aea1c45-d402-3690-afae-fe635942da82':'Canada → USA · Windsor inspection',
+ '794566d4-a75e-3cd1-6f95-2d60e54f2fdb':'USA → Canada · Detroit inspection',
+ '5408b5c3-f8d1-f34b-a18a-9943047905b6':'USA → Canada · Randolph Street'
+};
+const STORE='nexus-dwt-one-tap-pill-lab-v1';
+const HOLD_MS=1500,COLLAPSED_TIMEOUT_MS=180000,BACKGROUND_TIMEOUT_MS=20000;
+let state='idle',frame=null,launchTimer=null,collapseTimer=null,backgroundTimer=null,events=[],loadSeen=false;
+let observations={};
+try{const a=JSON.parse(sessionStorage.getItem(STORE)||'{}');if(a&&typeof a==='object')observations=a;}catch{}
+if(Object.hasOwn(CAMERAS,observations.camera))$('camera').value=observations.camera;
+function cameraUrl(){return ROOT+$('camera').value;}
+function log(message){
+ events.push(new Date().toISOString()+' '+message);
+ events=events.slice(-40);
+ renderReport();
+}
+function persist(){
+ observations.camera=$('camera').value;
+ observations[$('camera').value]={
+  first:$('firstResult').value,reopen:$('reopenResult').value,notes:$('notes').value.slice(0,500)
+ };
+ try{sessionStorage.setItem(STORE,JSON.stringify(observations));}catch{}
+ renderReport();
+}
+function loadObservations(){
+ const data=observations[$('camera').value]||{};
+ $('firstResult').value=data.first||'untested';
+ $('reopenResult').value=data.reopen||'untested';
+ $('notes').value=data.notes||'';
+ renderReport();
+}
+function report(){
+ const lines=[
+  'Nexus DWT one-tap Camera pill diagnostic — manual results',
+  'UTC: '+new Date().toISOString(),
+  'Origin: '+location.origin,
+  'Camera: '+CAMERAS[$('camera').value],
+  'First tap: '+$('firstResult').selectedOptions[0].textContent,
+  'After minimizing: '+$('reopenResult').selectedOptions[0].textContent,
+  'State at copy: '+state,
+  'Configuration: same visual pill in idle and active-collapsed, 6x centred iframe crop, no-referrer, first-focus handoff 1500ms, instant reopen, 180s collapsed release',
+  'Notes: '+($('notes').value||'None'),
+  'Events:',...(events.length?events:['None']),
+  'Iframe load and focus are NOT proof of video playback.'
+ ];
+ return lines.join('\n');
+}
+function renderReport(){$('report').textContent=report();}
+function cancelTimers(){
+ clearTimeout(launchTimer);clearTimeout(collapseTimer);clearTimeout(backgroundTimer);
+ launchTimer=collapseTimer=backgroundTimer=null;
+}
+function positionPlayer(){
+ if(!frame)return;
+ const rect=(state==='expanded' ? $('modalTarget') : $('cameraPill')).getBoundingClientRect();
+ const layer=$('playerLayer');
+ layer.style.left=rect.left+'px';layer.style.top=rect.top+'px';
+ layer.style.width=rect.width+'px';layer.style.height=rect.height+'px';
+}
+function render(){
+ const layer=$('playerLayer');
+ layer.classList.toggle('expanded',state==='expanded');
+ const collapsed=(state==='idle'||state==='launching'||state==='collapsed');
+ layer.classList.toggle('debug-crop',collapsed&&$('debugCrop').checked);
+ $('cameraFace').style.background=collapsed&&$('debugCrop').checked?'rgba(255,255,255,.08)':'#fff';
+ $('reopen').hidden=state!=='collapsed';
+ $('launchMask').hidden=state!=='launching';
+ $('modalBackdrop').hidden=state!=='expanded';
+ document.body.style.overflow=state==='expanded'?'hidden':'';
+ const labels={
+  idle:['Idle · native Play target','First tap reaches the native Dacast Play control beneath the Camera label.'],
+  launching:['Launching · initial handoff','Iframe focus detected. Opening the modal after 1.5 seconds.'],
+  collapsed:['Minimized · instant reopen','The same Camera pill now reopens the existing player directly.'],
+  expanded:['Expanded · same iframe','Minimize to return to the identical Camera pill without unloading video.']
+ };
+ $('stateLabel').textContent=labels[state][0];$('stateDescription').textContent=labels[state][1];
+ $('manualExpand').disabled=state==='expanded';
+ $('camera').disabled=state==='launching'||state==='expanded';
+ positionPlayer();renderReport();
+}
+function makeFrame(){
+ $('playerLayer').replaceChildren();
+ frame=document.createElement('iframe');
+ frame.title=CAMERAS[$('camera').value]+' DWT live camera';
+ frame.setAttribute('referrerpolicy','no-referrer');
+ frame.setAttribute('allow','autoplay; encrypted-media; fullscreen; picture-in-picture');
+ frame.setAttribute('allowfullscreen','');
+ frame.loading='eager';
+ loadSeen=false;
+ frame.addEventListener('load',()=>{
+  loadSeen=true;
+  $('playerStatus').textContent='Iframe document loaded. This is not confirmation of player readiness or playback.';
+  log('Iframe load event (not playback proof).');
+ });
+ frame.addEventListener('error',()=>log('Iframe element error; not a player-internal error.'));
+ frame.addEventListener('focus',()=>detectFocus('iframe focus event'));
+ frame.src=cameraUrl();
+ $('playerLayer').appendChild(frame);
+ $('external').href=cameraUrl();$('modalCamera').textContent=CAMERAS[$('camera').value];
+ $('playerStatus').textContent='Loading iframe behind Camera pill. Wait for the player, then tap Camera once.';
+ log('New no-referrer iframe inserted behind pill. The player is not programmatically played.');
+}
+function reset(){
+ cancelTimers();
+ state='idle';render();makeFrame();positionPlayer();
+ log('Reset: previous iframe removed; new idle player created.');
+}
+function expand(source){
+ if(state==='expanded')return;
+ clearTimeout(launchTimer);clearTimeout(collapseTimer);clearTimeout(backgroundTimer);
+ state='expanded';
+ render();
+ log(source+': expanded without reparenting or recreating iframe.');
+}
+function initialFocus(source){
+ if(state!=='idle'||document.activeElement!==frame)return;
+ state='launching';render();
+ log('Focus detected from '+source+'; initial '+HOLD_MS+'ms handoff started. NOT playback proof.');
+ launchTimer=setTimeout(()=>expand('Focus handoff'),HOLD_MS);
+}
+function detectFocus(source){
+ setTimeout(()=>initialFocus(source),0);
+ setTimeout(()=>initialFocus(source+' delayed'),85);
+}
+window.addEventListener('blur',()=>detectFocus('parent window blur'));
+function minimize(){
+ if(state!=='expanded')return;
+ state='collapsed';render();
+ collapseTimer=setTimeout(()=>{
+  if(state==='collapsed'){log('Collapsed inactivity timeout: unloading and resetting player.');reset();}
+ },COLLAPSED_TIMEOUT_MS);
+ log('Minimized: same iframe retained; white Camera pill shown.');
+ $('reopen').focus({preventScroll:true});
+}
+$('reopen').addEventListener('click',()=>{
+ if(state==='collapsed')expand('Instant reopen button');
+});
+$('minimize').addEventListener('click',minimize);
+$('modalBackdrop').addEventListener('click',e=>{
+ if(e.target===$('modalBackdrop'))minimize();
+});
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'&&state==='expanded'){e.preventDefault();minimize();}
+});
+$('manualExpand').addEventListener('click',()=>{
+ if(state!=='expanded')expand('Manual diagnostic override');
+});
+$('reset').addEventListener('click',reset);
+$('camera').addEventListener('change',()=>{
+ loadObservations();reset();
+});
+$('debugCrop').addEventListener('change',()=>{
+ render();log('Crop reveal debug '+($('debugCrop').checked?'enabled':'disabled')+'.');
+});
+for(const id of ['firstResult','reopenResult','notes'])$(id).addEventListener('change',persist);
+$('notes').addEventListener('input',persist);
+$('copy').addEventListener('click',async()=>{
+ persist();
+ try{await navigator.clipboard.writeText(report());$('copyStatus').textContent='Report copied. Paste into the Nexus project chat.';}
+ catch{$('copyStatus').textContent='Clipboard unavailable; manually select the report below.';}
+});
+window.addEventListener('resize',positionPlayer);
+if(window.visualViewport)window.visualViewport.addEventListener('resize',positionPlayer);
+window.addEventListener('scroll',()=>{if(state!=='expanded')positionPlayer();},{passive:true});
+document.addEventListener('visibilitychange',()=>{
+ clearTimeout(backgroundTimer);backgroundTimer=null;
+ if(document.hidden&&state==='collapsed'){
+  backgroundTimer=setTimeout(()=>{
+   if(document.hidden&&state==='collapsed'){log('Background release: resetting player.');reset();}
+  },BACKGROUND_TIMEOUT_MS);
+ }else if(!document.hidden){positionPlayer();}
+});
+window.addEventListener('securitypolicyviolation',e=>log('Parent CSP '+String(e.violatedDirective||'unknown').slice(0,70)));
+window.addEventListener('error',e=>log('Parent JS error '+String(e.message||'unknown').slice(0,130)));
+loadObservations();render();makeFrame();positionPlayer();
+log('Lab ready. Idle and collapsed states use the exact same Camera button appearance.');
+})();
+</script>
+</body>
+</html>
