@@ -56,6 +56,8 @@ jobs:
         run: node tests/camera_one_tap.test.cjs
       - name: DWT camera switch reliability lab tests
         run: node tests/camera_switch_reliability.test.cjs
+      - name: Three-camera playback handoff diagnostic tests
+        run: node tests/camera_playback_handoff.test.cjs
       - name: Recover last published snapshot for stale-only fallback
         run: |
           # Best effort; cached prior reports never become fresh observations.
@@ -87,6 +89,7 @@ jobs:
           cp camera-modal-autoplay.html site/
           cp camera-pill-lifecycle.html site/
           cp camera-switch-reliability.html site/
+          cp camera-playback-handoff.html site/
           cp camera-player-control-lab.html site/
           cp camera-mini-modal-lab.html site/
           cp camera-one-tap-lab.html site/
