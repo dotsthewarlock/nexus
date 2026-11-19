@@ -124,6 +124,14 @@ h1 { margin: 0; font-size: 24px; font-weight: 700; line-height: 1.08; letter-spa
 .crossing-row + .crossing-row { border-top: 1px solid var(--line); }
 .crossing-identity { grid-area: identity; min-width: 0; }
 .crossing-name { font-size: 16px; font-weight: 650; line-height: 1.35; letter-spacing: -.013em; }
+.crossing-report-warning {
+  display: flex; align-items: center; gap: 6px; margin-top: 5px;
+  color: var(--warn); font-size: 11px; line-height: 1.4; font-weight: 600;
+}
+.crossing-report-warning::before {
+  content: ""; display: block; flex: none; width: 7px; height: 7px;
+  border-radius: 50%; background: var(--warn);
+}
 .metrics { grid-area: metrics; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .reading { min-width: 0; }
 .reading-label { color: var(--muted); font-size: 12px; font-weight: 600; letter-spacing: .035em; text-transform: uppercase; }

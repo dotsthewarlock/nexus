@@ -22,6 +22,14 @@ The primary screen is a compact border-status viewer with an **Into USA / Into C
 - Camera modal is **camera-first**: a compact NEXUS/Regular summary above the video, with schedule and precise source timestamps available in expandable details below. The existing 4× Ambassador zoom/pan, backdrop dismissal, iframe teardown and official links remain.
 - Source eligibility, the 20-minute freshness policy, CBSA published-hours semantics, GitHub Actions collection and external camera endpoints remain unchanged. No extra account, personalization or feature settings are introduced.
 
+### Current direction-specific source-check UX
+
+- The compact status line displays when Nexus last **successfully retrieved** the selected direction's official CBP/CBSA feed. Downloading `live.json` again does not advance that timestamp. The source check can be performed by the existing collector or a future verified direct-browser adapter.
+- A successful source check with at least one reported observation aged **120 minutes or more** shows an amber status and a minimal warning at the affected crossing, `Official report … ago`. This is a provisional beta reporting-lag heuristic (not a CBP/CBSA update SLA) and must be refined using historical observations.
+- If the latest official check or site snapshot is 30 minutes old, warn about **Nexus collection delay** instead. Failed official requests identify the last successful check; they do not count as successful refreshes or trigger an unsubstantiated agency-delay claim.
+- The full browser snapshot-download time, server publication time, actual source-check time, source status and agency observations remain in technical diagnostics. No direct-browser API retrieval is enabled by this UX release.
+- This release **does not change** the existing 20-minute numeric wait and lane-display eligibility policy; display thresholds should be evaluated separately from the communication of check freshness.
+
 ### Current-display trust policy
 
 - Show a numeric wait **only when the official agency observation is younger than 20 minutes**, the source retrieval is younger than 20 minutes, the published snapshot is younger than 20 minutes, and the source reports a valid observation. At exactly 20 minutes, it is no longer current.
