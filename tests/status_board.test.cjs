@@ -2,7 +2,7 @@
 const fs=require('node:fs');
 const vm=require('node:vm');
 const assert=require('node:assert/strict');
-const html=fs.readFileSync('index.html','utf8');
+const html=fs.readFileSync('classic-board.html','utf8');
 const js=fs.readFileSync('board.js','utf8');
 const css=fs.readFileSync('board.css','utf8');
 const workflow=fs.readFileSync('.github/workflows/publish.yml','utf8');
