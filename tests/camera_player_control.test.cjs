@@ -5,6 +5,7 @@ const vm=require('node:vm');
 const html=fs.readFileSync('camera-player-control-lab.html','utf8');
 const app=fs.readFileSync('app.js','utf8');
 const workflow=fs.readFileSync('.github/workflows/publish.yml','utf8');
+const regression=fs.readFileSync('.github/workflows/tests.yml','utf8');
 const script=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 assert.ok(script,'expected exactly one diagnostic JS section');
 assert.equal((html.match(/<script>/g)||[]).length,1);
@@ -50,6 +51,6 @@ assert.ok(script.includes('if(!activePlayer||typeof activePlayer.play!==\'functi
 assert.ok(!script.includes('if(!playerReady||!activePlayer)'),'API Play must never be gated by readiness');
 assert.ok(script.includes("readyTimer=setTimeout("),'missing finite ready-event timeout');
 assert.ok(script.includes("setApiPhase('setup_failed'"),'API setup failure must be logged separately');
-assert.ok(workflow.includes('node tests/camera_player_control.test.cjs'),'CI regression test absent');
+assert.ok(regression.includes('node tests/camera_player_control.test.cjs'),'CI regression test absent');
 assert.ok(workflow.includes('cp camera-player-control-lab.html site/'),'Pages staging absent');
 console.log('DWT control lab checks passed: modal, interaction limits, documented API and publishing.');

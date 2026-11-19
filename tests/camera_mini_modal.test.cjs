@@ -5,6 +5,7 @@ const vm=require('node:vm');
 const html=fs.readFileSync('camera-mini-modal-lab.html','utf8');
 const app=fs.readFileSync('app.js','utf8');
 const workflow=fs.readFileSync('.github/workflows/publish.yml','utf8');
+const regression=fs.readFileSync('.github/workflows/tests.yml','utf8');
 const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
 assert.equal(scripts.length,1,'one self-contained diagnostic script');
 const js=scripts[0][1];
@@ -25,6 +26,6 @@ assert.ok(js.includes("$('frameHost').replaceChildren()"),'iframe must be unload
 assert.ok(js.includes("iframe.addEventListener('load'"),'reload detection required');
 assert.ok(js.includes("sessionStorage.setItem(STORE"),'per-tab report persistence required');
 assert.ok(!/\.m3u8|\.mpd|XMLHttpRequest|fetch\s*\(|document\.cookie|serviceWorker/.test(js),'no stream extraction or network proxy');
-assert.ok(workflow.includes('node tests/camera_mini_modal.test.cjs'),'publishing CI test missing');
+assert.ok(regression.includes('node tests/camera_mini_modal.test.cjs'),'publishing CI test missing');
 assert.ok(workflow.includes('cp camera-mini-modal-lab.html site/'),'diagnostic not staged in GitHub Pages');
 console.log('DWT mini-modal lab passed: one iframe, CSS-only resize, explicit manual playback result and Pages staging.');

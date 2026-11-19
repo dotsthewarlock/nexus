@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const html=fs.readFileSync('camera-switch-reliability.html','utf8');
 const workflow=fs.readFileSync('.github/workflows/publish.yml','utf8');
+const regression=fs.readFileSync('.github/workflows/tests.yml','utf8');
 const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
 assert.equal(scripts.length,1,'single inline diagnostic controller');
 const js=scripts[0][1];new vm.Script(js);
@@ -49,6 +50,6 @@ assert.ok(js.includes("const STORE='nexus-dwt-switch-reliability-v2';"),'avoid m
 assert.ok(html.includes("180);"),'same brief gesture-settling period');
 assert.ok(html.includes("1500);"),'same first-launch handoff');
 assert.ok(!/XMLHttpRequest|fetch\s*\(|\.m3u8|\.mpd|dispatchEvent\s*\(|document\.cookie/.test(js));
-assert.ok(workflow.includes('node tests/camera_switch_reliability.test.cjs'),'test must run in CI');
+assert.ok(regression.includes('node tests/camera_switch_reliability.test.cjs'),'test must run in CI');
 assert.ok(workflow.includes('cp camera-switch-reliability.html site/'),'diagnostic must be staged for Pages');
 console.log('Camera-switch reliability lab static checks passed.');

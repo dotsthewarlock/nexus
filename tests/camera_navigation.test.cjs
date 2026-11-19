@@ -6,6 +6,7 @@ const vm=require('node:vm');
 const html=fs.readFileSync('camera-navigation-lab.html','utf8');
 const app=fs.readFileSync('app.js','utf8');
 const workflow=fs.readFileSync('.github/workflows/publish.yml','utf8');
+const regression=fs.readFileSync('.github/workflows/tests.yml','utf8');
 const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
 assert.equal(scripts.length,1,'one self-contained script expected');
 new vm.Script(scripts[0],{filename:'camera-navigation-lab.html'});
@@ -30,6 +31,6 @@ assert.ok(code.includes('sessionStorage.setItem(STORE'),'results persistence mis
 assert.ok(code.includes("results={};launchCount=0;selected='A'"),'camera change must clear outcomes');
 assert.ok(!/fetch\s*\(|XMLHttpRequest|\.m3u8|\.mpd|serviceWorker|document\.cookie|<iframe/i.test(code),'no media/proxy internals');
 assert.ok(workflow.includes('cp camera-navigation-lab.html site/'),'new diagnostic not deployed');
-assert.ok(workflow.includes('node tests/camera_navigation.test.cjs'),'new test not wired into workflow');
+assert.ok(regression.includes('node tests/camera_navigation.test.cjs'),'new test not wired into workflow');
 assert.ok(workflow.includes('cp index.html styles.css app.js decision.js camera-diagnostics.html site/'),'original diagnostic staging preserved');
 console.log('DWT navigation matrix checks passed: 10 cases; JavaScript syntax; camera parity; safe staging.');
