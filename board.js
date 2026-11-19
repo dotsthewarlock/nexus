@@ -28,6 +28,29 @@
   // Use the agency observation time to decide whether a wait may appear as current.
   // Retrieval or publication time cannot refresh an old agency observation.
   const CURRENT_LIMIT_MINUTES=20;
+  // Beta reporting-delay heuristic, NOT an agency publication SLA.
+  // Do not warn on normal hourly reporting or on a source Nexus has not checked recently.
+  const REPORT_LATE_MINUTES={cbp:120,cbsa:120};
+  // Three missed 10-minute collection opportunities merit a *collection* warning.
+  const CHECK_OVERDUE_MINUTES=30;
+  function lastOfficialCheck(src=source()){
+    const stamp=src?.last_success_at||(src?.status==='ok'?src?.retrieved_at:null);
+    return Number.isFinite(D.age(stamp,Date.now()))?stamp:null;
+  }
+  function lateAgencyReports(){
+    const key=direction==='us'?'cbp':'cbsa';
+    const late={};
+    for(const id of IDS){
+      const port=data?.directions?.[direction]?.[id]||{};
+      const lanes=direction==='us'?['standard','nexus']:['standard'];
+      const ages=lanes.map(lane=>port[lane]).filter(raw=>
+        raw&&(raw.status==='reported'||raw.status==='closed'))
+        .map(raw=>D.age(raw.observation_at,Date.now())).filter(Number.isFinite);
+      if(ages.length&&Math.max(...ages)>=REPORT_LATE_MINUTES[key])
+        late[id]=Math.max(...ages);
+    }
+    return late;
+  }
   function timeOnly(stamp){
     const t=new Date(stamp||'');
     if(!Number.isFinite(t.getTime()))return null;
@@ -117,36 +140,38 @@
   function render(){
     $('intoUs').setAttribute('aria-pressed',String(direction==='us'));
     $('intoCa').setAttribute('aria-pressed',String(direction==='ca'));
-    const s=source(),snap=snapshotAge(),fetchAge=sourceAge(),name=direction==='us'?'CBP':'CBSA';
+    const s=source(),snap=snapshotAge(),name=direction==='us'?'CBP':'CBSA';
+    const checkedAt=lastOfficialCheck(s),checkAge=D.age(checkedAt,Date.now());
+    const checkedLabel=Number.isFinite(checkAge)?'Checked '+ago(checkAge)+' · '+name:name+' check time unavailable';
+    const checksDelayed=!Number.isFinite(checkAge)||checkAge>=CHECK_OVERDUE_MINUTES||snap>=CHECK_OVERDUE_MINUTES;
+    // Never blame agency reporting when Nexus itself has not checked recently.
+    const lateReports=s?.status==='ok'&&!checksDelayed?lateAgencyReports():{};
+    const lateCount=Object.keys(lateReports).length;
     let state='warn',note='No published border data available';
     if(busy&&!data)note='Loading published official reports…';
-    else if(loadError){state='error';note='Connection issue · '+loadError;}
-    else if(s?.status==='error'){state='error';note=name+' retrieval failed · historical data only';}
-    else if(s?.status!=='ok')note=name+' data unavailable';
-    else if(snap>=CURRENT_LIMIT_MINUTES||fetchAge>=CURRENT_LIMIT_MINUTES)
-      note=name+' connected · published data overdue';
-    else{
-      const ages=IDS.flatMap(id=>{
-        const port=data?.directions?.[direction]?.[id]||{};
-        return direction==='us'
-          ?[D.age(port.standard?.observation_at),D.age(port.nexus?.observation_at)]
-          :[D.age(port.standard?.observation_at)];
-      }).filter(Number.isFinite);
-      const latest=ages.length?Math.min(...ages):Infinity;
-      state=latest<CURRENT_LIMIT_MINUTES?'ok':'warn';
-      note=name+' connected · '+(Number.isFinite(latest)?'latest observation '+ago(latest):'observation time unavailable');
-    }
+    else if(loadError){
+      state='error';
+      note='Unable to load latest snapshot'+(Number.isFinite(checkAge)?' · last '+name+' check '+ago(checkAge):'');
+    }else if(s?.status==='error'){
+      state='error';
+      note=name+' check failed'+(Number.isFinite(checkAge)?' · last successful check '+ago(checkAge):'');
+    }else if(s?.status!=='ok')note=name+' data unavailable';
+    else if(!Number.isFinite(checkAge))note=name+' check time unavailable';
+    else if(checksDelayed)note=checkedLabel+' · collection delayed';
+    else if(lateCount)note=checkedLabel+' · '+lateCount+' older agency report'+(lateCount===1?'':'s');
+    else{state='ok';note=checkedLabel;}
     $('statusDot').dataset.state=state;
     $('summary').textContent=note;
+    $('summary').title=Number.isFinite(checkAge)
+      ?name+' last successfully checked '+clock(checkedAt)+'. Source observations may be older.'
+      :name+' last successful source check not verified.';
     $('crossingRows').innerHTML=IDS.map(id=>{
       const port=data?.directions?.[direction]?.[id]||{};
-      const ages=direction==='us'
-        ?[D.age(port.standard?.observation_at),D.age(port.nexus?.observation_at)]
-        :[D.age(port.standard?.observation_at)];
-      const latest=Math.min(...ages);
-      const sourceNote=Number.isFinite(latest)?'Last report '+ago(latest):'Agency time unavailable';
+      const reportAge=lateReports[id];
+      const reportWarning=Number.isFinite(reportAge)
+        ?'<div class="crossing-report-warning">Official report '+esc(ago(reportAge))+'</div>':'';
       return '<article class="crossing-row" aria-label="'+esc(LABELS[id][0])+'">'+
-        '<div class="crossing-identity"><div class="crossing-name">'+esc(LABELS[id][0])+'</div></div>'+
+        '<div class="crossing-identity"><div class="crossing-name">'+esc(LABELS[id][0])+'</div>'+reportWarning+'</div>'+
         '<div class="metrics">'+metric(entry(port.nexus,'nexus'),id,'NEXUS')+
         metric(entry(port.standard,'regular'),id,'Regular')+'</div>'+
         cameraMarkup(id)+'</article>';
@@ -161,8 +186,12 @@
   }
   function renderDiagnostics(){
     const lines=[];
-    lines.push('<div class="diag-grid"><div><strong>Snapshot generated</strong><div>'+esc(clock(data?.generated_at))+' · '+esc(ago(snapshotAge()))+'</div></div>'+
-      '<div><strong>Last browser check</strong><div>'+esc(lastFetch?clock(lastFetch):'Not yet')+'</div></div></div>');
+    const checkedAt=lastOfficialCheck(),checkedAge=D.age(checkedAt,Date.now());
+    lines.push('<div class="diag-grid"><div><strong>Official '+esc(direction==='us'?'CBP':'CBSA')+' last successful check</strong><div>'+
+      esc(checkedAt?clock(checkedAt)+' · '+ago(checkedAge):'Unavailable')+'</div></div>'+
+      '<div><strong>Server snapshot published</strong><div>'+esc(clock(data?.generated_at))+' · '+esc(ago(snapshotAge()))+'</div></div>'+
+      '<div><strong>Browser downloaded snapshot</strong><div>'+esc(lastFetch?clock(lastFetch):'Not yet')+
+      ' (not an agency check)</div></div></div>');
     if(loadError)lines.push('<p>Connection error: '+esc(loadError)+'</p>');
     for(const id of IDS){
       const port=data?.directions?.[direction]?.[id]||{};
@@ -184,10 +213,12 @@
       const url=typeof src?.url==='string'&&/^https:\/\//.test(src.url)?src.url:null;
       lines.push('<div class="diag-source"><strong>'+esc(name.toUpperCase())+'</strong> · '+esc(src?.status||'?')+
         ' · '+esc(src?.coverage??'—')+' records'+(src.retained_previous?' · HISTORICAL FALLBACK':'')+
-        '<div>Retrieved: '+esc(clock(src?.retrieved_at))+' · last success: '+esc(clock(src?.last_success_at||src?.retrieved_at))+'</div>'+
+        '<div>Last attempt: '+esc(clock(src?.retrieved_at))+' · last successful check: '+
+        esc(clock(src?.last_success_at||(src?.status==='ok'?src?.retrieved_at:null)))+
+        (src?.cache_reused?' · reused from collector cache':'')+'</div>'+
         (url?'<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">Official source ↗</a>':'')+'</div>');
     }
-    lines.push('<p>Source retrieval, agency observation, and page publication are different timestamps. “Closed” and “0 min” are different reports; missing lanes do not mean zero lanes. Counts are source-reported, not independently confirmed.</p>');
+    lines.push('<p>“Checked” refers to the last successful official-source retrieval, not opening this page. Amber agency-report notices are based on the age of the agency observations, and are shown only after a recent successful source check. Source retrieval, agency observation, and page publication are different timestamps. “Closed” and “0 min” are different reports; missing lanes do not mean zero lanes. Counts are source-reported, not independently confirmed.</p>');
     $('diagnosticBody').innerHTML=lines.join('');
   }
   async function refresh(){

@@ -149,4 +149,49 @@ api.setData(data);
 api.render();
 assert.match(node('crossingRows').innerHTML,/2 lanes \(last report\)/,'older lane count must be plainly historical');
 assert.match(node('crossingRows').innerHTML,/Last update /,'stale wait should show agency time');
+
+// The compact status shows last successful *official* retrieval, not when the
+// browser downloaded GitHub's JSON or when the agency measured a wait.
+data=payload();
+data.sources.cbp.retrieved_at=stamp(3);
+data.sources.cbp.last_success_at=stamp(3);
+api.setData(data);
+api.render();
+assert.match(node('summary').textContent,/Checked 3m ago · CBP/);
+assert.equal(node('statusDot').dataset.state,'ok');
+assert.match(node('diagnosticBody').innerHTML,/Official CBP last successful check/);
+assert.match(node('diagnosticBody').innerHTML,/Browser downloaded snapshot/);
+
+// Recent agency retrieval with a much older observation means *reporting* delay.
+data.directions.us.tunnel.standard=lane(12,135,2);
+api.setData(data);api.render();
+assert.equal(node('statusDot').dataset.state,'warn');
+assert.match(node('summary').textContent,/1 older agency report/);
+assert.match(node('crossingRows').innerHTML,/Official report 2h/);
+assert.equal((node('crossingRows').innerHTML.match(/crossing-report-warning/g)||[]).length,1);
+
+// CBSA has its own direction and its unpublished NEXUS fields never trigger
+// warnings about the age of an observation CBSA does not provide.
+api.setDirection('ca');
+assert.equal(node('statusDot').dataset.state,'ok');
+assert.match(node('summary').textContent,/CBSA/);
+api.setDirection('us');
+
+// A stalled collector is a separate warning, never blamed on agency cadence.
+data.sources.cbp.last_success_at=stamp(48);
+data.sources.cbp.retrieved_at=stamp(48);
+api.setData(data);api.render();
+assert.match(node('summary').textContent,/collection delayed/);
+assert.doesNotMatch(node('summary').textContent,/older agency report/);
+assert.doesNotMatch(node('crossingRows').innerHTML,/class="crossing-report-warning"/);
+
+// A failed official retrieval must not treat the failed attempt as successful.
+data.sources.cbp.status='error';
+data.sources.cbp.retrieved_at=stamp(1);
+data.sources.cbp.last_success_at=stamp(48);
+api.setData(data);api.render();
+assert.match(node('summary').textContent,/CBP check failed · last successful check 48m ago/);
+assert.equal(node('statusDot').dataset.state,'error');
+assert.doesNotMatch(node('crossingRows').innerHTML,/class="crossing-report-warning"/);
+
 console.log('20-minute source-provenance, zero-delay, historical and 3-row UI behavior tests passed.');
