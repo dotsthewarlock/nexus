@@ -93,7 +93,7 @@ dialog::backdrop{background:#000d}
 <section class="card">
 <h2>Technical limits and interpretation</h2>
 <p><strong>Iframe API:</strong> <code>allow="autoplay"</code> delegates permission but does not command a third-party player to start. Synthetic clicks on the iframe DOM node do not target the embedded Play button. Access to <code>contentWindow.document</code> should be rejected by same-origin restrictions.</p>
-<p><strong>Dacast JS API:</strong> Its documented <code>onReady()</code>, <code>muteOn()</code>, <code>play()</code> and <code>onPlay()</code> methods offer a genuine control route if the operator permits this embedding mode. If initialization is blocked, no browser-side workaround is implied.</p>
+<p><strong>Dacast JS API:</strong> Its documented <code>onReady()</code>, <code>muteOn()</code>, <code>play()</code> and <code>onPlay()</code> methods offer a genuine control route if the operator permits this embedding mode. The API Play diagnostic is always enabled during E/F tests, but it cannot control a player that has not initialized. A failure to reach onReady() is reported separately from playback failure.</p>
 <p><strong>Not attempted:</strong> stream extraction, relaying, forged referrers, hidden browser automation, guessed private <code>postMessage</code> commands or bypassing Dacast publisher restrictions.</p>
 <p class="fine">Sources: <a href="https://docs.dacast.com/docs/dacast-player-js-api" target="_blank" rel="noopener noreferrer">Dacast Player JS API</a> · <a href="https://www.dacast.com/support/knowledgebase/autoplay-walkthrough/" target="_blank" rel="noopener noreferrer">Dacast autoplay guide</a> · <a href="https://developer.mozilla.org/en-US/docs/Web/Security/Defenses/Same-origin_policy" target="_blank" rel="noopener noreferrer">Same-origin policy</a></p>
 </section>
@@ -106,7 +106,9 @@ dialog::backdrop{background:#000d}
 <p id="caption" class="muted"></p>
 <div id="stage" class="stage"></div>
 <p id="videoState" role="status" class="fine">Player not loaded.</p>
-<button id="apiPlay" type="button" class="secondary" disabled hidden>Try documented Dacast API play() with this tap</button>
+<p id="apiStatus" role="status" class="fine" hidden>API initialization not started.</p>
+<button id="apiPlay" type="button" class="secondary" hidden>Try API play() with this tap · logs result even if API is unavailable</button>
+<p id="apiHelp" class="fine" hidden>The button is intentionally enabled during API tests. Before onReady(), Dacast documents that play() may do nothing. Check the status and report for the exact reason.</p>
 <a id="direct" class="action secondary" href="https://www.dwtunnel.com/" target="_blank" rel="noopener noreferrer">Open original camera externally</a>
 <p class="fine">The external link opens the unmodified camera URL; it is not an autoplay result. Closing the modal removes the iframe or disposes of the API player.</p>
 </dialog>
@@ -137,7 +139,7 @@ const STORE='nexus-dwt-control-lab-v1';
 let saved={};
 try{const obj=JSON.parse(sessionStorage.getItem(STORE)||'{}');if(obj&&typeof obj==='object')saved=obj;}catch{}
 let records=saved.records&&typeof saved.records==='object'?saved.records:{};
-let events=[],generation=0,activePlayer=null,playerReady=false,scriptPromise=null;
+let events=[],generation=0,activePlayer=null,playerReady=false,scriptPromise=null,readyTimer=null,apiPhase='not_started';
 const dlg=$('dialog');
 for(const t of TESTS){
  const option=document.createElement('option');
@@ -172,6 +174,11 @@ function log(message){
  events.push(new Date().toISOString()+' '+message);
  events=events.slice(-35);render();
 }
+function setApiPhase(phase,detail){
+ apiPhase=phase;
+ $('apiStatus').textContent='API status: '+detail;
+ log('API status ['+phase+']: '+detail);
+}
 function report(){
  const lines=[
   'Nexus DWT Player Control Lab — manual results',
@@ -179,6 +186,7 @@ function report(){
   'Origin: '+location.origin,
   'Camera: '+CAMERAS[$('camera').value],
   'Goal: no second in-player tap after opening modal.',
+  'Current API phase: '+apiPhase+', ready event observed: '+playerReady,
   'Observations are manual; iframe load and JS script load are NOT proof of video playback.'
  ];
  for(const t of TESTS){
@@ -254,27 +262,37 @@ function ensureScript(){
 }
 async function setupApi(t,token){
  $('videoState').textContent='Loading Dacast JS library, then initializing player. No playback confirmed.';
+ setApiPhase('loading','Loading documented Dacast Player JS library...');
  try{
   await ensureScript();
   if(token!==generation||!dlg.open)return;
+  setApiPhase('script_loaded','Dacast JS loaded; initializing player (not playback confirmation).');
   log(t.id+': Dacast library loaded; not playback confirmation.');
   const mount=document.createElement('div');
   mount.id='apiPlayerMount';mount.className='api-player';
   $('stage').appendChild(mount);
   const player=window.dacast(contentId(),mount.id,{width:'100%',height:'100%'});
   if(!player||typeof player.onReady!=='function'){
+   setApiPhase('invalid_instance','No player with onReady() returned. API Play will report unavailable.');
    log(t.id+': no player object with documented onReady() method.');return;
   }
   activePlayer=player;
+  setApiPhase('waiting_ready','Player instance exists; waiting for onReady(). Play button can be tested now, but may be a no-op.');
   if(typeof player.onError==='function')player.onError(error=>{
-   if(token===generation)log(t.id+': Dacast onError: '+String(error?.message||error?.code||error?.name||'unknown').slice(0,160));
+   if(token===generation){
+    const message=String(error?.message||error?.code||error?.name||'unknown').slice(0,160);
+    setApiPhase('player_error','Dacast onError: '+message);
+    log(t.id+': Dacast onError: '+message);
+   }
   });
   if(typeof player.onPlay==='function')player.onPlay(()=>{
    if(token===generation)log(t.id+': Dacast onPlay event fired (visually confirm moving live video).');
   });
   player.onReady(()=>{
    if(token!==generation||!dlg.open)return;
-   playerReady=true;$('apiPlay').hidden=false;$('apiPlay').disabled=false;
+   playerReady=true;
+   if(readyTimer!==null){clearTimeout(readyTimer);readyTimer=null;}
+   setApiPhase('ready','onReady() fired. Documented play() is now eligible to run.');
    log(t.id+': Dacast onReady() fired; calling documented player methods.');
    try{
     if(t.type==='api_muted'){
@@ -288,21 +306,31 @@ async function setupApi(t,token){
    }catch(e){log(t.id+': player API invocation error '+String(e?.name||'Error'));}
   });
   log(t.id+': dacast(contentId, mountId, options) initialized; waiting for onReady().');
+  readyTimer=setTimeout(()=>{
+   readyTimer=null;
+   if(token!==generation||!dlg.open||playerReady)return;
+   setApiPhase('ready_timeout','No onReady() event after 10 seconds. API Play remains available for diagnostics but may be a no-op.');
+  },10000);
  }catch(e){
   if(token===generation){
-   log(t.id+': JS API setup failed: '+String(e?.message||e?.name||'Error').slice(0,160));
-   $('videoState').textContent='JS API unavailable or initialization failed. See report log.';
+   const message=String(e?.message||e?.name||'Error').slice(0,160);
+   setApiPhase('setup_failed','JS API setup failed: '+message);
+   log(t.id+': JS API setup failed: '+message);
+   $('videoState').textContent='JS API unavailable or initialization failed. API Play will report this status; see report.';
   }
  }
 }
 function cleanup(){
  generation++;
+ if(readyTimer!==null){clearTimeout(readyTimer);readyTimer=null;}
  $('stage').replaceChildren();
  if(activePlayer&&typeof activePlayer.dispose==='function'){
   try{activePlayer.dispose();}catch(e){log('Player dispose failed: '+String(e?.name||'Error'));}
  }
- activePlayer=null;playerReady=false;
- $('apiPlay').hidden=true;$('apiPlay').disabled=true;
+ activePlayer=null;playerReady=false;apiPhase='not_started';
+ $('apiPlay').hidden=true;
+ $('apiStatus').hidden=true;
+ $('apiHelp').hidden=true;
  $('camera').disabled=false;$('case').disabled=false;
  $('videoState').textContent='Player unloaded.';
 }
@@ -324,6 +352,11 @@ $('open').addEventListener('click',()=>{
   if(t.type==='preinsert')$('stage').appendChild(makeFrame(t,token));
   dlg.showModal();
   if(['api_muted','api_sound'].includes(t.type)){
+   $('apiPlay').hidden=false;
+   $('apiPlay').disabled=false;
+   $('apiStatus').hidden=false;
+   $('apiHelp').hidden=false;
+   setApiPhase('opening','Dacast JS API test opened. Diagnostic Play is enabled immediately.');
    setupApi(t,token);
   }else if(t.type!=='preinsert'){
    $('stage').appendChild(makeFrame(t,token));
@@ -336,11 +369,24 @@ $('open').addEventListener('click',()=>{
  }
 });
 $('apiPlay').addEventListener('click',()=>{
- if(!playerReady||!activePlayer){log('API Play button tapped before player ready.');return;}
+ log('User tapped API Play diagnostic; phase='+apiPhase+'; ready='+playerReady+'; instance='+Boolean(activePlayer)+'.');
+ if(!activePlayer||typeof activePlayer.play!=='function'){
+  $('apiStatus').textContent='API status: no callable player.play() instance (phase: '+apiPhase+'). The button cannot reach iframe controls.';
+  log('API Play unavailable: no callable Dacast player instance; cannot simulate a click inside cross-origin iframe.');
+  return;
+ }
  try{
   activePlayer.play();
-  log('User tapped Nexus API Play button; documented play() invoked in trusted gesture. Verify visible video.');
- }catch(e){log('API Play gesture error: '+String(e?.name||'Error'));}
+  const message=playerReady
+   ?'play() invoked after onReady(). Observe moving video to confirm.'
+   :'play() invoked BEFORE onReady(). Dacast documents methods may be no-ops at this stage.';
+  $('apiStatus').textContent='API status: '+message;
+  log('User tapped API Play: '+message);
+ }catch(e){
+  const message=String(e?.name||'Error')+': '+String(e?.message||'');
+  $('apiStatus').textContent='API status: play() threw '+message.slice(0,160);
+  log('API Play gesture error: '+message.slice(0,160));
+ }
 });
 $('close').addEventListener('click',()=>{if(dlg.open)dlg.close();});
 dlg.addEventListener('close',()=>{cleanup();log('Modal closed and playback session discarded.');});
