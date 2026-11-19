@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7f9fb">
   <meta name="description" content="Nexus Windsor–Detroit border inspection waits, both directions and three crossings.">
   <title>Nexus · Border comparison</title>
-  <link rel="stylesheet" href="./dashboard.css?v=m3a">
+  <link rel="stylesheet" href="./dashboard.css?v=m3b">
 </head>
 <body>
 <main class="app-shell" id="main">
@@ -85,8 +85,8 @@
         <button id="chooseDestination" class="primary-button" type="button">Choose destination</button>
         <button id="changeDestination" class="secondary-button" type="button" hidden>Change</button>
       </div>
-      <button id="openDirections" class="primary-button" type="button" disabled aria-describedby="routeNotValidated" hidden>Open directions</button>
-      <p class="detail-note" id="routeNotValidated">M3b: Map navigation and crossing-specific routing are not yet validated. No route will be launched.</p>
+      <a id="openDirections" class="primary-button" target="_blank" rel="noopener noreferrer" aria-describedby="routeNotValidated" hidden>Open directions</a>
+      <p class="route-warning" id="routeNotValidated">Google Maps may ignore crossing waypoints. Confirm the route uses your selected crossing before driving.</p>
     </section>
     </div>
     <section id="destinationPicker" class="destination-picker" hidden aria-labelledby="destinationPickerHeading">
@@ -141,7 +141,7 @@
           <button id="cancelRemoveAll" type="button" class="secondary-button">Cancel</button>
         </div>
       </div>
-      <p class="detail-note">Directions through a selected border crossing remain unverified. Saving a place does not launch or guarantee a route.</p>
+      <p class="detail-note">Saving a destination does not contact Google Maps. If you open directions, confirm the route uses your chosen crossing. Maps waypoint handling and vehicle eligibility remain unverified.</p>
     </section>
     <section><h3>Data &amp; diagnostics</h3><div id="diagnosticBody" class="diagnostics">No official snapshot loaded.</div></section>
     <section><h3>Camera viewer</h3><a href="./classic-board.html">Open existing camera viewer</a></section>
@@ -151,6 +151,7 @@
 
 <script src="./decision.js?v=rc149-schedule"></script>
 <script src="./destinations.js?v=m3a"></script>
-<script src="./dashboard.js?v=m3a" defer></script>
+<script src="./routing.js?v=m3b"></script>
+<script src="./dashboard.js?v=m3b" defer></script>
 </body>
 </html>
