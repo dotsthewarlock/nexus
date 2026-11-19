@@ -477,7 +477,10 @@ def retain_on_failure(result, previous):
         source=result['sources'].get(key, {})
         if source.get('status') != 'error':
             continue
-        ttl = 120 if key in directions else 30 if key == 'dwt' or key in ontario_511.ENDPOINTS else 2880
+        # Retain up to two skipped collection cycles after a supplemental failure.
+        # The retained value is explicitly historical (source status remains error).
+        ttl = (120 if key in directions else 2880 if key == 'cbsa_hours'
+               else max(30, 2 * source_policy.MIN_CHECK_INTERVAL_MINUTES.get(key, 10)))
         prior_success=successful_before(previous,key,ttl)
         if not prior_success:
             continue

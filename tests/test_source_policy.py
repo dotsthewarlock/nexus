@@ -71,6 +71,40 @@ class SourcePolicyTests(TestCase):
             self.assertTrue(result['sources'][key]['cache_reused'])
             self.assertEqual(result['sources'][key]['last_success_at'], stamp)
 
+
+
+    def test_slow_supplemental_failure_retains_historical_report(self):
+        previous, _ = self.previous()
+        old_success = (datetime.now(timezone.utc) - timedelta(minutes=70)).isoformat(
+            timespec='seconds').replace('+00:00', 'Z')
+        previous['sources']['ontario511_construction'] = {
+            'status': 'ok', 'retrieved_at': old_success, 'last_success_at': old_success
+        }
+        previous['supplemental']['ontario511_construction'] = [{'id': 'archived-roadwork'}]
+        result = collector.empty_snapshot()
+        result['sources']['ontario511_construction'] = {'status': 'error'}
+        collector.retain_on_failure(result, previous)
+        src = result['sources']['ontario511_construction']
+        self.assertEqual(src['status'], 'error')
+        self.assertTrue(src['retained_previous'])
+        self.assertEqual(src['last_success_at'], old_success)
+        self.assertEqual(result['supplemental']['ontario511_construction'],
+                         [{'id': 'archived-roadwork'}])
+
+    def test_historical_fallback_expires_after_two_collection_cycles(self):
+        previous, _ = self.previous()
+        old_success = (datetime.now(timezone.utc) - timedelta(minutes=140)).isoformat(
+            timespec='seconds').replace('+00:00', 'Z')
+        previous['sources']['ontario511_construction'] = {
+            'status': 'ok', 'retrieved_at': old_success, 'last_success_at': old_success
+        }
+        previous['supplemental']['ontario511_construction'] = [{'id': 'archived-roadwork'}]
+        result = collector.empty_snapshot()
+        result['sources']['ontario511_construction'] = {'status': 'error'}
+        collector.retain_on_failure(result, previous)
+        self.assertNotIn('retained_previous', result['sources']['ontario511_construction'])
+        self.assertEqual(result['supplemental']['ontario511_construction'], [])
+
     def test_upstream_failure_does_not_renew_observation(self):
         previous, stamp = self.previous(minutes=20)
         with patch.dict('os.environ', {'ONTARIO_511_API_KEY': ''}):
