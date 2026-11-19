@@ -75,22 +75,35 @@
       display:'N/A',unit:'',variant:'unknown',lanes,historical:false,
       kind:'unavailable',status:'Agency status · '+ago(age)
     };
-    // At 20 minutes (or older), the wait and closed status are not live.
-    // Only expose the actual last agency observation clock, never substitute fetch time.
+    // A stale/undated closure is important historical context, but not a live closure.
+    if(raw.status==='closed')return {
+      display:'—',unit:'',variant:'expired',lanes,historical:count!==null,kind:'warning',
+      status:Number.isFinite(age)?'Last reported closed · '+timeOnly(raw.observation_at):
+        'Closure reported · observation time missing'
+    };
+    // At 20 minutes or older, hide the numeric wait and show the agency observation clock.
     return {
       display:'—',unit:'',variant:Number.isFinite(age)?'expired':'unknown',
       lanes,historical:count!==null,kind:Number.isFinite(age)?'old':'unavailable',
       status:Number.isFinite(age)?'Last update '+timeOnly(raw.observation_at):'Agency update time unavailable'
     };
   }
+  // Keep normal readings quiet; surface age and caveats only when actionable.
   function metric(m,id,cat){
+    const isCanadaNexus=direction==='ca'&&cat==='NEXUS';
+    const laneLine=isCanadaNexus?'':m.lanes==='Lanes not reported'?'Lanes —':
+      m.lanes.replace(/ reported$/,'').replace(/ last reported$/,' (last report)');
+    let hint='';
+    if(isCanadaNexus)hint='Not published by CBSA';
+    else if(['expired','unknown','closed'].includes(m.variant))hint=m.status;
+    else if(m.kind==='aging')hint=m.status.replace(/^Updated /,'');
     return '<div class="reading '+cat+'" aria-label="'+esc(cat)+' for '+esc(LABELS[id][0])+': '+
       esc(m.display)+(m.unit?' '+esc(m.unit):'')+', '+esc(m.lanes)+', '+esc(m.status)+'">'+
       '<div class="reading-label">'+esc(cat)+'</div>'+
       '<div class="reading-main" data-display="'+esc(m.variant)+'">'+esc(m.display)+
       (m.unit?' <small>'+esc(m.unit)+'</small>':'')+'</div>'+
-      '<div class="reading-lanes" data-historical="'+String(m.historical)+'">'+esc(m.lanes)+'</div>'+
-      '<div class="reading-state" data-state="'+esc(m.kind)+'">'+esc(m.status)+'</div></div>';
+      (laneLine?'<div class="reading-lanes" data-historical="'+String(m.historical)+'">'+esc(laneLine)+'</div>':'')+
+      (hint?'<div class="reading-hint" data-state="'+esc(m.kind)+'">'+esc(hint)+'</div>':'')+'</div>';
   }
   function cameraMarkup(id){
     const icon=id==='gordie'
@@ -121,7 +134,7 @@
       }).filter(Number.isFinite);
       const latest=ages.length?Math.min(...ages):Infinity;
       state=latest<CURRENT_LIMIT_MINUTES?'ok':'warn';
-      note=name+' connected · '+(Number.isFinite(latest)?'latest agency report '+ago(latest):'agency update time unavailable');
+      note=name+' connected · '+(Number.isFinite(latest)?'latest observation '+ago(latest):'observation time unavailable');
     }
     $('statusDot').dataset.state=state;
     $('summary').textContent=note;
@@ -133,16 +146,16 @@
       const latest=Math.min(...ages);
       const sourceNote=Number.isFinite(latest)?'Last report '+ago(latest):'Agency time unavailable';
       return '<article class="crossing-row" aria-label="'+esc(LABELS[id][0])+'">'+
-        '<div class="crossing-identity"><div class="crossing-name">'+esc(LABELS[id][0])+'</div>'+
-        '<div class="crossing-short">'+esc(name)+' · '+esc(sourceNote)+'</div></div>'+
+        '<div class="crossing-identity"><div class="crossing-name">'+esc(LABELS[id][0])+'</div></div>'+
         '<div class="metrics">'+metric(entry(port.nexus,'nexus'),id,'NEXUS')+
         metric(entry(port.standard,'regular'),id,'Regular')+'</div>'+
         cameraMarkup(id)+'</article>';
     }).join('');
     $('crossingRows').querySelectorAll('button[data-camera]:not(:disabled)')
       .forEach(b=>b.addEventListener('click',()=>openCamera(b.dataset.camera)));
-    $('freshnessNote').textContent='Only observations under 20 minutes old appear as current. '+
-      'Older lane counts are historical; missing values are not zero.';
+    $('freshnessNote').textContent='Only agency observations, source retrievals, and published snapshots under 20 minutes old qualify as current. '+
+      '“No Delay” means a verified zero-minute report. Older lane counts are historical, not live. '+
+      'Missing data are not zero; waits exclude approach traffic and full-trip time.';
     renderDiagnostics();
     if(camera)renderCameraInfo();
   }
@@ -197,7 +210,7 @@
   const BRIDGE_DEFAULT_ZOOM=4;
   const BRIDGE_DEFAULT_FRAMING={left:0.20,up:0.50};
   const bridgeZoom={scale:1,x:0,y:0,pointer:null};
-  let backdropPressed=false;
+  let backdropPressed=false, focusBeforeCamera=null;
   function renderCameraInfo(){
     if(!camera)return;
     const port=data?.directions?.[direction]?.[camera.id]||{};
@@ -248,6 +261,18 @@
     }
     $('cameraNexusSchedule').textContent=title;
     $('cameraNexusScheduleNote').textContent=note;
+    const summary=direction==='ca'
+      ? title==='Within published NEXUS hours'?'Within published hours'
+        :title==='Outside published NEXUS hours'?'Outside published hours':'Hours unverified'
+      :title.includes('reported closed')?'Closure reported':'Hours unverified';
+    $('cameraScheduleSummary').textContent=summary;
+    const observations=['nexus','standard'].map(key=>{
+      if(direction==='ca'&&key==='nexus')return 'NEXUS wait: not published by CBSA';
+      const item=port[key];
+      return (key==='nexus'?'NEXUS':'Regular')+' observed: '+clock(item?.observation_at);
+    });
+    $('cameraSourceDetails').textContent=(direction==='us'?'CBP':'CBSA')+' · '+observations.join(' · ')+
+      ' · Source retrieved: '+clock(source()?.retrieved_at);
   }
   function bridgePanLimits(){
     const f=$('cameraFrame'),stage=$('cameraStage');
@@ -293,7 +318,9 @@
   function openCamera(id){
     if(id==='gordie'||!CAMERAS[id])return;
     if(camera)closeCamera();
+    focusBeforeCamera=document.activeElement||null;
     camera={id,index:0};
+    $('cameraDetails').open=false;
     $('cameraTitle').textContent=LABELS[id][0]+' camera';
     $('cameraSubtitle').textContent=(direction==='us'?'Into USA · CBP':'Into Canada · CBSA')+' · official camera';
     $('officialCamera').href=id==='tunnel'?OFFICIAL.tunnel:OFFICIAL.ambassador[direction];
@@ -378,7 +405,12 @@
   });
   cameraDialog.addEventListener('pointercancel',()=>{backdropPressed=false});
   cameraDialog.addEventListener('cancel',e=>{e.preventDefault();closeCamera()});
-  cameraDialog.addEventListener('close',()=>{resetCameraFrame();camera=null;backdropPressed=false});
+  cameraDialog.addEventListener('close',()=>{
+    resetCameraFrame();camera=null;backdropPressed=false;
+    if(focusBeforeCamera&&typeof focusBeforeCamera.focus==='function'&&focusBeforeCamera.isConnected!==false)
+      focusBeforeCamera.focus({preventScroll:true});
+    focusBeforeCamera=null;
+  });
   $('intoUs').addEventListener('click',()=>setDirection('us'));
   $('intoCa').addEventListener('click',()=>setDirection('ca'));
   function setDirection(next){if(next===direction)return;direction=next;try{localStorage.setItem('nexus-board-direction',next)}catch{}if(camera)closeCamera();render();}
