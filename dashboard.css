@@ -57,3 +57,14 @@
 #removeAllConfirm{padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--bg)}
 #removeAllConfirm p{margin:0 0 8px}
 @media(max-width:360px){.destination-actions{gap:7px}.destination-actions button{font-size:.83rem}.destination-picker{padding-top:4px}}
+
+/* Keep form actions inside their container with 200% text or narrow screens. */
+.destination-actions button,.picker-saved button,.settings-destinations button{
+ max-width:100%;white-space:normal;overflow-wrap:anywhere
+}
+.destination-action .secondary-button,.destination-picker .secondary-button,
+.settings-destinations .secondary-button{min-height:44px}
+@media(max-width:360px){
+ .destination-actions button{flex:1 1 135px}
+ .saved-destination .destination-actions button{flex:1 1 120px}
+}
