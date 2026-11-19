@@ -10,6 +10,28 @@ button{font:inherit;font-weight:650;padding:11px 13px;border:1px solid #78bde9;b
 #tile[hidden],#backdrop[hidden]{display:none}
 #tile.compact{width:var(--tile-width,96px);height:var(--tile-height,96px);border-radius:var(--tile-radius,14px);clip-path:var(--tile-clip,none);margin:16px auto;box-shadow:0 0 0 3px #8ccdfb22,0 8px 26px #0007}
 #tile.compact:focus-within{box-shadow:0 0 0 3px #9ce0ff,0 8px 26px #0007}
+#tileText,#feedbackOverlay{position:absolute;inset:0;z-index:3;pointer-events:none!important;user-select:none;touch-action:none}
+#tileText *,#feedbackOverlay *{pointer-events:none!important}
+#tileText{display:flex;align-items:flex-end;justify-content:center;padding:4px;line-height:1.05;text-align:center}
+#tileText[data-position="top"]{align-items:flex-start}
+#tileText[data-position="center"]{align-items:center}
+#tileText span{font-size:clamp(9px,1.9vw,12px);font-weight:800;letter-spacing:.015em;color:#fff;
+ text-shadow:0 1px 3px #000,0 2px 5px #000;max-width:100%;padding:2px 4px;border-radius:5px;
+ background:linear-gradient(90deg,#071526ad,#0715268a)}
+#tileText[hidden],#tileText.suppressed,#feedbackOverlay[hidden],#tile.expanded #tileText,#tile.expanded #feedbackOverlay{display:none!important}
+#feedbackOverlay{display:flex;align-items:center;justify-content:center;background:#092138;color:#fff}
+#feedbackOverlay::before,#feedbackOverlay::after{content:"";display:none;box-sizing:border-box}
+#feedbackOverlay[data-mode="white-play"]::before{display:block;background:#fff;clip-path:polygon(0 0,100% 50%,0 100%);width:28px;height:31px;transform:translateX(2px)}
+#feedbackOverlay[data-mode="spinner"]::before,#feedbackOverlay[data-mode="white-spinner"]::before,
+#feedbackOverlay[data-mode="pulse"]::before{display:block;width:30px;height:30px;border-radius:50%;border:3px solid #ffffff55;
+ border-top-color:#fff;animation:nexus-spin .7s linear infinite}
+#feedbackOverlay[data-mode="pulse"]::after{display:block;position:absolute;width:10px;height:12px;background:#fff;
+ clip-path:polygon(0 0,100% 50%,0 100%);transform:translateX(1px)}
+#feedbackOverlay[data-mode="white-spinner"]{background:#fff}
+#feedbackOverlay[data-mode="white-spinner"]::before{border-color:#185f982e;border-top-color:#185f98}
+@keyframes nexus-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){#feedbackOverlay::before{animation:none!important}}
+
 #tile.expanded{position:fixed;z-index:201;top:50%;left:50%;transform:translate(-50%,-50%);width:min(calc(100vw - 20px),850px);height:auto;aspect-ratio:16/9;max-height:75dvh;border-radius:12px;clip-path:none;box-shadow:0 14px 50px #000b}
 #player{position:absolute;border:0;display:block;transform-origin:center center}
 #tile.compact #player{width:640px;height:360px;left:calc(50% + var(--offset-x,0px));top:calc(50% + var(--offset-y,0px));transform:translate(-50%,-50%) scale(var(--zoom,1))}
@@ -35,13 +57,19 @@ textarea{min-height:68px;resize:vertical}
 <option value="E">E · 80px, 2× crop, focus + 500ms</option>
 <option value="F">F · 64px, 2.5× crop, focus + 900ms</option>
 <option value="G">G · 112px, 1.5× crop, focus + 0ms</option>
-<option value="H" selected>H · Verified baseline: 64px rounded, 2.5×, focus + 1500ms</option>
+<option value="H">H · Verified baseline: 64px rounded, 2.5×, focus + 1500ms</option>
 <option value="I">I · 64px circle, 2.5×, focus + 1500ms</option>
 <option value="J">J · 80px circle, 2.5×, focus + 900ms</option>
 <option value="K">K · 64px wide pill, 2.5×, focus + 1500ms</option>
 <option value="L">L · 80px wide pill, 2.5×, focus + 900ms</option>
 <option value="M">M · 80px rounded rectangle, 2.5×, focus + 1500ms</option>
 <option value="N">N · 80px Play triangle, 2.5×, focus + 1500ms</option>
+<option value="O" selected>O · 64px pill, 4×, CAMERA label, white spinner 1500ms</option>
+<option value="P">P · 80px pill, 4×, LIVE CAM label, spinning Play 1500ms</option>
+<option value="Q">Q · 80px circle, 4×, CAMERA label, solid white Play</option>
+<option value="R">R · 64px rounded, 4×, no label, spinner 1500ms</option>
+<option value="S">S · 80px rectangle, 4×, WINDSOR CAMERA label, white surface</option>
+<option value="T">T · 80px pill, 5×, CAMERA label, spinner 1500ms</option>
 </select>
 <button id="applyPreset" type="button" class="secondary wide">Apply preset (retains iframe)</button>
 <p class="fine">Presets change only CSS crop/size and expansion trigger. Adjust sliders afterward to locate Dacast's actual Play hit target.</p>
@@ -61,8 +89,8 @@ textarea{min-height:68px;resize:vertical}
 </select>
 <label for="size">Tile height (width depends on shape): <output id="dimensionValue">64 × 64 px</output></label>
 <select id="size"><option value="64" selected>64 px</option><option value="80">80 px</option><option value="96">96 px</option><option value="112">112 px</option><option value="128">128 px</option></select>
-<label for="zoom">Player zoom: <output id="zoomValue">1.0×</output></label>
-<input id="zoom" type="range" min="0.75" max="2.5" step="0.25" value="2.5">
+<label for="zoom">Player zoom: <output id="zoomValue">4.0×</output></label>
+<input id="zoom" type="range" min="0.75" max="5" step="0.25" value="4">
 <label for="x">Horizontal crop offset: <output id="xValue">0 px</output></label>
 <input id="x" type="range" min="-100" max="100" step="5" value="0">
 <label for="y">Vertical crop offset: <output id="yValue">0 px</output></label>
@@ -71,13 +99,38 @@ textarea{min-height:68px;resize:vertical}
 <select id="delay"><option value="0">Immediate</option><option value="250">250 ms</option><option value="500">500 ms</option><option value="900">900 ms</option><option value="1500" selected>1500 ms</option></select>
 <label for="trigger">Expand trigger</label>
 <select id="trigger"><option value="focus">Iframe focus (experimental automatic expansion)</option><option value="manual">Separate Expand button (control)</option></select>
+<label for="textMode">Camera label (purely visual, click-through)</label>
+<select id="textMode">
+<option value="none">No label</option>
+<option value="camera" selected>CAMERA</option>
+<option value="live">LIVE CAM</option>
+<option value="tunnel">TUNNEL CAM</option>
+<option value="custom">Custom text below</option>
+</select>
+<label for="textCustom">Custom camera label (max 22 characters)</label>
+<input id="textCustom" type="text" maxlength="22" value="WINDSOR CAMERA" autocomplete="off">
+<label for="textPosition">Label placement</label>
+<select id="textPosition"><option value="bottom" selected>Bottom (avoid Dacast Play center)</option><option value="top">Top</option><option value="center">Center (may visually hide Play)</option></select>
+<label for="feedback">Temporary visual replacement after tap (during expansion delay)</label>
+<select id="feedback">
+<option value="none">None — observe native Play/Pause change</option>
+<option value="white-play">Solid dark cover + white Play icon</option>
+<option value="spinner">Solid dark cover + white loading spinner</option>
+<option value="pulse" selected>Solid dark cover + white spinner and Play</option>
+<option value="white-spinner">Full white cover + dark loading spinner</option>
+</select>
+<p class="fine">Overlay begins when iframe focus is detected, not when playback is verified. It never receives pointer or keyboard input and disappears when the modal opens, is cancelled, or the video is unloaded. Delay 1500ms keeps it visible for 1.5 seconds.</p>
 <div class="grid"><button id="load">Load cropped Play tile</button><button id="unload" class="secondary" disabled>Unload</button></div>
 <p id="state" class="fine" role="status">No video loaded.</p>
 </section>
 <section class="card">
 <h2>2. Tap the cropped Dacast player</h2>
 <p class="fine">Wait until the Play icon appears in the crop, then tap it. If automatic expansion fails, use the separate Expand button. In expanded mode, use Minimize to return without reloading.</p>
-<div id="tile" class="compact" data-shape="rounded" hidden><iframe id="player" title="DWT live camera cropped native Play control" referrerpolicy="no-referrer" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe></div>
+<div id="tile" class="compact" data-shape="rounded" hidden>
+<iframe id="player" title="DWT live camera cropped native Play control" referrerpolicy="no-referrer" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>
+<div id="tileText" data-position="bottom" aria-hidden="true"><span id="tileTextValue">CAMERA</span></div>
+<div id="feedbackOverlay" data-mode="pulse" aria-hidden="true" hidden></div>
+</div>
 <div id="backdrop" hidden></div>
 <button id="minimize" class="secondary">Minimize</button>
 <div class="grid"><button id="expand" class="secondary" disabled>Expand manually</button><button id="arm" class="secondary" disabled>Re-arm focus detection</button></div>
@@ -91,6 +144,8 @@ textarea{min-height:68px;resize:vertical}
 <select id="expandResult"><option value="untested">Not tested</option><option value="yes">Yes</option><option value="no">No, manual Expand needed</option><option value="false">Expanded on unrelated focus / no playback</option></select>
 <label for="continuity">Did playback continue during expansion?</label>
 <select id="continuity"><option value="untested">Not tested</option><option value="yes">Yes</option><option value="no">No</option></select>
+<label for="feedbackResult">Did the visual replacement work correctly without blocking Play?</label>
+<select id="feedbackResult"><option value="untested">Not tested</option><option value="pass">Yes: label click-through, animation visible, then cleared</option><option value="obscured">Label obscured native Play / tap difficult</option><option value="absent">Overlay did not appear</option><option value="stuck">Overlay remained visible after expansion</option><option value="false">Overlay appeared on focus without playback</option></select>
 <label for="notes">Notes</label><textarea id="notes" maxlength="600"></textarea>
 <button id="saveTrial" class="wide">Save current permutation result</button>
 <p id="saveState" class="fine" role="status"></p>
@@ -105,8 +160,9 @@ textarea{min-height:68px;resize:vertical}
 const $=id=>document.getElementById(id),ROOT='https://iframe.dacast.com/live/8b2b630f-b7c1-262d-f343-118f510224a0/';
 const names={'4aea1c45-d402-3690-afae-fe635942da82':'Windsor inspection','794566d4-a75e-3cd1-6f95-2d60e54f2fdb':'Detroit inspection','5408b5c3-f8d1-f34b-a18a-9943047905b6':'Randolph Street'};
 let loaded=false,expanded=false,armed=false,loadCount=0,events=[],pending=null,focusCount=0,previousOverflow='';
-const config=['shape','size','zoom','x','y','delay','trigger'],observations=['playResult','expandResult','continuity','notes'];
+const config=['shape','size','zoom','x','y','delay','trigger','textMode','textCustom','textPosition','feedback'],observations=['playResult','expandResult','continuity','feedbackResult','notes'];
 const STORE='nexus-dwt-one-tap-trials-v1';
+const VISUAL_DEFAULTS={textMode:'none',textCustom:'WINDSOR CAMERA',textPosition:'bottom',feedback:'none'};
 const PRESETS={
  A:{shape:'rounded',size:'96',zoom:'1',x:'0',y:'0',delay:'500',trigger:'manual'},
  B:{shape:'rounded',size:'96',zoom:'1',x:'0',y:'0',delay:'500',trigger:'focus'},
@@ -121,15 +177,21 @@ const PRESETS={
  K:{shape:'pill',size:'64',zoom:'2.5',x:'0',y:'0',delay:'1500',trigger:'focus'},
  L:{shape:'pill',size:'80',zoom:'2.5',x:'0',y:'0',delay:'900',trigger:'focus'},
  M:{shape:'rectangle',size:'80',zoom:'2.5',x:'0',y:'0',delay:'1500',trigger:'focus'},
- N:{shape:'triangle',size:'80',zoom:'2.5',x:'0',y:'0',delay:'1500',trigger:'focus'}
+ N:{shape:'triangle',size:'80',zoom:'2.5',x:'0',y:'0',delay:'1500',trigger:'focus'},
+ O:{shape:'pill',size:'64',zoom:'4',x:'0',y:'0',delay:'1500',trigger:'focus',textMode:'camera',textPosition:'bottom',feedback:'white-spinner'},
+ P:{shape:'pill',size:'80',zoom:'4',x:'0',y:'0',delay:'1500',trigger:'focus',textMode:'live',textPosition:'bottom',feedback:'pulse'},
+ Q:{shape:'circle',size:'80',zoom:'4',x:'0',y:'0',delay:'1500',trigger:'focus',textMode:'camera',textPosition:'bottom',feedback:'white-play'},
+ R:{shape:'rounded',size:'64',zoom:'4',x:'0',y:'0',delay:'1500',trigger:'focus',textMode:'none',textPosition:'bottom',feedback:'spinner'},
+ S:{shape:'rectangle',size:'80',zoom:'4',x:'0',y:'0',delay:'1500',trigger:'focus',textMode:'custom',textCustom:'WINDSOR CAMERA',textPosition:'top',feedback:'white-spinner'},
+ T:{shape:'pill',size:'80',zoom:'5',x:'0',y:'0',delay:'1500',trigger:'focus',textMode:'camera',textPosition:'bottom',feedback:'spinner'}
 };
 let trials={};
 try{const v=JSON.parse(sessionStorage.getItem(STORE)||'{}');if(v&&typeof v==='object'&&!Array.isArray(v))trials=v;}catch{}
 function persistTrials(){try{sessionStorage.setItem(STORE,JSON.stringify(trials));}catch{}}
 function applyPreset(){
- const p=PRESETS[$('preset').value]||PRESETS.H;
- cancelPending();
- for(const id of config)$(id).value=p[id];
+ const p=PRESETS[$('preset').value]||PRESETS.O;
+ cancelPending();setFeedback(false);
+ for(const id of config){const value=p[id]??VISUAL_DEFAULTS[id];if(value!==undefined)$(id).value=value;}
  armed=loaded&&p.trigger==='focus';
  applyCrop();
  log('Applied preset '+$('preset').value+', '+(armed?'armed for next iframe focus':'manual Expand control')+'.');
@@ -140,7 +202,7 @@ function saveTrial(){
   utc:new Date().toISOString(),preset:$('preset').value,
   configuration:Object.fromEntries(config.map(id=>[id,$(id).value])),
   playback:$('playResult').value,expansion:$('expandResult').value,
-  continuity:$('continuity').value,
+  continuity:$('continuity').value,feedbackResult:$('feedbackResult').value,
   notes:$('notes').value.slice(0,600),
   iframeLoads:loadCount,focusSignals:focusCount
  };
@@ -160,6 +222,18 @@ function renderTrials(){
  ].filter(Boolean).join('\n')).join('\n'):'No saved trials for this camera.';
 }
 function log(s){events.push(new Date().toISOString()+' '+s);events=events.slice(-35);report();}
+function applyVisuals(){
+ const textValue={none:'',camera:'CAMERA',live:'LIVE CAM',tunnel:'TUNNEL CAM',custom:$('textCustom').value.trim().slice(0,22)}[$('textMode').value]||'';
+ $('tileTextValue').textContent=textValue;
+ $('tileText').hidden=!textValue;
+ $('tileText').dataset.position=$('textPosition').value;
+ $('feedbackOverlay').dataset.mode=$('feedback').value;
+}
+function setFeedback(show){
+ const visible=Boolean(show&&loaded&&!expanded&&$('feedback').value!=='none');
+ $('feedbackOverlay').hidden=!visible;
+ $('tileText').classList.toggle('suppressed',visible);
+}
 function applyCrop(){
  const height=Number($('size').value),shape=$('shape').value;
  const factor=shape==='pill'?1.65:shape==='rectangle'?1.45:1;
@@ -178,6 +252,7 @@ function applyCrop(){
  $('zoomValue').textContent=$('zoom').value+'×';
  $('xValue').textContent=$('x').value+' px';
  $('yValue').textContent=$('y').value+' px';
+ applyVisuals();
 }
 function report(){
  $('report').textContent=[
@@ -193,7 +268,10 @@ function report(){
  'Events:',...events
  ].join('\n');
 }
-function cancelPending(){if(pending!==null){clearTimeout(pending);pending=null;}}
+function cancelPending(){
+ if(pending!==null){clearTimeout(pending);pending=null;}
+ setFeedback(false);
+}
 function expand(next,why){
  if(!loaded)return;
  cancelPending();
@@ -215,6 +293,8 @@ function focusSignal(source){
  armed=false;focusCount++;
  const delay=Number($('delay').value);
  log('Iframe focus detected from '+source+'; scheduling expand after '+delay+'ms (NOT playback confirmation).');
+ setFeedback(true);
+ log('Showing click-through '+$('feedback').value+' visual during focus delay; native pause/play UI temporarily masked (no playback confirmation).');
  pending=setTimeout(()=>{pending=null;if(loaded&&!expanded)expand(true,'iframe focus');},delay);
 }
 $('player').addEventListener('focus',()=>focusSignal('iframe focus'));
@@ -267,6 +347,6 @@ $('copy').addEventListener('click',async()=>{
  try{await navigator.clipboard.writeText($('report').textContent);$('copyStatus').textContent='Report copied.';}
  catch{$('copyStatus').textContent='Clipboard unavailable; select the report manually.';}
 });
-applyCrop();renderTrials();log('Ready; video not loaded.');
+$('preset').value='O';applyPreset();renderTrials();log('Ready; video not loaded.');
 })();
 </script></body></html>
