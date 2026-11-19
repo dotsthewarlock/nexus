@@ -68,7 +68,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,Conso
 <option value="keep">Candidate · keep iframe visible/interactive until expansion</option>
 </select>
 <p id="modeDescription" class="small"></p>
-<p class="small">Both treatments create a fresh iframe on every camera switch. Both use the same 6× centred native Play crop, no-referrer policy, and 1,200 ms first-launch modal expansion. The pill looks identical in both conditions.</p>
+<p class="small">Both treatments create a fresh iframe on every camera switch. Both use the same 6× centred native Play crop, no-referrer policy, and 500 ms first-launch modal expansion. The pill looks identical in both conditions.</p>
 <div id="sequence" class="status"></div>
 <div id="cameraName" style="font-weight:750;font-size:1.12rem;margin:10px 0">Windsor inspection</div>
 <div id="pill" class="pill" aria-label="Camera launcher">
@@ -220,8 +220,8 @@ function freshCamera(cameraKey,reason){
  $('external').href=cameraUrl();
  $('sequence').textContent='Step '+(saved.step+1)+' / '+STEPS.length+' · '+STEPS.map((k,i)=>i===saved.step?'['+k+']':k).join(' → ');
  $('modeDescription').textContent=saved.mode==='hide'?
-  'Control: on iframe focus, hide the player and disable its pointer events after 180 ms, then expand at 1,200 ms.':
-  'Candidate: on iframe focus, leave the player rendered and interactive until expansion at 1,200 ms.';
+  'Control: on iframe focus, hide the player and disable its pointer events after 180 ms, then expand at 500 ms.':
+  'Candidate: on iframe focus, leave the player rendered and interactive until expansion at 500 ms.';
  loadFields();
  setStatus('Idle · tap the native Play target once. Treatment: '+(saved.mode==='hide'?'180 ms hide':'keep interactive')+'.');
  writeEvent('Created fresh iframe for camera '+cameraKey+' ('+reason+'); mode='+saved.mode+'; generation='+st.generation);
@@ -241,8 +241,8 @@ function launchHandoff(signal,generation){
  }else writeEvent('Candidate: iframe remains visible and interactive through handoff');
  handoffTimer=setTimeout(()=>{
   if(generation===st.generation&&st.mode==='launching')expand('first');
- },1200);
- setStatus('Launch signal received · modal expansion pending at 1,200 ms. Observe actual video playback.');
+ },500);
+ setStatus('Launch signal received · modal expansion pending at 500 ms. Observe actual video playback.');
 }
 window.addEventListener('blur',()=>{
  const generation=st.generation,current=frame;
@@ -335,7 +335,7 @@ function report(){
   'Current camera: '+CAMERAS[st.camera].name,
   'Session mode: '+st.mode,
   'Sequence: '+STEPS.join(' → '),
-  'Held constant: fresh iframe per camera switch, same 6x native Play crop, no-referrer, 1200ms expansion, retained iframe on minimize',
+  'Held constant: fresh iframe per camera switch, same 6x native Play crop, no-referrer, 500ms expansion, retained iframe on minimize',
   'Variable: HIDE disables/hides iframe at 180ms vs KEEP leaves it interactive.',
   'NOTE: iframe load/focus does not confirm moving video; all outcomes require manual observation.'
  ];
