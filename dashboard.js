@@ -64,7 +64,12 @@ function render(){
  document.querySelectorAll('[data-sort]').forEach(b=>b.setAttribute('aria-current',String(b.dataset.sort===store.sort)));
  $('crossingRows').innerHTML=sortIds().map(id=>'<div class="crossing-row" role="row"><span class="crossing-name" role="rowheader" aria-label="'+escape(NAMES[id])+'">'+escape(SHORT_NAMES[id])+'</span>'+cell(id,'ca')+cell(id,'us')+'</div>').join('');
  const s=store.data?.sources||{},snap=age(store.data?.generated_at);
- const healthy=!!store.data&&snap<=20&&['cbp','cbsa'].every(k=>s[k]?.status==='ok'&&age(s[k].retrieved_at)<=20);
+ const sourceRecent=!!store.data&&snap<=20&&['cbp','cbsa'].every(k=>s[k]?.status==='ok'&&age(s[k].retrieved_at)<=20);
+ const readings=IDS.flatMap(id=>['ca','us'].map(dir=>classify(id,dir)));
+ const historicalCount=readings.filter(v=>v.kind==='stale').length;
+ const missingCount=readings.filter(v=>v.kind==='unavailable').length;
+ const exceptions=readings.some(v=>['stale','closed','unavailable'].includes(v.kind));
+ const healthy=sourceRecent&&!exceptions;
  const noData=!store.data||!Number.isFinite(snap);
  $('statusDot').dataset.state=healthy?'ok':noData?'error':'warn';
  const ageLabel=(key,name)=>{
@@ -73,7 +78,10 @@ function render(){
   if(src?.status!=='ok')return name+' unavailable'+(Number.isFinite(minutes)?' (last success '+Math.round(minutes)+'m ago)':'');
   return Number.isFinite(minutes)?name+' checked '+Math.round(minutes)+'m ago':name+' check age unavailable';
  };
- const freshness=ageLabel('cbsa','CBSA')+' · '+ageLabel('cbp','CBP')+(snap>20?' · Snapshot overdue':'');
+ const freshness=ageLabel('cbsa','CBSA')+' · '+ageLabel('cbp','CBP')+
+   (snap>20?' · Snapshot overdue':'')+
+   (historicalCount?' · '+historicalCount+' older '+(historicalCount===1?'report':'reports'):'')+
+   (missingCount?' · '+missingCount+' unavailable':'');
  $('summary').textContent=store.error?freshness+' · '+store.error:freshness;
  $('sourceDetails').setAttribute('aria-label','Official source freshness: '+freshness+'. Open diagnostics');
  const notices=[];
