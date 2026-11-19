@@ -53,11 +53,13 @@ jobs:
           compression-level: 9
       - name: Test tunnel camera timing policy
         run: node tests/camera_timeout_lab.test.cjs
+      - name: Test cropped Play and nine-second Resume policy
+        run: node tests/camera_one_tap_timeout.test.cjs
       - name: Stage static website
         run: |
           mkdir -p site/data
           cp index.html styles.css app.js decision.js camera-diagnostics.html site/
-          cp board.css board.js legacy.html camera-timeout-lab.html camera-timeout-lab.js site/
+          cp board.css board.js legacy.html camera-timeout-lab.html camera-timeout-lab.js camera-one-tap-timeout.html camera-one-tap-timeout.js site/
           cp camera-alternatives.html site/
           cp camera-lab-v3.html site/
           cp camera-navigation-lab.html site/
