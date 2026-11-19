@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101d2b">
+<title>Nexus · DWT camera navigation matrix</title>
+<style>
+:root{color-scheme:dark;background:#101a25;color:#e8f1f8;font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+*{box-sizing:border-box}
+body{max-width:700px;margin:auto;padding:16px 14px 46px}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+h1{font-size:1.55rem;line-height:1.2;margin:16px 0 12px}h2{font-size:1.1rem;margin:0 0 8px}
+p{margin:6px 0 12px}
+a{color:#9acfff}
+.card{background:#172737;border:1px solid #43596e;border-radius:12px;padding:15px;margin:14px 0}
+.muted,small{color:#bacbd8}
+.notice{border-left:3px solid #e7bd69;padding-left:11px;margin:13px 0}
+.status{color:#acd6fa;min-height:1.5em}
+label{display:block;font-weight:600;margin:10px 0 5px}
+select,textarea{width:100%;border:1px solid #7792a9;background:#0e1d2b;color:#fff;border-radius:8px;font:inherit;padding:10px}
+textarea{min-height:72px;resize:vertical}
+.action,button{display:block;width:100%;border-radius:9px;border:1px solid #79b8ec;background:#176198;color:#fff;font:inherit;font-weight:650;text-align:center;padding:13px 12px;margin:9px 0;cursor:pointer;text-decoration:none}
+.action.secondary,button.secondary{background:#293b4d;border-color:#71869a}
+button:focus-visible,a:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #f4d077;outline-offset:2px}
+button[hidden],a[hidden]{display:none}
+.test-title{font-weight:700;font-size:1.03rem}
+.meta{color:#b9cbd9;font-size:.91rem}
+table{border-collapse:collapse;width:100%;font-size:.91rem}
+td,th{text-align:left;border-bottom:1px solid #405265;padding:8px 5px;vertical-align:top}
+th:last-child,td:last-child{text-align:right}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;background:#0b1620;border-radius:8px;padding:12px;font:12px/1.4 ui-monospace,SFMono-Regular,monospace;max-height:300px;overflow:auto}
+@media (min-width:570px){h1{font-size:1.8rem}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.two .action,.two button{margin:7px 0}}
+</style>
+</head>
+<body>
+<header><strong>Nexus · camera investigation</strong><a href="./">Back to Nexus</a></header>
+<h1>DWT Camera · Navigation Matrix</h1>
+<p>Fresh diagnostic focusing on one unexplained result: <strong>same-tab navigation blocked, but new-tab navigation played</strong>. The previous seven embed approaches all failed. This page tests only top-level links, not new attempts to embed or retransmit video.</p>
+<p class="notice">These tests compare browser navigation and ordinary referrer-policy settings. They do not establish embedding permission. Avoid proxying the stream or misrepresenting the referring website.</p>
+
+<section class="card">
+<h2>1. Camera and test</h2>
+<label for="camera">Camera</label>
+<select id="camera">
+  <option value="4aea1c45-d402-3690-afae-fe635942da82">Canada → USA · Windsor inspection</option>
+  <option value="794566d4-a75e-3cd1-6f95-2d60e54f2fdb">USA → Canada · Detroit inspection</option>
+  <option value="5408b5c3-f8d1-f34b-a18a-9943047905b6">USA → Canada · Randolph Street</option>
+</select>
+<label for="case">Navigation configuration</label>
+<select id="case"></select>
+<p id="description" class="muted"></p>
+<div id="launchHost">
+<a id="launchLink" class="action" href="https://www.dwtunnel.com/">Open camera</a>
+<button id="launchButton" type="button" hidden>Open camera</button>
+</div>
+<p id="launchNote" class="status" role="status"></p>
+<small>For same-tab tests, press Back after viewing the player. For new-tab tests, return to this page through Chrome's tab switcher. Select the actual observed outcome below.</small>
+</section>
+
+<section class="card">
+<h2>2. Record outcome</h2>
+<label for="outcome">What happened for this test?</label>
+<select id="outcome">
+  <option value="untested">Not tested</option>
+  <option value="plays">Video plays</option>
+  <option value="blocked">“Content blocked on this website”</option>
+  <option value="blank">Blank/no usable video</option>
+  <option value="navigation">Navigation did not open</option>
+  <option value="other">Other result</option>
+</select>
+<label for="notes">Notes for this test (optional)</label>
+<textarea id="notes" maxlength="350" placeholder="Exact message, how Back behaved, browser prompt..."></textarea>
+<div class="two">
+<button id="saveNext" type="button">Save and next test</button>
+<button id="save" type="button" class="secondary">Save result</button>
+</div>
+<p id="saveStatus" class="status" role="status"></p>
+</section>
+
+<section class="card">
+<h2>3. Results</h2>
+<p class="muted">All outcomes are recorded manually and kept in this tab's session storage. No diagnostic data is uploaded.</p>
+<table><thead><tr><th>Test</th><th>Observed outcome</th></tr></thead><tbody id="results"></tbody></table>
+<div class="two">
+<button id="copy" type="button">Copy full report</button>
+<button id="reset" class="secondary" type="button">Reset results</button>
+</div>
+<p id="copyStatus" class="status" role="status"></p>
+<pre id="report"></pre>
+</section>
+
+<section class="card">
+<h2>How to interpret the comparison</h2>
+<p><strong>A fails; B or C plays:</strong> Referrer handling, rather than new-tab behaviour alone, may explain the discrepancy.</p>
+<p><strong>B/C fail; F plays:</strong> The new browsing context itself becomes a stronger hypothesis.</p>
+<p><strong>E fails; F plays:</strong> Removing referrer information, not just the opener, may matter.</p>
+<p><strong>Same-tab and new-tab playback both work:</strong> Prefer the option with the easiest return to Nexus.</p>
+<p><strong>All direct methods fail:</strong> Retest the official website and check stream availability before drawing conclusions.</p>
+</section>
+
+<small>Data source: publicly linked DWT Dacast players. Not affiliated with DWT or Dacast. No video recording, network proxy, media extraction, credentials, or third-party iframe inspection.</small>
+
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const ROOT='https://iframe.dacast.com/live/8b2b630f-b7c1-262d-f343-118f510224a0/';
+const CAMERAS={
+ '4aea1c45-d402-3690-afae-fe635942da82':'Canada → USA · Windsor inspection',
+ '794566d4-a75e-3cd1-6f95-2d60e54f2fdb':'USA → Canada · Detroit inspection',
+ '5408b5c3-f8d1-f34b-a18a-9943047905b6':'USA → Canada · Randolph Street'
+};
+const TESTS=[
+ {id:'A',name:'Same tab · normal link',desc:'Plain hyperlink with target=_self and default referrer policy. Distinguishes anchor navigation from JavaScript location.assign.',kind:'link',target:'_self',rel:'',policy:''},
+ {id:'B',name:'Same tab · rel=noreferrer',desc:'Ordinary anchor with target=_self and rel=noreferrer, which suppresses the HTTP Referer header.',kind:'link',target:'_self',rel:'noreferrer',policy:''},
+ {id:'C',name:'Same tab · referrerpolicy=no-referrer',desc:'Ordinary anchor with explicit no-referrer policy. Independent way to test the same-tab referrer difference.',kind:'link',target:'_self',rel:'',policy:'no-referrer'},
+ {id:'D',name:'Same tab · location.assign',desc:'Reproduces Lab 3 test H, which previously displayed a blocking error.',kind:'assign'},
+ {id:'E',name:'New tab · rel=noopener',desc:'New tab without an opener, but default referrer policy still applies. Tests whether no opener alone is enough.',kind:'link',target:'_blank',rel:'noopener',policy:''},
+ {id:'F',name:'New tab · rel=noopener noreferrer',desc:'Exact link behaviour from the successful Lab 3 test I. This is the known-working control.',kind:'link',target:'_blank',rel:'noopener noreferrer',policy:''},
+ {id:'G',name:'New tab · referrerpolicy=no-referrer',desc:'New-tab anchor with an explicit referrer-policy attribute and rel=noopener.',kind:'link',target:'_blank',rel:'noopener',policy:'no-referrer'},
+ {id:'H',name:'New tab · window.open noreferrer',desc:'User-initiated window.open with noopener,noreferrer; tests an alternative UI action for the same top-level destination.',kind:'open'},
+ {id:'I',name:'Paste URL into address bar',desc:'Copy the unmodified Dacast URL; manually paste it into a new Chrome tab to check independent navigation.',kind:'copy'},
+ {id:'J',name:'Official DWT website',desc:'Control: open the official operator page in a new tab and locate the same camera.',kind:'official'}
+];
+const STORE='nexus-dwt-navigation-matrix-v1';
+let saved={};
+try{const obj=JSON.parse(sessionStorage.getItem(STORE)||'{}');if(obj&&typeof obj==='object')saved=obj;}catch{}
+const cameraIds=Object.keys(CAMERAS), outcomeIds=['untested','plays','blocked','blank','navigation','other'];
+if(cameraIds.includes(saved.camera))$('camera').value=saved.camera;
+let results=saved.results&&typeof saved.results==='object'?saved.results:{};
+let selected=TESTS.some(x=>x.id===saved.selected)?saved.selected:'A';
+let launchCount=Number.isInteger(saved.launchCount)?saved.launchCount:0;
+function safeNote(v){return String(v||'').slice(0,350);}
+function persist(){
+ try{sessionStorage.setItem(STORE,JSON.stringify({camera:$('camera').value,selected,results,launchCount}));}catch{}
+}
+function current(){return TESTS.find(x=>x.id===selected)||TESTS[0];}
+function cameraUrl(){return ROOT+$('camera').value;}
+function record(){return results[selected]||{outcome:'untested',notes:''};}
+function loadFields(){
+ $('outcome').value=outcomeIds.includes(record().outcome)?record().outcome:'untested';
+ $('notes').value=safeNote(record().notes);
+}
+function saveFields(){
+ results[selected]={outcome:outcomeIds.includes($('outcome').value)?$('outcome').value:'untested',notes:safeNote($('notes').value)};
+ persist();renderResults();
+}
+function setupLaunch(){
+ const c=current(), link=$('launchLink'),button=$('launchButton'),url=c.kind==='official'?'https://www.dwtunnel.com/':cameraUrl();
+ $('description').textContent=c.desc;
+ link.hidden=!(c.kind==='link'||c.kind==='official');
+ button.hidden=(c.kind==='link'||c.kind==='official');
+ if(!link.hidden){
+   link.href=url;
+   link.target=c.kind==='official'?'_blank':c.target;
+   if(c.kind==='official')link.rel='noopener noreferrer';
+   else if(c.rel)link.rel=c.rel;else link.removeAttribute('rel');
+   if(c.policy)link.setAttribute('referrerpolicy',c.policy);else link.removeAttribute('referrerpolicy');
+   link.textContent=c.id+' · Open camera';
+ }
+ if(!button.hidden){
+   button.textContent=c.kind==='copy'?'Copy direct player URL':c.id+' · Open camera';
+ }
+ $('launchNote').textContent='Selected: '+c.name+'. Test camera '+CAMERAS[$('camera').value]+'.';
+}
+function renderResults(){
+ const body=$('results');body.replaceChildren();
+ for(const t of TESTS){
+   const tr=document.createElement('tr'),label=document.createElement('td'),res=document.createElement('td');
+   label.textContent=t.id+' · '+t.name;
+   res.textContent=(results[t.id]?.outcome||'untested').replace('_',' ');
+   tr.append(label,res);body.appendChild(tr);
+ }
+ $('report').textContent=report();
+}
+function report(){
+ const out=[
+  'Nexus DWT camera navigation matrix — manual results',
+  'UTC: '+new Date().toISOString(),
+  'Origin: '+location.origin,
+  'Camera: '+CAMERAS[$('camera').value],
+  'Tests launched: '+launchCount,
+  'Direct player URL: '+cameraUrl()
+ ];
+ for(const t of TESTS){
+   const r=results[t.id]||{outcome:'untested',notes:''};
+   out.push(t.id+' | '+t.name+': '+r.outcome+(r.notes?' | '+r.notes:''));
+ }
+ out.push('All outcomes manually selected; this page cannot observe third-party playback.');
+ return out.join('\n');
+}
+function choose(id){
+ selected=TESTS.some(x=>x.id===id)?id:'A';
+ $('case').value=selected;loadFields();setupLaunch();renderResults();persist();
+}
+for(const t of TESTS){
+ const option=document.createElement('option');option.value=t.id;option.textContent=t.id+' · '+t.name;
+ $('case').appendChild(option);
+}
+$('case').addEventListener('change',()=>{saveFields();choose($('case').value);});
+$('camera').addEventListener('change',()=>{
+ // Prevent outcomes from one camera being incorrectly reported for another.
+ results={};launchCount=0;selected='A';persist();choose('A');
+ $('saveStatus').textContent='Camera changed; outcomes reset to avoid mixing streams.';
+});
+$('launchLink').addEventListener('click',()=>{saveFields();launchCount++;persist();});
+$('launchButton').addEventListener('click',async()=>{
+ saveFields();launchCount++;persist();
+ const c=current();
+ if(c.kind==='assign'){
+   location.assign(cameraUrl());
+ }else if(c.kind==='open'){
+   window.open(cameraUrl(),'_blank','noopener,noreferrer');
+   $('launchNote').textContent='Window requested. If nothing opened, mark Navigation did not open.';
+ }else if(c.kind==='copy'){
+   try{await navigator.clipboard.writeText(cameraUrl());$('launchNote').textContent='URL copied. Open a fresh browser tab, paste, then return here.';}
+   catch{$('launchNote').textContent='Could not copy automatically. Use the direct player URL in the report area.';}
+ }
+});
+$('save').addEventListener('click',()=>{saveFields();$('saveStatus').textContent='Recorded '+selected+'.';});
+$('saveNext').addEventListener('click',()=>{
+ saveFields();const index=TESTS.findIndex(t=>t.id===selected);choose(TESTS[Math.min(index+1,TESTS.length-1)].id);
+ $('saveStatus').textContent='Recorded. Next test ready.';
+});
+$('outcome').addEventListener('change',saveFields);
+$('notes').addEventListener('input',saveFields);
+$('copy').addEventListener('click',async()=>{
+ saveFields();const output=report();
+ try{await navigator.clipboard.writeText(output);$('copyStatus').textContent='Full report copied. Paste into Nexus project conversation.';}
+ catch{$('copyStatus').textContent='Clipboard unavailable. Select the report text below and copy manually.';}
+});
+$('reset').addEventListener('click',()=>{
+ results={};launchCount=0;selected='A';try{sessionStorage.removeItem(STORE);}catch{}
+ choose('A');$('saveStatus').textContent='Results reset.';
+});
+window.addEventListener('pageshow',()=>{renderResults();});
+choose(selected);
+})();
+</script>
+</body>
+</html>
