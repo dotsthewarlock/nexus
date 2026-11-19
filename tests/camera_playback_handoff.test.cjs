@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const html=fs.readFileSync('camera-playback-handoff.html','utf8');
 const workflow=fs.readFileSync('.github/workflows/publish.yml','utf8');
+const regression=fs.readFileSync('.github/workflows/tests.yml','utf8');
 const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
 assert.equal(scripts.length,1,'one diagnostic controller');
 const js=scripts[0][1];
@@ -47,6 +48,6 @@ assert.ok(html.includes('value="works"'),'manual Play recovery must be reported'
 assert.ok(!html.includes('id="shade"')&&!html.includes('#shade'),'avoid shade on playback');
 assert.ok(!html.includes('isolation:isolate'),'avoid stacking context trap');
 assert.ok(!/XMLHttpRequest|fetch\s*\(|\.m3u8|\.mpd|dispatchEvent\s*\(|document\.cookie/.test(js),'no stream manipulation');
-assert.ok(workflow.includes('node tests/camera_playback_handoff.test.cjs'),'CI test included');
+assert.ok(regression.includes('node tests/camera_playback_handoff.test.cjs'),'CI test included');
 assert.ok(workflow.includes('cp camera-playback-handoff.html site/'),'Pages deployment included');
 console.log('Three-camera playback handoff diagnostic static checks passed.');

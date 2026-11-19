@@ -5,6 +5,7 @@ const vm=require('node:vm');
 const html=fs.readFileSync('camera-one-tap-lab.html','utf8');
 const app=fs.readFileSync('app.js','utf8');
 const workflow=fs.readFileSync('.github/workflows/publish.yml','utf8');
+const regression=fs.readFileSync('.github/workflows/tests.yml','utf8');
 const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
 assert.equal(scripts.length,1);
 const js=scripts[0][1];new vm.Script(js);
@@ -94,6 +95,6 @@ for(const value of [
 }
 assert.ok(!js.includes("dispatchEvent("),'native Dacast Play must remain directly tappable');
 assert.ok(!html.includes('tabindex="0" id="tileText"'),'decorative label must remain unfocusable');
-assert.ok(workflow.includes('node tests/camera_one_tap.test.cjs'));
+assert.ok(regression.includes('node tests/camera_one_tap.test.cjs'));
 assert.ok(workflow.includes('cp camera-one-tap-lab.html site/'));
 console.log('One-tap lab static checks passed.');

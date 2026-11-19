@@ -179,3 +179,11 @@ Regional matching is deliberately conservative: local coordinates or polyline ev
 5. Run `python3 -m unittest discover -s tests -v` and existing Node test commands locally. All test fixtures are synthetic. Never print the secret or invoke a `curl` command with its value.
 
 An actual authenticated Ontario 511 response cannot be tested outside the Actions secret-bearing runner. Even with successful four-feed retrieval, the data only describes Ontario road context, not confirmed crossing access or border wait times.
+
+### Beta collection architecture (November 2026)
+
+- GitHub Actions still schedules one collection/deployment run every 10 minutes (best effort). A separate regression workflow tests pull requests and changes on `main`; routine publishing runs only the collector and snapshot schema validation.
+- `scripts/source_policy.py` contains **provisional** per-source minimum check intervals. Primary CBP/CBSA checks remain aligned to the existing schedule; slower supplemental checks reuse previously validated results. These intervals are not agency publication promises and should be tuned using observation history.
+- Skipped sources preserve their original `retrieved_at` and `last_success_at`, and carry `cache_reused: true`. A source error is never treated as a fresh cached success. Empty official event lists are legitimate cached results.
+- The last published snapshot is retrieved best-effort before collecting. When unavailable, the collector fetches rather than pretending an empty cache is a success. Collection still publishes explicit degraded statuses on feed failure.
+- Frontend data-freshness and NEXUS interpretation rules are unchanged in this release; the beta browser-direct acquisition experiment remains separate and disabled.
