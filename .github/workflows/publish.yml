@@ -62,7 +62,7 @@ jobs:
           mkdir -p site/data
           cp index.html styles.css app.js decision.js camera-diagnostics.html site/
           cp board.css board.js legacy.html site/
-          cp dashboard.css dashboard.js classic-board.html site/
+          cp dashboard.css dashboard.js destinations.js classic-board.html site/
           cp camera-timeout-lab.html camera-timeout-lab.js camera-one-tap-timeout.html camera-one-tap-timeout.js site/
           cp camera-resume-candidates.html camera-resume-candidates.js site/
           cp camera-alternatives.html site/
