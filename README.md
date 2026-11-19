@@ -30,6 +30,14 @@ The primary screen is a compact border-status viewer with an **Into USA / Into C
 - The full browser snapshot-download time, server publication time, actual source-check time, source status and agency observations remain in technical diagnostics. No direct-browser API retrieval is enabled by this UX release.
 - The initial check-status release did not alter the 20-minute current-reading eligibility. The subsequent no-dash release adds explicitly labeled historical display for reports under two hours without changing the underlying decision engine.
 
+### Canada-bound NEXUS schedule presentation (November 19, 2026)
+
+- All three Canada-bound NEXUS dashboard cells show the next CBSA-published NEXUS operating-window change, such as `Scheduled until 10 PM` or `Opens tomorrow 8 AM`. This is **scheduled potential access**, not a live wait, live lane confirmation, or border closure report.
+- Only Ambassador Bridge publishes explicitly named lane-by-lane CBSA timetables. The schedule helper counts distinct named lanes in the current applicable period, using the existing conservative local holiday/DST parser. Ambiguous or stale timetables suppress lane counts instead of guessing.
+- The Tunnel may display `N NEXUS lanes listed (operator)` only when the operator's directional count, observation, retrieval, and latest site snapshot are recent. Listed counts never imply currently open lanes. Gordie Howe has no verified public Canada-bound NEXUS lane count.
+- An unavailable or unparseable official schedule displays `Hours unverified`. The NEXUS inspection wait remains `not published` for every Canada-bound crossing, including in camera details and technical diagnostics.
+- No new backend collection, network requests, sorting/routing logic, or source measurement interpretation was introduced.
+
 ### Current-display trust policy (beta; November 19, 2026)
 
 - Dashboard/camera wait placeholders use meaningful labels: `Checking…`, `Not reported`, `Not published`, `Unavailable`, `Not applicable`, `Closed`, or `Closure unverified`; never an unlabelled dash.
