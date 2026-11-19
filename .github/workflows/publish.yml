@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -44,6 +45,12 @@ jobs:
         run: python scripts/validate_snapshot.py data/live.json
       - name: Report collection health
         run: python scripts/report_health.py data/live.json
+      - name: Audit scheduled collection cadence (informational)
+        # Reads GitHub Actions run history and workflow revision; the audit is
+        # only evaluated when a job runs and cannot restart a missed schedule.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/audit_schedule.py
       - name: Archive snapshot (rolling 30-day retention)
         uses: actions/upload-artifact@v4
         with:
