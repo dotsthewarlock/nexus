@@ -58,11 +58,42 @@ for(const token of [
  "shape==='triangle'?'polygon(0% 0%,100% 50%,0% 100%)':'none'",
  "shape==='pill'?1.65:shape==='rectangle'?1.45:1",
  "armed=$('trigger').value==='focus'",
- "const config=['shape','size','zoom','x','y','delay','trigger']"
+ "const config=['shape','size','zoom','x','y','delay','trigger','textMode','textCustom','textPosition','feedback']"
 ])assert.ok(js.includes(token),'missing shape preservation: '+token);
 assert.ok(html.includes('clip-path:none;box-shadow:0 14px 50px'),'expanded modal must remove crop mask');
 assert.ok(!html.includes('id="previewHit"'),'no overlay should intercept native Play tap');
 assert.ok(!js.includes("dispatchEvent("),'no synthetic Dacast click');
+for(const id of ['textMode','textCustom','textPosition','feedback','feedbackOverlay','tileText','tileTextValue','feedbackResult']){
+ assert.ok(html.includes('id="'+id+'"'),'missing 4x/visual overlay UI: '+id);
+}
+for(const preset of ['O','P','Q','R','S','T']){
+ assert.ok(html.includes('<option value="'+preset+'"'),'missing 4x/5x preset '+preset);
+ assert.ok(js.includes(preset+':{shape:'),'new preset not configured '+preset);
+}
+for(const mode of ['none','white-play','spinner','pulse','white-spinner']){
+ assert.ok(html.includes('<option value="'+mode+'"'),'missing pending visual '+mode);
+}
+for(const label of ['camera','live','tunnel','custom']){
+ assert.ok(html.includes('<option value="'+label+'"'),'missing label '+label);
+}
+for(const value of [
+ 'const VISUAL_DEFAULTS=',
+ "function applyVisuals(){",
+ "function setFeedback(show){",
+ "setFeedback(true);",
+ "setFeedback(false);",
+ "'--zoom'",
+ "min=\"0.75\" max=\"5\"",
+ "clip-path:var(--tile-clip,none)",
+ 'pointer-events:none!important',
+ '#feedbackOverlay[hidden]',
+ 'aria-hidden="true"',
+ "'feedbackResult'"
+]){
+ assert.ok((value.includes('<')||value.includes('pointer-events')||value.includes('#feedback')||value.includes('aria-hidden')||value.includes('clip-path')||value.includes('min=')?html:js).includes(value),'missing 4x/visual functionality: '+value);
+}
+assert.ok(!js.includes("dispatchEvent("),'native Dacast Play must remain directly tappable');
+assert.ok(!html.includes('tabindex="0" id="tileText"'),'decorative label must remain unfocusable');
 assert.ok(workflow.includes('node tests/camera_one_tap.test.cjs'));
 assert.ok(workflow.includes('cp camera-one-tap-lab.html site/'));
 console.log('One-tap lab static checks passed.');
