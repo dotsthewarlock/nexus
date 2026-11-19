@@ -24,7 +24,7 @@ for(const token of [
  "if(saved.mode==='hide'){",
  "host.classList.add('launch-hide');",
  "},180);",
- "},1200);",
+ "},500);",
  "host.classList.add('expanded');",
  "host.classList.add('minimized');",
  "next.referrerPolicy='no-referrer';",
