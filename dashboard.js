@@ -3,6 +3,7 @@
 const D=window.NexusDecision;
 const IDS=['ambassador','tunnel','gordie'];
 const NAMES={ambassador:'Ambassador Bridge',tunnel:'Detroit–Windsor Tunnel',gordie:'Gordie Howe International Bridge'};
+const SHORT_NAMES={ambassador:'Ambassador',tunnel:'Tunnel',gordie:'Gordie Howe'};
 const $=id=>document.getElementById(id);
 const key='nexus-m1-sort';
 const categories={passenger:[['regular','Regular'],['nexus','NEXUS'],['ready','Ready']],commercial:[['regular','Regular'],['fast','FAST']]};
@@ -61,13 +62,20 @@ function render(){
  $('usHeading').textContent='USA'+(store.sort==='us'?' ↓':'');
  $('sortToggle').setAttribute('aria-label','Sort crossings; current order: '+({fixed:'crossing order',ca:'lowest Canada wait',us:'lowest USA wait'}[store.sort]));
  document.querySelectorAll('[data-sort]').forEach(b=>b.setAttribute('aria-current',String(b.dataset.sort===store.sort)));
- $('crossingRows').innerHTML=sortIds().map(id=>'<div class="crossing-row" role="row"><span class="crossing-name" role="rowheader">'+escape(NAMES[id])+'</span>'+cell(id,'ca')+cell(id,'us')+'</div>').join('');
+ $('crossingRows').innerHTML=sortIds().map(id=>'<div class="crossing-row" role="row"><span class="crossing-name" role="rowheader" aria-label="'+escape(NAMES[id])+'">'+escape(SHORT_NAMES[id])+'</span>'+cell(id,'ca')+cell(id,'us')+'</div>').join('');
  const s=store.data?.sources||{},snap=age(store.data?.generated_at);
  const healthy=!!store.data&&snap<=20&&['cbp','cbsa'].every(k=>s[k]?.status==='ok'&&age(s[k].retrieved_at)<=20);
  const noData=!store.data||!Number.isFinite(snap);
  $('statusDot').dataset.state=healthy?'ok':noData?'error':'warn';
- const freshness=noData?'Official reports unavailable':healthy?'Official checks recent · observations vary':'Some official reports are delayed or unavailable';
+ const ageLabel=(key,name)=>{
+  const src=s[key],last=src?.status==='ok'?src?.retrieved_at:src?.last_success_at;
+  const minutes=age(last);
+  if(src?.status!=='ok')return name+' unavailable'+(Number.isFinite(minutes)?' (last success '+Math.round(minutes)+'m ago)':'');
+  return Number.isFinite(minutes)?name+' checked '+Math.round(minutes)+'m ago':name+' check age unavailable';
+ };
+ const freshness=ageLabel('cbsa','CBSA')+' · '+ageLabel('cbp','CBP')+(snap>20?' · Snapshot overdue':'');
  $('summary').textContent=store.error?freshness+' · '+store.error:freshness;
+ $('sourceDetails').setAttribute('aria-label','Official source freshness: '+freshness+'. Open diagnostics');
  const notices=[];
  for(const id of IDS)for(const dir of ['ca','us']){
   const p=store.data?.directions?.[dir]?.[id],src=source(dir);
@@ -113,10 +121,18 @@ function renderDetail(){
  $('cameraViewer').href='./classic-board.html';
 }
 function openDetail(id,dir='ca'){
+ store.openedFrom={id,dir};
  store.selected=id;store.direction=dir;renderDetail();
  $('detailDialog').showModal();$('detailTitle').focus();
 }
-function closeDialog(id){$(id).close()}
+function closeDialog(id){
+ $(id).close();
+ if(id==='detailDialog'&&store.openedFrom){
+  const {id:crossing,dir}=store.openedFrom;
+  $('crossingRows').querySelector('button[data-crossing="'+crossing+'"][data-direction="'+dir+'"]')?.focus();
+ }
+ if(id==='settingsDialog')store.settingsTrigger?.focus?.();
+}
 function updateLanes(){
  const sel=$('laneSelect'),allowed=categories[store.vehicle];
  sel.innerHTML=allowed.map(([k,label])=>'<option value="'+k+'">'+label+'</option>').join('');
@@ -166,8 +182,8 @@ function init(){
  $('laneSelect').addEventListener('change',e=>{store.lane=e.target.value;render()});
  $('crossingRows').addEventListener('click',e=>{const b=e.target.closest('[data-crossing]');if(b)openDetail(b.dataset.crossing,b.dataset.direction||'ca')});
  $('noticeOpen').addEventListener('click',e=>{const {crossing:id,direction:dir}=e.currentTarget.dataset;if(id)openDetail(id,dir||'ca')});
- $('sourceDetails').addEventListener('click',()=>{$('settingsDialog').showModal();$('settingsTitle').focus()});
- $('settingsOpen').addEventListener('click',()=>{$('settingsDialog').showModal();$('settingsTitle').focus()});
+ $('sourceDetails').addEventListener('click',e=>{store.settingsTrigger=e.currentTarget;$('settingsDialog').showModal();$('settingsTitle').focus()});
+ $('settingsOpen').addEventListener('click',e=>{store.settingsTrigger=e.currentTarget;$('settingsDialog').showModal();$('settingsTitle').focus()});
  $('detailClose').addEventListener('click',()=>closeDialog('detailDialog'));
  $('settingsClose').addEventListener('click',()=>closeDialog('settingsDialog'));
  $('detailCa').addEventListener('click',()=>{store.direction='ca';renderDetail()});
