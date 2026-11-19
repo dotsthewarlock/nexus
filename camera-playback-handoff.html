@@ -64,11 +64,11 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,Conso
 <h2>1 · Select launch treatment</h2>
 <label for="mode">Only one variable changes between tests</label>
 <select id="mode">
-<option value="hide">Control · hide iframe at 180 ms</option>
-<option value="keep">Candidate · keep iframe visible/interactive until expansion</option>
+<option value="hide">Control · 180 ms hide, 500 ms expansion</option>
+<option value="keep">Candidate · interactive iframe, 0 ms expansion</option>
 </select>
 <p id="modeDescription" class="small"></p>
-<p class="small">Both treatments create a fresh iframe on every camera switch. Both use the same 6× centred native Play crop, no-referrer policy, and 500 ms first-launch modal expansion. The pill looks identical in both conditions.</p>
+<p class="small">Both treatments create a fresh iframe on every camera switch. Both use the same 6× centred native Play crop and no-referrer policy. Control expands at 500 ms; candidate expands at 0 ms. The pill looks identical in both conditions.</p>
 <div id="sequence" class="status"></div>
 <div id="cameraName" style="font-weight:750;font-size:1.12rem;margin:10px 0">Windsor inspection</div>
 <div id="pill" class="pill" aria-label="Camera launcher">
@@ -147,7 +147,7 @@ const CAMERAS={
  C:{id:'5408b5c3-f8d1-f34b-a18a-9943047905b6',name:'USA → Canada · Randolph Street'}
 };
 const STEPS=['A','B','C','A','B','C','A','B','C'];
-const KEY='nexus-dwt-playback-handoff-v1';
+const KEY='nexus-dwt-playback-handoff-v2';
 const MODES=['hide','keep'];
 let saved={mode:'hide',step:0,runs:{hide:[],keep:[]}};
 try{
@@ -221,7 +221,7 @@ function freshCamera(cameraKey,reason){
  $('sequence').textContent='Step '+(saved.step+1)+' / '+STEPS.length+' · '+STEPS.map((k,i)=>i===saved.step?'['+k+']':k).join(' → ');
  $('modeDescription').textContent=saved.mode==='hide'?
   'Control: on iframe focus, hide the player and disable its pointer events after 180 ms, then expand at 500 ms.':
-  'Candidate: on iframe focus, leave the player rendered and interactive until expansion at 500 ms.';
+  'Candidate: on iframe focus, leave the player rendered and interactive through immediate (0 ms) expansion.';
  loadFields();
  setStatus('Idle · tap the native Play target once. Treatment: '+(saved.mode==='hide'?'180 ms hide':'keep interactive')+'.');
  writeEvent('Created fresh iframe for camera '+cameraKey+' ('+reason+'); mode='+saved.mode+'; generation='+st.generation);
@@ -241,8 +241,8 @@ function launchHandoff(signal,generation){
  }else writeEvent('Candidate: iframe remains visible and interactive through handoff');
  handoffTimer=setTimeout(()=>{
   if(generation===st.generation&&st.mode==='launching')expand('first');
- },500);
- setStatus('Launch signal received · modal expansion pending at 500 ms. Observe actual video playback.');
+ },saved.mode==='keep'?0:500);
+ setStatus('Launch signal received · modal expansion pending at '+(saved.mode==='keep'?'0':'500')+' ms. Observe actual video playback.');
 }
 window.addEventListener('blur',()=>{
  const generation=st.generation,current=frame;
@@ -335,8 +335,8 @@ function report(){
   'Current camera: '+CAMERAS[st.camera].name,
   'Session mode: '+st.mode,
   'Sequence: '+STEPS.join(' → '),
-  'Held constant: fresh iframe per camera switch, same 6x native Play crop, no-referrer, 500ms expansion, retained iframe on minimize',
-  'Variable: HIDE disables/hides iframe at 180ms vs KEEP leaves it interactive.',
+  'Held constant: fresh iframe per camera switch, same 6x native Play crop, no-referrer, retained iframe on minimize',
+  'Control: HIDE after 180ms, expand at 500ms; Candidate: KEEP interactive, expand at 0ms.',
   'NOTE: iframe load/focus does not confirm moving video; all outcomes require manual observation.'
  ];
  for(const mode of MODES){
