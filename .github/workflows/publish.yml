@@ -40,6 +40,8 @@ jobs:
         run: node tests/camera_rc148.test.cjs
       - name: Standalone camera diagnostic tests
         run: node tests/camera_diagnostics.test.cjs
+      - name: Alternative camera diagnostic tests
+        run: node tests/camera_alternatives.test.cjs
       - name: Recover last published snapshot for stale-only fallback
         run: |
           # Best effort; cached prior reports never become fresh observations.
