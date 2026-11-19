@@ -30,7 +30,7 @@
 .lab-note{font-size:12px;color:var(--muted)}
 .lab-warning{border-left:3px solid var(--warn);padding-left:12px;font-size:13px}
 .lab-pill-line{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-.camera-pill{position:relative;width:148px;height:49px;flex:none;border-radius:11px;background:var(--surface);isolation:isolate}
+.camera-pill{position:relative;z-index:5;width:148px;height:49px;flex:none;border-radius:11px;background:var(--surface);isolation:isolate;pointer-events:none}
 .pill-face{position:absolute;inset:0;pointer-events:none;z-index:4;border:1px solid var(--line);border-radius:11px;background:var(--surface);box-shadow:0 1px 3px #15283c12}
 .pill-label{position:absolute;inset:0;z-index:5;display:flex;gap:8px;align-items:center;justify-content:center;pointer-events:none;color:var(--ink);font-size:14px;font-weight:720;user-select:none}
 .pill-label svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8}
