@@ -25,3 +25,35 @@
 :root[data-large-text="true"] .wait-wrap{border-left:0}
 :root[data-large-text="true"] .wait-wrap + .wait-wrap{border-left:1px solid var(--line)}
 :root[data-large-text="true"] .wait-cell{min-height:62px}
+
+
+/* M3a: Local destinations are kept inside Settings and the existing detail sheet. */
+[hidden]{display:none!important}
+.primary-button,.destination-form input,.destination-form select,.destination-picker input,.destination-picker button,.saved-destination button{min-height:44px}
+.primary-button{border:1px solid var(--accent);background:var(--accent);color:var(--surface);padding:10px 14px;border-radius:9px;font-size:.9rem;font-weight:700}
+.primary-button:disabled{cursor:not-allowed;opacity:.55}
+.destination-action{margin:16px 0 2px;padding:15px 0;border-top:1px solid var(--line)}
+.destination-action h3,.destination-picker h3{font-size:1rem;margin:0 0 8px}
+.destination-summary{font-size:.9rem;line-height:1.5;margin:0 0 11px;overflow-wrap:anywhere}
+.destination-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}
+.destination-actions button{flex:0 0 auto}
+.destination-picker{padding:8px 0 0}
+.destination-picker label,.destination-form label{font-size:.84rem;font-weight:680;display:block;margin:12px 0 5px}
+.destination-picker input,.destination-form input,.destination-form select{display:block;width:100%;min-width:0;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 12px;border-radius:9px;font-size:1rem}
+.destination-picker form .primary-button{margin-top:11px}
+.picker-saved{display:grid;gap:8px;margin-bottom:14px}
+.picker-saved button{display:flex;flex-direction:column;gap:3px;align-items:flex-start;width:100%;text-align:left;border:1px solid var(--line);padding:11px 13px;background:var(--bg);border-radius:9px}
+.picker-saved small{font-size:.8rem;color:var(--muted);overflow-wrap:anywhere}
+.saved-destination{border:1px solid var(--line);padding:12px;border-radius:10px;margin:8px 0;background:var(--bg)}
+.saved-destination strong{font-size:.93rem}
+.saved-destination p{overflow-wrap:anywhere;margin:4px 0 6px;font-size:.82rem}
+.saved-destination .destination-actions{margin:8px 0 0}
+.saved-destination button{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--surface);font-size:.8rem}
+.saved-destination .is-default{font-size:.78rem;color:var(--good);font-weight:650}
+.settings-destinations .destination-form{padding:12px 0}
+.settings-destinations .destination-form label:first-of-type{margin-top:0}
+.destructive{color:var(--bad)!important}
+#destinationMessage:not(:empty){padding:8px 0}
+#removeAllConfirm{padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--bg)}
+#removeAllConfirm p{margin:0 0 8px}
+@media(max-width:360px){.destination-actions{gap:7px}.destination-actions button{font-size:.83rem}.destination-picker{padding-top:4px}}
