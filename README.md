@@ -187,3 +187,10 @@ An actual authenticated Ontario 511 response cannot be tested outside the Action
 - Skipped sources preserve their original `retrieved_at` and `last_success_at`, and carry `cache_reused: true`. A source error is never treated as a fresh cached success. Empty official event lists are legitimate cached results.
 - The last published snapshot is retrieved best-effort before collecting. When unavailable, the collector fetches rather than pretending an empty cache is a success. Collection still publishes explicit degraded statuses on feed failure.
 - Frontend data-freshness and NEXUS interpretation rules are unchanged in this release; the beta browser-direct acquisition experiment remains separate and disabled.
+
+### Beta first-seen observation tracking
+
+- `scripts/observation_history.py` records when the server collector **first detected** each CBP standard/NEXUS and CBSA standard record. It does **not** imply the agency published at that exact instant.
+- The record's agency `observation_at`, Nexus `first_seen_at`, `previous_checked_at`, `last_value_change_at`, and abbreviated fingerprints have distinct meanings. Identical waits with new agency timestamps count as new observations, not changed waits.
+- Reused or failed sources cannot create newer first-seen timestamps. Snapshot archives already retain the tracker records for 30 days; no database or client identifiers are collected.
+- The tracker is metadata only; there is no change to primary UI freshness eligibility or route recommendations.

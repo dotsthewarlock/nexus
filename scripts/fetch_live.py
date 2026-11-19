@@ -19,10 +19,11 @@ import sys
 from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 try:
-    from scripts import ontario_511, source_policy
+    from scripts import ontario_511, source_policy, observation_history
 except ModuleNotFoundError:
     import ontario_511
     import source_policy
+    import observation_history
 
 UTC = timezone.utc
 EASTERN = ZoneInfo('America/Toronto')
@@ -617,6 +618,7 @@ def collect(cbp_text=None, cbsa_text=None, cbsa_format='auto', dwt_text=None, on
                 'attribution': ontario_511.ATTRIBUTION, 'error': type(exc).__name__,
             }
     retain_on_failure(result, previous)
+    observation_history.record_primary_observations(result, previous)
     return result
 
 
