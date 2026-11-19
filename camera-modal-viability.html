@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111f2c">
+<title>Nexus · DWT modal viability lab</title>
+<style>
+:root{color-scheme:dark;background:#101a25;color:#ecf4fb;font:16px/1.48 system-ui,-apple-system,Segoe UI,sans-serif}
+*{box-sizing:border-box}
+body{max-width:730px;margin:auto;padding:15px 14px 55px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px}
+h1{font-size:1.55rem;line-height:1.2;margin:12px 0}
+h2{font-size:1.1rem;margin:0 0 8px}
+h3{font-size:1rem;margin:0 0 6px}
+p{margin:7px 0 11px}
+small,.muted{color:#b9cbd9}
+a{color:#9bd1ff}
+.card{background:#192a3a;border:1px solid #465e71;border-radius:12px;padding:15px;margin:14px 0}
+.note{border-left:3px solid #e9c46d;padding-left:11px}
+.success{border-left:3px solid #76cfaf;padding-left:11px}
+button,.action{font:inherit;font-weight:650;border:1px solid #6eb7ed;border-radius:9px;background:#185f97;color:#fff;text-align:center;display:block;width:100%;padding:13px 10px;margin:9px 0;cursor:pointer;text-decoration:none}
+button.secondary,.action.secondary{background:#293e50;border-color:#798ea2}
+button:focus-visible,a:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #f6d272;outline-offset:3px}
+select,textarea{background:#122332;color:#fff;font:inherit;border:1px solid #7a92a7;border-radius:8px;padding:10px;width:100%}
+label{font-weight:600;display:block;margin:10px 0 5px}
+textarea{min-height:78px;resize:vertical}
+.stat{border-radius:8px;background:#101e2b;padding:10px 12px;margin:8px 0}
+.stat strong{display:block;margin-bottom:4px}
+.fine{font-size:.88rem;color:#b9cbd9}
+.pill{font-size:.78rem;border:1px solid #7d97aa;border-radius:99px;padding:2px 9px;display:inline-block}
+pre{background:#0b1620;color:#dce9f5;border-radius:8px;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,SFMono-Regular,monospace;max-height:350px;overflow:auto}
+dialog{color:#ecf4fb;background:#122232;border:1px solid #647f95;border-radius:13px;padding:14px;width:min(calc(100vw - 16px),820px);max-height:96dvh;overflow:auto;box-shadow:0 10px 45px #0009}
+dialog::backdrop{background:#000c}
+.dialog-top{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.dialog-top h2{margin:0}
+.dialog-top button{width:auto;padding:8px 13px;margin:0}
+.player-frame{position:relative;aspect-ratio:16/9;background:#050910;border-radius:8px;overflow:hidden;margin:12px 0}
+.player-frame iframe{position:absolute;inset:0;border:0;width:100%;height:100%}
+.helper{font-size:.85rem;color:#b9cbd9}
+.grid{display:grid;grid-template-columns:1fr;gap:9px}
+@media(min-width:620px){.grid{grid-template-columns:1fr 1fr}h1{font-size:1.75rem}}
+</style>
+</head>
+<body>
+<header><strong>Nexus · camera research</strong><a href="./">Return to Nexus</a></header>
+<h1>DWT Camera · Final Modal Viability Lab</h1>
+<p>A focused test of the remaining potential ways to see a <strong>live camera over or alongside Nexus</strong>. The main app is unchanged. This is a new page, not a repeat of the previous diagnostics.</p>
+<div class="stat">
+<strong>Evidence already established</strong>
+<p class="fine">Windsor inspection: conventional embedded players and JavaScript initialization were blocked; ordinary same-tab links and no-referrer new-tab links played. <code>location.assign()</code> and new tabs retaining the referrer failed. Detroit inspection: seven embedding methods failed, while a new-tab direct link played. Results may differ by camera and browser session.</p>
+</div>
+<p class="note">Dacast describes domain control and iframe protection as distinct mechanisms. Even if an embed works with different referrer settings, confirm the operator permits third-party embedding before adopting it in Nexus. No proxy, extracted stream, or false publisher origin is used.</p>
+
+<section class="card">
+<h2>Choose camera</h2>
+<label for="camera">Run each case against the same camera</label>
+<select id="camera">
+<option value="4aea1c45-d402-3690-afae-fe635942da82">Canada → USA · Windsor inspection</option>
+<option value="794566d4-a75e-3cd1-6f95-2d60e54f2fdb">USA → Canada · Detroit inspection</option>
+<option value="5408b5c3-f8d1-f34b-a18a-9943047905b6">USA → Canada · Randolph Street</option>
+</select>
+<p class="fine">Results are stored separately for each camera. Start with Windsor inspection, then optionally test Detroit inspection.</p>
+</section>
+
+<section class="card">
+<span class="pill">M1 · New inline test</span>
+<h2>Real modal + privacy-referrer iframe</h2>
+<p>Open the video inside a native modal using an iframe with <code>referrerpolicy="no-referrer"</code>. The prior failed embedded tests did not establish the outcome of this exact setting. No auto-stop timer; start playback manually.</p>
+<button id="tryModal" type="button">M1 · Test live video inside modal</button>
+<label for="resultM1">What happened inside the modal?</label>
+<select id="resultM1">
+<option value="not_tested">Not tested</option>
+<option value="plays">Live video plays inside modal</option>
+<option value="blocked">Content blocked on this website</option>
+<option value="blank">Blank or loading indefinitely</option>
+<option value="player_no_video">Player appears but video will not play</option>
+<option value="modal_unavailable">Native modal unavailable</option>
+<option value="other">Other error</option>
+</select>
+<p class="fine">An iframe load event means only that a document loaded. The lab cannot inspect the cross-origin player's authorization response.</p>
+</section>
+
+<section class="card">
+<span class="pill">P2 · New windowed test</span>
+<h2>Compact browser popup window</h2>
+<p>Open the already-working <strong>top-level</strong> Dacast player in a requested compact popup (480 × 320) with <code>noopener,noreferrer</code>. On a Chromebook this may appear as a floating window. Android Chrome may use a new tab instead.</p>
+<button id="tryPopup" type="button">P2 · Open compact camera popup</button>
+<label for="resultP2">Where did the playing video appear?</label>
+<select id="resultP2">
+<option value="not_tested">Not tested</option>
+<option value="popup_plays">Video plays in a separate floating window</option>
+<option value="tab_plays">Video plays in a new tab</option>
+<option value="blocked">Content blocked</option>
+<option value="popup_blocked">Browser did not open anything</option>
+<option value="other">Other result</option>
+</select>
+<p class="fine">This is not an in-page video modal. Window size and placement are controlled by the browser.</p>
+</section>
+
+<section class="card">
+<span class="pill">H3 · Modal handoff UX</span>
+<h2>Nexus modal with a live-camera handoff</h2>
+<p>Open an app-style modal containing the verified <strong>new-tab, no-referrer</strong> direct player link. It tests whether users can launch a live feed and return without losing the selected camera or dashboard. This is a UX test, not another playback bypass.</p>
+<button id="tryHandoff" type="button">H3 · Open camera handoff modal</button>
+<label for="resultH3">Does the handoff feel usable?</label>
+<select id="resultH3">
+<option value="not_tested">Not tested</option>
+<option value="easy_return">Video plays; easy return to Nexus modal</option>
+<option value="awkward_return">Video plays; returning is awkward</option>
+<option value="blocked">Content blocked</option>
+<option value="link_failed">Link did not open</option>
+<option value="other">Other result</option>
+</select>
+</section>
+
+<section class="card">
+<span class="pill">V4 · OS-level overlay test</span>
+<h2>Native video Picture-in-Picture</h2>
+<p>Open the verified direct link in a new tab, play video, and look for a <strong>Picture-in-Picture (PiP)</strong> control on the player. If offered, activate it and return to Nexus. The video may float above Nexus independently of its page.</p>
+<a id="pipLink" class="action secondary" href="https://www.dwtunnel.com/" target="_blank" rel="noopener noreferrer">V4 · Open live feed for PiP trial</a>
+<label for="resultV4">What happened?</label>
+<select id="resultV4">
+<option value="not_tested">Not tested</option>
+<option value="pip_over_nexus">Live video floats over Nexus</option>
+<option value="pip_not_persistent">PiP opened, but does not persist over Nexus</option>
+<option value="pip_unavailable">No usable PiP control available</option>
+<option value="video_blocked">Direct video failed to play</option>
+<option value="other">Other result</option>
+</select>
+<p class="fine">Chrome for Android supports the standard video PiP API, but Nexus cannot activate it within a cross-origin player. The Document Picture-in-Picture API does not support Chrome Android; this test uses only player/browser controls.</p>
+</section>
+
+<section class="card">
+<h2>Results & next decision</h2>
+<label for="notes">Optional notes for selected camera</label>
+<textarea id="notes" maxlength="800" placeholder="Device/browser; modal error text; player PiP control; whether Chrome opened a popup or tab"></textarea>
+<div class="grid">
+<button id="copy" type="button">Copy complete diagnostic report</button>
+<button id="reset" class="secondary" type="button">Reset this camera's results</button>
+</div>
+<p id="status" role="status"></p>
+<pre id="report"></pre>
+<h3>Decision rules</h3>
+<p class="fine"><strong>M1 plays:</strong> Possible in-page modal. Verify the operator permits embedding and repeat across streams before production use. <strong>M1 fails, P2 floating popup works:</strong> Desktop-only window companion may be viable. <strong>V4 works:</strong> Native PiP may be an optional platform feature. <strong>Otherwise:</strong> Use the previously verified direct hyperlink with a Nexus camera modal as a launcher, rather than showing a broken video frame.</p>
+</section>
+
+<dialog id="videoDialog" aria-labelledby="videoDialogTitle">
+<div class="dialog-top">
+<h2 id="videoDialogTitle">M1 · Live camera inside Nexus</h2>
+<button id="closeVideo" type="button" class="secondary">Close</button>
+</div>
+<p id="videoCaption" class="muted"></p>
+<div id="videoStage" class="player-frame"></div>
+<p id="videoState" role="status">Waiting for player.</p>
+<p class="helper">If it displays “Content blocked on this website,” close this modal and record the result. The only new embed variable is <code>referrerpolicy="no-referrer"</code>.</p>
+</dialog>
+
+<dialog id="handoffDialog" aria-labelledby="handoffTitle">
+<div class="dialog-top">
+<h2 id="handoffTitle">H3 · Tunnel live camera</h2>
+<button id="closeHandoff" class="secondary" type="button">Close</button>
+</div>
+<p id="handoffCaption" class="muted"></p>
+<p>Open the camera in a new browser tab. On returning, this modal should remain open, and Nexus's selection should be preserved.</p>
+<a id="handoffLink" class="action" target="_blank" rel="noopener noreferrer" href="https://www.dwtunnel.com/">Open live DWT camera</a>
+<button id="closeHandoffBottom" class="secondary" type="button">Back to Nexus</button>
+</dialog>
+
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const ROOT='https://iframe.dacast.com/live/8b2b630f-b7c1-262d-f343-118f510224a0/';
+const CAMERAS={
+ '4aea1c45-d402-3690-afae-fe635942da82':'Canada → USA · Windsor inspection',
+ '794566d4-a75e-3cd1-6f95-2d60e54f2fdb':'USA → Canada · Detroit inspection',
+ '5408b5c3-f8d1-f34b-a18a-9943047905b6':'USA → Canada · Randolph Street'
+};
+const CASES=['M1','P2','H3','V4'], STORE='nexus-dwt-modal-viability-v1';
+const OPTIONS={
+ M1:['not_tested','plays','blocked','blank','player_no_video','modal_unavailable','other'],
+ P2:['not_tested','popup_plays','tab_plays','blocked','popup_blocked','other'],
+ H3:['not_tested','easy_return','awkward_return','blocked','link_failed','other'],
+ V4:['not_tested','pip_over_nexus','pip_not_persistent','pip_unavailable','video_blocked','other']
+};
+let saved={};
+try{const s=JSON.parse(sessionStorage.getItem(STORE)||'{}');if(s&&typeof s==='object')saved=s;}catch{}
+if(Object.hasOwn(CAMERAS,saved.camera))$('camera').value=saved.camera;
+let results=saved.results&&typeof saved.results==='object'?saved.results:{};
+let notes=saved.notes&&typeof saved.notes==='object'?saved.notes:{};
+let events=[],loadCount=0;
+function currentCamera(){return $('camera').value;}
+function directUrl(){return ROOT+currentCamera();}
+function entry(){return results[currentCamera()]||{};}
+function log(line){events.push(new Date().toISOString()+' '+line);events=events.slice(-20);renderReport();}
+function save(){
+ const id=currentCamera(), r={...entry()};
+ for(const key of CASES){
+   const value=$('result'+key).value;
+   r[key]=OPTIONS[key].includes(value)?value:'not_tested';
+ }
+ results[id]=r;notes[id]=$('notes').value.slice(0,800);
+ try{sessionStorage.setItem(STORE,JSON.stringify({camera:id,results,notes}));}catch{}
+ renderReport();
+}
+function load(){
+ const r=entry();
+ for(const key of CASES)$('result'+key).value=OPTIONS[key].includes(r[key])?r[key]:'not_tested';
+ $('notes').value=typeof notes[currentCamera()]==='string'?notes[currentCamera()].slice(0,800):'';
+ $('pipLink').href=directUrl();
+ $('handoffLink').href=directUrl();
+ $('handoffCaption').textContent=CAMERAS[currentCamera()];
+ renderReport();
+}
+function report(){
+ const out=[
+  'Nexus DWT Modal Viability Lab — manual results',
+  'UTC: '+new Date().toISOString(),
+  'Origin: '+location.origin,
+  'Camera: '+CAMERAS[currentCamera()],
+  'M1 | Native modal, no-referrer iframe: '+$('resultM1').selectedOptions[0].textContent,
+  'P2 | Compact top-level popup: '+$('resultP2').selectedOptions[0].textContent,
+  'H3 | Modal direct-link handoff: '+$('resultH3').selectedOptions[0].textContent,
+  'V4 | Native Picture-in-Picture: '+$('resultV4').selectedOptions[0].textContent,
+  'Notes: '+($('notes').value||'None'),
+  'Iframe load and window.open results are NOT proof of video playback.',
+  'Events:',...(events.length?events:['No events yet'])
+ ];
+ return out.join('\n');
+}
+function renderReport(){$('report').textContent=report();}
+$('camera').addEventListener('change',()=>{
+ // Entries are stored per-camera; a change never relabels previous results.
+ events=[];load();
+ log('Switched to '+CAMERAS[currentCamera()]+'; prior camera results retained separately.');
+ save();
+});
+for(const key of CASES)$('result'+key).addEventListener('change',save);
+$('notes').addEventListener('input',save);
+
+const videoDialog=$('videoDialog'),handoffDialog=$('handoffDialog');
+function unloadVideo(){
+ $('videoStage').replaceChildren();$('videoState').textContent='Player unloaded.';
+}
+$('tryModal').addEventListener('click',()=>{
+ unloadVideo();
+ if(typeof videoDialog.showModal!=='function'){
+   $('resultM1').value='modal_unavailable';save();
+   log('M1: HTML dialog.showModal() unavailable.');
+   return;
+ }
+ $('videoCaption').textContent=CAMERAS[currentCamera()];
+ try{
+   videoDialog.showModal();
+   const frame=document.createElement('iframe');
+   frame.title=CAMERAS[currentCamera()]+' DWT live camera';
+   frame.referrerPolicy='no-referrer';
+   frame.allow='autoplay; encrypted-media; fullscreen; picture-in-picture';
+   frame.allowFullscreen=true;
+   frame.loading='eager';
+   frame.addEventListener('load',()=>{log('M1 iframe document loaded (NOT playback confirmation).');});
+   frame.addEventListener('error',()=>{log('M1 iframe element error (not provider internals).');});
+   frame.src=directUrl();
+   $('videoStage').appendChild(frame);
+   $('videoState').textContent='Attempting inline playback. If prompted, tap Play in the video.';
+   loadCount++;
+   log('M1: modal opened; no-referrer iframe created for selected camera.');
+ }catch(e){
+   log('M1: local modal error '+String(e?.name||'Error'));
+   $('videoState').textContent='Could not start the modal. Record Other error.';
+ }
+});
+function closeVideo(){if(videoDialog.open)videoDialog.close();}
+$('closeVideo').addEventListener('click',closeVideo);
+videoDialog.addEventListener('close',()=>{unloadVideo();log('M1: modal closed; iframe removed.');});
+$('tryPopup').addEventListener('click',()=>{
+ // Keep window.open synchronous with the real user interaction.
+ log('P2: requested popup=yes,width=480,height=320,noopener,noreferrer.');
+ try{
+   const popup=window.open(directUrl(),'_blank','popup=yes,width=480,height=320,noopener,noreferrer');
+   log('P2: window.open returned '+(popup===null?'null (expected with noopener; NOT failure proof)':'a window handle')+'.');
+ }catch(e){log('P2: browser error '+String(e?.name||'Error'));}
+});
+$('tryHandoff').addEventListener('click',()=>{
+ if(typeof handoffDialog.showModal!=='function'){log('H3: native modal unavailable.');return;}
+ $('handoffCaption').textContent=CAMERAS[currentCamera()];
+ $('handoffLink').href=directUrl();
+ handoffDialog.showModal();log('H3: handoff modal opened.');
+});
+$('handoffLink').addEventListener('click',()=>log('H3: direct link activated in new tab (noopener noreferrer).'));
+$('pipLink').addEventListener('click',()=>log('V4: direct video tab opened for manual native PiP test.'));
+function closeHandoff(){if(handoffDialog.open)handoffDialog.close();}
+$('closeHandoff').addEventListener('click',closeHandoff);
+$('closeHandoffBottom').addEventListener('click',closeHandoff);
+$('copy').addEventListener('click',async()=>{
+ save();
+ try{await navigator.clipboard.writeText(report());$('status').textContent='Report copied. Paste it into the Nexus project conversation.';}
+ catch{$('status').textContent='Clipboard unavailable. Select and copy the report text shown below.';}
+});
+$('reset').addEventListener('click',()=>{
+ delete results[currentCamera()];delete notes[currentCamera()];events=[];
+ load();save();$('status').textContent='Selected camera outcomes reset.';
+});
+window.addEventListener('error',e=>log('Page JS error: '+String(e.message||'Unknown').slice(0,140)));
+window.addEventListener('securitypolicyviolation',e=>log('Parent CSP: '+String(e.violatedDirective||'unknown').slice(0,70)));
+load();log('Diagnostic ready. No video loaded until a test is explicitly started.');
+})();
+</script>
+</body>
+</html>
