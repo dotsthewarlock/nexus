@@ -158,12 +158,33 @@
     $('dataBar').dataset.level=level;setText('dataStatus',line);
   }
   function renderEvents(){
-    const source=data?.sources?.ontario511;
-    const list=data?.supplemental?.ontario511_events||[];
-    const fresh=source?.status==='ok'&&D.age(source.retrieved_at,Date.now())<=20&&D.age(data.generated_at,Date.now())<=20;
-    $('alertsSection').hidden=!fresh||list.length===0;
-    if(!fresh)return;
-    $('advisories').innerHTML=list.slice(0,3).map(e=>`<div class="alert-row"><strong>${esc(e.roadway)}${e.is_full_closure?' · Closure reported':''}</strong><div class="subtle">${esc(e.description||e.type)}${e.direction?' · '+esc(e.direction):''}</div></div>`).join('');
+    const feeds=[
+      ['ontario511','ontario511_events'],
+      ['ontario511_construction','ontario511_construction'],
+      ['ontario511_road_conditions','ontario511_road_conditions'],
+      ['ontario511_alerts','ontario511_alerts']
+    ];
+    const now=Date.now();
+    const snapshotFresh=D.age(data?.generated_at,now)<=20;
+    const advisory=[];
+    for(const [sourceName,field] of feeds){
+      const source=data?.sources?.[sourceName];
+      const fresh=snapshotFresh&&source?.status==='ok'&&D.age(source.retrieved_at,now)<=20;
+      if(!fresh)continue;
+      const rows=data?.supplemental?.[field];
+      if(!Array.isArray(rows))continue;
+      for(const entry of rows){
+        if(entry.category==='road_condition'&&!entry.is_adverse)continue;
+        advisory.push(entry);
+      }
+    }
+    $('alertsSection').hidden=advisory.length===0;
+    $('advisories').innerHTML=advisory.slice(0,5).map(e=>{
+      const label=e.category==='construction'?'Construction':e.category==='road_condition'?'Road conditions':e.category==='alert'?'Operational alert':'Traffic event';
+      const note=e.timing==='upcoming'?' · Planned / upcoming':'';
+      const description=e.category==='road_condition'?(e.conditions||[]).join(', '):e.description||e.type;
+      return `<div class="alert-row"><strong>${esc(label)} · ${esc(e.roadway)}${e.is_full_closure?' · Closure reported':''}${note}</strong><div class="subtle">${esc(description)}${e.direction?' · '+esc(e.direction):''}</div></div>`;
+    }).join('');
   }
   const detailLine=(name,value)=>`<div class="detail-line"><span>${esc(name)}</span><strong>${esc(value??'—')}</strong></div>`;
   function fieldWait(c,key,label){
