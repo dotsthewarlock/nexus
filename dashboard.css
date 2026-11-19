@@ -68,3 +68,7 @@
  .destination-actions button{flex:1 1 135px}
  .saved-destination .destination-actions button{flex:1 1 120px}
 }
+
+/* M3b: native Maps link, visible crossing-verification advisory. */
+#openDirections{display:inline-flex;align-items:center;justify-content:center;min-height:44px;text-decoration:none}
+.route-warning{font-size:.84rem;color:var(--warn);margin:10px 0;line-height:1.5;overflow-wrap:anywhere}
