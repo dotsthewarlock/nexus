@@ -196,3 +196,10 @@ An actual authenticated Ontario 511 response cannot be tested outside the Action
 - The tracker is metadata only; there is no change to primary UI freshness eligibility or route recommendations.
 
 - If a slower supplemental source fails, its last successful record may remain available **as historical only** for up to two scheduled check intervals (never a renewed source success). Faster border-source fallback behavior is unchanged.
+
+
+### DWT short-preview timing lab (diagnostic only)
+
+Open [camera-timeout-lab.html](https://dotsthewarlock.github.io/nexus/camera-timeout-lab.html) to compare the currently deployed modal/iframe behaviour with 9-, 12- and 15-second hard cutoffs, 9 seconds after an iframe load event (20-second cap), and 9 seconds after a human marks actual moving video (30-second cap). The no-cutoff baseline has a 45-second safety cap. Each test requires an explicit tap; changing cameras, closing the modal or hiding the page stops the stream. The stop-method comparison resets the existing iframe or removes a freshly created one.
+
+The compact-viewport option changes only player dimensions, not source quality/bitrate. Cross-origin Dacast playback and network data cannot be inspected by the parent page. Results are manual, local to the tab, and copied only on request; iframe load is not playback proof. This page is unlinked from production and does not resolve video embedding permissions.

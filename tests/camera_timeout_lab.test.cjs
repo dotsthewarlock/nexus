@@ -1,0 +1,32 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { DWT_CAMERAS, DWT_MODES, calculateDwtDeadline } = require('../camera-timeout-lab.js');
+
+assert.equal(Object.keys(DWT_CAMERAS).length, 3);
+assert.equal(Object.keys(DWT_MODES).length, 6);
+assert.ok(Object.values(DWT_CAMERAS).every(c => c.url.startsWith('https://iframe.dacast.com/live/')));
+const options = (mode, loadedAt = null, markedAt = null) => ({mode, startedAt: 1000, loadedAt, markedAt});
+assert.equal(calculateDwtDeadline(options('hard9')).at, 10000);
+assert.equal(calculateDwtDeadline(options('hard12')).at, 13000);
+assert.equal(calculateDwtDeadline(options('hard15')).at, 16000);
+assert.equal(calculateDwtDeadline(options('baseline')).at, 46000);
+assert.equal(calculateDwtDeadline(options('load9')).at, 21000);
+assert.equal(calculateDwtDeadline(options('load9')).waitingFor, 'load');
+assert.equal(calculateDwtDeadline(options('load9', 3500)).at, 12500);
+assert.equal(calculateDwtDeadline(options('load9', 18000)).at, 21000);
+assert.equal(calculateDwtDeadline(options('marked9')).at, 31000);
+assert.equal(calculateDwtDeadline(options('marked9')).waitingFor, 'marked');
+assert.equal(calculateDwtDeadline(options('marked9', null, 5200)).at, 14200);
+assert.equal(calculateDwtDeadline(options('marked9', null, 29000)).at, 31000);
+assert.throws(() => calculateDwtDeadline(options('fake')), TypeError);
+assert.throws(() => calculateDwtDeadline({mode: 'hard9', startedAt: null}), TypeError);
+
+const html = fs.readFileSync(path.join(__dirname, '..', 'camera-timeout-lab.html'), 'utf8');
+assert.match(html, /id="cameraDialog" class="camera-modal"/);
+assert.match(html, /id="cameraFrame"[^>]*allow="autoplay; fullscreen; encrypted-media; picture-in-picture"/);
+assert.match(html, /referrerpolicy="no-referrer"/);
+assert.match(html, /<script src="\.\/camera-timeout-lab\.js\?v=1" defer><\/script>/);
+assert.doesNotMatch(html, /iframe[^>]*\bsrc="https:\/\/iframe\.dacast\.com/);
+console.log('Tunnel timing lab policy and isolation tests passed.');

@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f7fa">
+<meta name="robots" content="noindex, nofollow">
+<title>Nexus · Tunnel playback timing lab</title>
+<link rel="stylesheet" href="./board.css?v=board4">
+<style>
+[hidden]{display:none!important}
+.lab-shell{width:min(760px,calc(100% - 28px));margin:auto;padding:22px 0 45px}
+.lab-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.lab-head a,.lab-links a{color:var(--accent)}
+.lab-eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.lab-intro{color:var(--muted);line-height:1.55;margin:12px 0 18px}
+.lab-card{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:16px;margin:13px 0}
+.lab-card h2{font-size:15px;margin:0 0 7px}
+.lab-card p{margin:7px 0 11px;color:var(--muted);line-height:1.5}
+.lab-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.lab-field{min-width:0}
+.lab-field label{display:block;font-size:12px;font-weight:650;margin-bottom:5px}
+.lab-field select,.lab-field textarea{width:100%;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:9px;font:inherit;font-size:14px;padding:11px;min-height:44px}
+.lab-field textarea{min-height:90px;resize:vertical}
+.lab-actions{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin-top:14px}
+.lab-btn{border:1px solid var(--accent);border-radius:9px;background:var(--accent);color:var(--surface);font-size:13px;font-weight:700;min-height:44px;padding:10px 14px}
+.lab-btn.secondary{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.lab-callout{border-left:3px solid var(--warn);padding:1px 0 1px 12px;margin:12px 0;color:var(--muted);line-height:1.5}
+.lab-small{font-size:12px;color:var(--muted);line-height:1.5}
+.lab-history{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}
+.lab-history li{border:1px solid var(--line);border-radius:9px;padding:10px;font-size:12px;line-height:1.55}
+.lab-history strong{font-size:13px}
+.lab-log{white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;font:11px/1.5 ui-monospace,monospace;max-height:170px;overflow:auto}
+.lab-modal-progress{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:0 18px 9px}
+.lab-modal-progress strong{font-size:19px;font-variant-numeric:tabular-nums}
+.lab-modal-progress span{font-size:12px;color:var(--muted)}
+#cameraStage.compact-player iframe{inset:50% auto auto 50%;width:min(320px,100%);height:min(180px,100%);transform:translate(-50%,-50%)}
+#cameraNotice{padding:16px;text-align:center;z-index:1}
+.lab-modal-status{margin:0;padding:11px 18px;color:var(--muted);font-size:12px}
+.lab-modal-fields{padding:8px 18px 15px;border-top:1px solid var(--line)}
+.lab-modal-fields .lab-actions{margin-top:10px}
+.lab-modal-fields select{max-width:100%}
+.lab-modal-help{padding:0 18px 14px;font-size:12px;color:var(--muted);line-height:1.5}
+.lab-report-box{width:100%;min-height:145px;margin-top:12px;border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--bg);color:var(--ink);font:11px/1.4 ui-monospace,monospace}
+.lab-status{color:var(--muted);font-size:12px}
+select:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media(max-width:530px){
+  .lab-shell{width:calc(100% - 22px);padding-top:15px}
+  .lab-card{padding:12px}
+  .lab-grid{grid-template-columns:1fr}
+  .lab-btn{flex:1 1 125px}
+  .lab-modal-progress,.lab-modal-status,.lab-modal-fields,.lab-modal-help{padding-left:13px;padding-right:13px}
+  #cameraStage{aspect-ratio:4/3}
+}
+</style>
+</head>
+<body>
+<main class="lab-shell">
+<header class="lab-head">
+  <span class="lab-eyebrow">Nexus · diagnostic only</span>
+  <a href="./">Return to commuter dashboard</a>
+</header>
+<h1 style="margin-top:15px">Tunnel preview timing lab</h1>
+<p class="lab-intro">Compare short playback windows using the <strong>same Dacast iframe URLs, attributes and modal layout as the current Nexus dashboard</strong>. This page does not change production camera behaviour.</p>
+<p class="lab-callout">Only one stream can be active. Every test requires a tap. The iframe is unloaded on cutoff, close, camera change or when the page becomes hidden. An iframe load event does <strong>not</strong> prove moving video; use the manual marker when motion actually begins.</p>
+
+<section class="lab-card" aria-labelledby="setupTitle">
+<h2 id="setupTitle">1 · Configure one test</h2>
+<div class="lab-grid">
+<div class="lab-field">
+<label for="view">Tunnel camera</label>
+<select id="view">
+<option value="us">Windsor inspection · into USA</option>
+<option value="ca">Detroit inspection · into Canada</option>
+<option value="randolph">Randolph Street · into Canada</option>
+</select>
+</div>
+<div class="lab-field">
+<label for="mode">Cutoff trigger</label>
+<select id="mode">
+<option value="hard9">9 seconds after iframe starts (preferred)</option>
+<option value="hard12">12 seconds after iframe starts</option>
+<option value="hard15">15 seconds after iframe starts</option>
+<option value="load9">9 seconds after iframe load event (20s cap)</option>
+<option value="marked9">9 seconds after I mark moving video (30s cap)</option>
+<option value="baseline">Current behaviour · manual stop (45s cap)</option>
+</select>
+</div>
+<div class="lab-field">
+<label for="teardown">Stop method</label>
+<select id="teardown">
+<option value="reset">Reuse iframe · clear source (current)</option>
+<option value="remove">Create and remove iframe element</option>
+</select>
+</div>
+<div class="lab-field">
+<label for="viewport">Player viewport (experimental)</label>
+<select id="viewport">
+<option value="current">Current · fills 4:3 modal</option>
+<option value="compact">Compact · 320×180 CSS pixels</option>
+</select>
+</div>
+</div>
+<p class="lab-small">A compact viewport is <strong>not</strong> a lower-quality stream setting. The browser and Dacast control video quality; this page cannot measure bitrate or media bytes inside a cross-origin player.</p>
+<div class="lab-actions">
+<button class="lab-btn" type="button" id="startTest">Open camera test</button>
+<a href="https://www.dwtunnel.com/" target="_blank" rel="noopener noreferrer">Official tunnel website</a>
+</div>
+</section>
+
+<section class="lab-card" aria-labelledby="resultsTitle">
+<h2 id="resultsTitle">2 · Results from this tab</h2>
+<p class="lab-small">Press Play in the Dacast player if required. When moving video appears, use “Mark video moving” inside the modal. After the stream ends, classify the result. No data is sent to Nexus or any analytics service.</p>
+<ul class="lab-history" id="history"><li>No test sessions yet.</li></ul>
+<div class="lab-field" style="margin-top:12px">
+<label for="notes">Device observations / optional notes</label>
+<textarea id="notes" maxlength="1800" placeholder="For example: native Play was required; started at ~5s, 9s cutoff left ~4s of moving video."></textarea>
+</div>
+<div class="lab-actions">
+<button class="lab-btn secondary" id="copyReport" type="button">Copy diagnostic report</button>
+<button class="lab-btn secondary" id="clearReport" type="button">Clear results</button>
+</div>
+<p class="lab-status" id="copyStatus" role="status"></p>
+<textarea class="lab-report-box" id="reportFallback" aria-label="Manual-copy diagnostic report" readonly hidden></textarea>
+</section>
+<details class="lab-card">
+<summary><strong>Event log and limitations</strong></summary>
+<p class="lab-small">Times are from this browser only. The cross-origin Dacast player does not expose playback or quality status to the current iframe integration. A successful iframe load is only a navigation event.</p>
+<pre class="lab-log" id="eventLog"></pre>
+</details>
+<p class="lab-small">This is a publicly accessible test page, not a statement of camera embedding rights. No stream URLs are modified, proxied, recorded or retransmitted. Use the official website if embedding is blocked.</p>
+</main>
+
+<dialog id="cameraDialog" class="camera-modal" aria-labelledby="cameraTitle">
+<div class="camera-header">
+  <div><h2 id="cameraTitle">Tunnel camera</h2><p id="cameraSubtitle">Timing diagnostic · official Dacast player</p></div>
+  <button type="button" id="closeCamera" aria-label="Close and stop camera">×</button>
+</div>
+<div class="lab-modal-progress">
+  <span id="timerLabel">Elapsed / cutoff</span>
+  <strong id="timerValue" aria-live="off">—</strong>
+</div>
+<div id="cameraStage" class="camera-surface">
+  <iframe id="cameraFrame" title="Official crossing camera" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="no-referrer" hidden></iframe>
+  <p id="cameraNotice" role="status">The video is not loaded.</p>
+</div>
+<p id="activeStatus" class="lab-modal-status" role="status">Ready.</p>
+<div class="lab-modal-fields">
+  <div class="lab-actions">
+    <button type="button" class="lab-btn" id="markPlaying">Mark video moving</button>
+    <button type="button" class="lab-btn secondary" id="stopVideo">Stop and unload</button>
+  </div>
+  <div class="lab-field" style="margin-top:12px">
+    <label for="outcome">Observed result (select before closing)</label>
+    <select id="outcome">
+      <option value="unrated">Not classified</option>
+      <option value="playable">Moving video played; duration was useful</option>
+      <option value="too-short">Moving video played; stopped too soon</option>
+      <option value="no-motion">Player appeared but no moving video</option>
+      <option value="blocked">Provider denied or blocked playback</option>
+      <option value="uncertain">Other / uncertain</option>
+    </select>
+  </div>
+</div>
+<div class="camera-actions">
+  <button type="button" class="lab-btn secondary" id="doneTest">Done / close</button>
+  <a href="https://www.dwtunnel.com/" target="_blank" rel="noopener noreferrer">Official camera page</a>
+</div>
+<p class="lab-modal-help">Native Play may require a second tap inside the player. “Mark video moving” is a manual observation, not an automatic playback event. Closing the modal always unloads the iframe.</p>
+</dialog>
+<script src="./camera-timeout-lab.js?v=1" defer></script>
+</body>
+</html>
