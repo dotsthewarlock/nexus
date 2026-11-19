@@ -68,16 +68,65 @@
       return {kind:'stale',age:r.age};
     return r;
   }
-  function entry(raw,category){
+  // Compact presentation of CBSA's published *possible* service window.
+  // It does not say the lane is physically open or that a NEXUS wait exists.
+  function scheduleMoment(next,closing){
+    if(typeof next!=='string'||!next)return null;
+    const match=/^(Today|Tomorrow) (\d{1,2}):(\d{2}) (AM|PM) ET$/.exec(next);
+    if(!match)return next;
+    const [,day,hourText,minutes,meridiem]=match;
+    const hour=Number(hourText),midnight=hour===12&&minutes==='00'&&meridiem==='AM';
+    const noon=hour===12&&minutes==='00'&&meridiem==='PM';
+    const time=midnight?'midnight':noon?'noon':hour+(minutes==='00'?'':':'+minutes)+' '+meridiem;
+    const dayText=day==='Today'||(day==='Tomorrow'&&midnight&&closing)?'':'tomorrow ';
+    return dayText+time;
+  }
+  function operatorNexusLaneCount(id,now){
+    if(id!=='tunnel')return null;
+    const operator=data?.supplemental?.dwt?.ca;
+    const src=data?.sources?.dwt;
+    const count=operator?.lane_counts?.nexus;
+    if(!Number.isInteger(count)||count<0||src?.status!=='ok')return null;
+    if(D.age(operator?.observation_at,now)>=CURRENT_LIMIT_MINUTES||
+        D.age(src?.retrieved_at,now)>=CURRENT_LIMIT_MINUTES||
+        snapshotAge()>=CURRENT_LIMIT_MINUTES)return null;
+    return count;
+  }
+  function canadaNexusEntry(id){
+    const unsupported='NEXUS wait not published';
+    const unknown={display:'Hours unverified',unit:'',variant:'not-published',
+      lanes:'Lanes not verified',historical:false,kind:'unavailable',status:unsupported};
+    if(!id||!data||!D.nextNexusSchedule)return unknown;
+    const now=Date.now(),schedule=D.nextNexusSchedule(data,id,'ca',now);
+    if(schedule.kind==='unknown')return unknown;
+    const within=schedule.kind==='within';
+    const when=scheduleMoment(schedule.next,within);
+    const display=within
+      ?(when?'Scheduled until '+when:'Within scheduled hours')
+      :(when?'Opens '+when:'Outside scheduled hours');
+    let lanes='Lanes not verified';
+    if(within){
+      const scheduled=D.scheduledNexusLaneCount?.(data,id,'ca',now);
+      if(Number.isInteger(scheduled)&&scheduled>0)
+        lanes=scheduled+' '+(scheduled===1?'lane':'lanes')+' scheduled';
+      else {
+        const listed=operatorNexusLaneCount(id,now);
+        if(listed!==null)
+          lanes=listed+' NEXUS '+(listed===1?'lane':'lanes')+' listed (operator)';
+      }
+    }
+    return {display,unit:'',variant:'schedule',lanes,historical:false,kind:'schedule',
+      status:'Published hours only · '+unsupported,source:'CBSA schedule',
+      scheduleKind:schedule.kind};
+  }
+  function entry(raw,category,id){
     // Agency observation time, a successful source check, and snapshot
     // publication are different clocks. None can substitute for another.
     const missingLanes='Lanes not reported';
     if(!data)return {display:'Checking…',unit:'',variant:'checking',
       lanes:missingLanes,historical:false,kind:'unavailable',status:'Checking official reports'};
     // Canada-bound NEXUS inspection waits/counts are not published by CBSA.
-    if(direction==='ca'&&category==='nexus')
-      return {display:'Not published',unit:'',variant:'not-published',
-        lanes:'Lanes not published',historical:false,kind:'unavailable',status:'CBSA does not publish NEXUS waits'};
+    if(direction==='ca'&&category==='nexus')return canadaNexusEntry(id);
     if(!raw)return {display:'Not reported',unit:'',variant:'not-reported',
       lanes:missingLanes,historical:false,kind:'unavailable',status:'No official reading'};
     const now=Date.now(),s=source(),obsAge=D.age(raw.observation_at,now);
@@ -137,9 +186,9 @@
   }
   // Normal measurements stay compact. Historical measurements are explicitly aged.
   function metric(m,id,cat){
-    const missing=m.lanes==='Lanes not reported'||m.lanes==='Lanes not published';
+    const missing=m.lanes==='Lanes not reported'||m.lanes==='Lanes not published'||m.lanes==='Lanes not verified';
     const laneLine=missing?'':m.lanes.replace(/ last reported$/,' (last report)').replace(/ reported$/,'');
-    const hint=(m.kind==='historical'||m.kind==='old'||m.kind==='warning'||
+    const hint=(m.kind==='schedule'||m.kind==='historical'||m.kind==='old'||m.kind==='warning'||
       (m.variant==='unavailable'&&m.status==='Report time unknown'))?m.status:'';
     return '<div class="reading '+cat+'" aria-label="'+esc(cat)+' for '+esc(LABELS[id][0])+': '+
       esc(m.display)+(m.unit?' '+esc(m.unit):'')+', '+esc(m.lanes)+', '+esc(m.status)+'">'+
@@ -194,15 +243,16 @@
         ?'<div class="crossing-report-warning">Report '+esc(ago(reportAge))+'</div>':'';
       return '<article class="crossing-row" aria-label="'+esc(LABELS[id][0])+'">'+
         '<div class="crossing-identity"><div class="crossing-name">'+esc(LABELS[id][0])+'</div>'+reportWarning+'</div>'+
-        '<div class="metrics">'+metric(entry(port.nexus,'nexus'),id,'NEXUS')+
+        '<div class="metrics">'+metric(entry(port.nexus,'nexus',id),id,'NEXUS')+
         metric(entry(port.standard,'regular'),id,'Regular')+'</div>'+
         cameraMarkup(id)+'</article>';
     }).join('');
     $('crossingRows').querySelectorAll('button[data-camera]:not(:disabled)')
       .forEach(b=>b.addEventListener('click',()=>openCamera(b.dataset.camera)));
-    $('freshnessNote').textContent='“Checked” means Nexus last successfully queried CBP or CBSA, not that the agency report is new. '+
-      'Reports under 20 minutes old may appear current; older numerical waits are labeled with their observation age and expire after 2 hours. '+
-      '“No Delay” is a verified current zero. Older lane counts are historical, missing data are never zero, and waits exclude approach roads.';
+    $('freshnessNote').textContent='“Checked” is the last successful official data retrieval, not the age of the agency observation. '+
+      'Canada-bound NEXUS cells show CBSA published hours, not live NEXUS waits or confirmed open lanes. '+
+      'Ambassador scheduled lane counts and Tunnel operator-listed counts are distinct from live operation. '+
+      'Historical inspection waits are labelled and expire after two hours; reported zero is never inferred from missing data.';
     renderDiagnostics();
     if(camera)renderCameraInfo();
   }
@@ -219,7 +269,15 @@
       const port=data?.directions?.[direction]?.[id]||{};
       lines.push('<div class="diag-entry"><strong>'+esc(LABELS[id][0])+'</strong>');
       for(const [key,label] of [['nexus','NEXUS'],['standard','Regular']]){
-        if(direction==='ca'&&key==='nexus'){lines.push('<div>NEXUS: no inspection-wait or lane-count data from CBSA</div>');continue;}
+        if(direction==='ca'&&key==='nexus'){
+          const schedule=D.nextNexusSchedule(data,id,'ca',Date.now());
+          const laneCount=D.scheduledNexusLaneCount?.(data,id,'ca',Date.now());
+          lines.push('<div>NEXUS wait: not published by CBSA · schedule: '+
+            esc(schedule.kind)+(schedule.next?' · next: '+esc(schedule.next):'')+
+            ' · scheduled lane count: '+esc(laneCount??'not verified')+
+            ' (schedule is not live operation)</div>');
+          continue;
+        }
         const raw=port[key];const count=Number.isInteger(raw?.lanes_open)?raw.lanes_open:'not supplied';
         const value=Number.isInteger(raw?.minutes)&&raw.status==='reported'?(raw.minutes===0?'No Delay':raw.minutes+' min'):raw?.status||'not supplied';
         lines.push('<div>'+label+': <strong>'+esc(value)+'</strong> · lanes reported '+esc(count)+' · '+esc(clock(raw?.observation_at))+' · '+esc(ago(D.age(raw?.observation_at)))+'</div>');
@@ -267,7 +325,7 @@
   function renderCameraInfo(){
     if(!camera)return;
     const port=data?.directions?.[direction]?.[camera.id]||{};
-    const nexus=entry(port.nexus,'nexus'),standard=entry(port.standard,'regular');
+    const nexus=entry(port.nexus,'nexus',camera.id),standard=entry(port.standard,'regular');
     for(const [label,r] of [['Nexus',nexus],['Regular',standard]]){
       const wait=$('camera'+label+'Wait');
       wait.textContent=r.display+(r.unit?' '+r.unit:'');

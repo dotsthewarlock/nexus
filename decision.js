@@ -240,6 +240,36 @@
     return {kind:candidate.kind,event:candidate.event,next:dateText+' '+clockText+' ET',
       reason:null,source:'CBSA'};
   }
+  // Only Ambassador publishes individually named Canada-bound NEXUS lane
+  // timetables. Count distinct explicitly named lanes within the published
+  // time window; this is NOT the number of lanes confirmed open.
+  function scheduledNexusLaneCount(data,id,direction,now=Date.now()) {
+    if(id!=='ambassador'||direction!=='ca')return null;
+    if(nextNexusSchedule(data,id,direction,now).kind!=='within')return null;
+    const groups=data?.supplemental?.cbsa_nexus_hours?.[id]?.groups;
+    const local=localDay(now),kind=dayKind(local);
+    if(!Array.isArray(groups)||!groups.length||kind==='unknown')return null;
+    const active=new Set();
+    const names={one:'1',two:'2',three:'3','1':'1','2':'2','3':'3'};
+    for(const group of groups){
+      for(const row of group.rows||[]){
+        const label=String(row.label||'');
+        const lane=/^\s*lane\s+(one|two|three|[1-3])\b/i.exec(label);
+        // An unenumerated or unrecognized timetable cannot be converted
+        // into a total count, even when one named lane is scheduled.
+        if(!lane)return null;
+        const applies=rowApplies(label,kind);
+        if(applies===null)return null;
+        if(!applies)continue;
+        const start=toMinutes(row.start),rawEnd=toMinutes(row.end);
+        if(start===null||rawEnd===null||start>=1440||rawEnd>1440)return null;
+        const end=rawEnd===0?1440:rawEnd;
+        if(end<=start)return null; // Unsupported overnight lane count.
+        if(local.clock>=start&&local.clock<end)active.add(names[lane[1].toLowerCase()]);
+      }
+    }
+    return active.size||null;
+  }
   function evaluate(data,direction,preferred,nexus,mode='conservative',now=Date.now()) {
     const id=IDS.includes(preferred)?preferred:'tunnel';
     const crossings=IDS.map(k=>crossing(data,direction,k,nexus,now));
@@ -311,6 +341,6 @@
     return null;
   }
   return {IDS,NAMES,age,reading,usable,recommendationReady,noticeKind,crossing,evaluate,publishedNexusWindow,
-    countrySide,nextNexusSchedule,MAX_OPERATOR_AGE,READING_CURRENT_AGE,READING_AGING_AGE,READING_STALE_AGE,READING_EXPIRE_AGE,SNAPSHOT_RECENT_AGE,
+    countrySide,nextNexusSchedule,scheduledNexusLaneCount,MAX_OPERATOR_AGE,READING_CURRENT_AGE,READING_AGING_AGE,READING_STALE_AGE,READING_EXPIRE_AGE,SNAPSHOT_RECENT_AGE,
     RECOMMEND_MAX_AGE,RECOMMEND_MAX_OBSERVATION_GAP};
 });

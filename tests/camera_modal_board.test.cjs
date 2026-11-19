@@ -14,7 +14,7 @@ for(const id of [
  'cameraZoomSurface','cameraZoomControls','cameraZoomHint'
 ]) assert.ok(html.includes('id="'+id+'"'),'missing modal UI '+id);
 for(const scale of [1,2,3,4]) assert.ok(html.includes('data-scale="'+scale+'"'));
-assert.ok(html.includes('board.js?v=board6')&&html.includes('board.css?v=board6'));
+assert.ok(html.includes('board.js?v=board7')&&html.includes('board.css?v=board7'));
 assert.ok(css.includes('touch-action: none')&&css.includes('.camera-metrics'));
 assert.ok(html.includes('id="cameraDetails"'),'source and schedule details must collapse');
 assert.ok(html.includes('id="cameraSourceDetails"'));

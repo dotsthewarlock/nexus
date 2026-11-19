@@ -26,7 +26,7 @@ assert.ok(js.includes("if(raw.status==='closed')")||js.includes("raw.status==='c
 assert.ok(js.includes('lastFetch')&&js.includes('renderDiagnostics()'));
 assert.ok(js.includes('removeAttribute(\'src\')'),'camera must unload on close');
 assert.ok(css.includes('grid-template-columns')&&css.includes('@media (max-width: 720px)'));
-assert.ok(html.includes('board.js?v=board6')&&html.includes('board.css?v=board6'));
+assert.ok(html.includes('board.js?v=board7')&&html.includes('board.css?v=board7'));
 assert.ok(!html.includes('cameraNexusWait">—')&&!html.includes('cameraRegularWait">—'));
 assert.ok(workflow.includes('cp board.css board.js legacy.html site/'), 'board and legacy page must be published');
 assert.ok(workflow.includes('cp index.html styles.css app.js decision.js camera-diagnostics.html site/'), 'original camera scripts must remain deployed');
