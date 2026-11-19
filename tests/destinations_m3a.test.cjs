@@ -11,7 +11,7 @@ const css=fs.readFileSync('dashboard.css','utf8');
 const workflow=fs.readFileSync('.github/workflows/publish.yml','utf8');
 new vm.Script(dashboard);
 assert.match(html,/destinations\.js\?v=m3a/);
-assert.match(html,/dashboard\.js\?v=m3b/);
+assert.match(html,/dashboard\.js\?v=m4a/);
 assert.match(html,/routing\.js\?v=m3b/);
 for(const id of ['detailMain','destinationPicker','chooseDestination','changeDestination',
  'openDirections','detailDestination','destinationPickerSaved','oneTimeDestinationForm',

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7f9fb">
   <meta name="description" content="Nexus Windsor–Detroit border inspection waits, both directions and three crossings.">
   <title>Nexus · Border comparison</title>
-  <link rel="stylesheet" href="./dashboard.css?v=m3b">
+  <link rel="stylesheet" href="./dashboard.css?v=m4a">
 </head>
 <body>
 <main class="app-shell" id="main">
@@ -54,8 +54,12 @@
     <button id="sourceDetails" class="status-link" type="button" aria-label="View official source freshness details"><span id="summary">Checking reported observations…</span></button>
     <button id="refresh" class="icon-button subtle" type="button" aria-label="Check the latest published snapshot" title="Check snapshot">↻</button>
   </div>
-  <section class="notice" id="notices" aria-live="polite" hidden>
-    <button class="notice-button" id="noticeOpen" type="button"><span id="noticeText"></span><span aria-hidden="true">›</span></button>
+  <section class="notice" id="notices" aria-label="Material crossing notices" hidden>
+    <div class="notice-head">
+      <button class="notice-button" id="noticeOpen" type="button"><span id="noticeText"></span><span aria-hidden="true">›</span></button>
+      <button class="notice-more" id="noticesMore" type="button" aria-expanded="false" aria-controls="noticesList" hidden>Show more notices</button>
+    </div>
+    <div class="notices-list" id="noticesList" hidden></div>
   </section>
   <footer class="disclaimer">Official inspection reports, not full-trip times · Independent app</footer>
 </main>
@@ -152,6 +156,6 @@
 <script src="./decision.js?v=rc149-schedule"></script>
 <script src="./destinations.js?v=m3a"></script>
 <script src="./routing.js?v=m3b"></script>
-<script src="./dashboard.js?v=m3b" defer></script>
+<script src="./dashboard.js?v=m4a" defer></script>
 </body>
 </html>

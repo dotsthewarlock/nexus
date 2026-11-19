@@ -29,6 +29,8 @@ jobs:
         run: node tests/routing_m3b.test.cjs
       - name: Approved M1 dual-direction dashboard checks
         run: node tests/dashboard_m1.test.cjs
+      - name: M4a material notices and closure-priority regression checks
+        run: node tests/notices_m4a.test.cjs
       - name: Three-crossing status dashboard tests
         run: node tests/status_board.test.cjs
       - name: Camera modal and NEXUS schedule tests

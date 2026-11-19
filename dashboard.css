@@ -72,3 +72,13 @@
 /* M3b: native Maps link, visible crossing-verification advisory. */
 #openDirections{display:inline-flex;align-items:center;justify-content:center;min-height:44px;text-decoration:none}
 .route-warning{font-size:.84rem;color:var(--warn);margin:10px 0;line-height:1.5;overflow-wrap:anywhere}
+
+/* M4a: one high-priority notice visible, remaining material notices on demand. */
+.notice-head{display:flex;align-items:stretch;flex-wrap:wrap;gap:0}
+.notice-head .notice-button{flex:1 1 190px;width:auto;min-height:44px;gap:8px;overflow-wrap:anywhere}
+.notice-more{min-height:44px;border:0;border-radius:8px;background:transparent;color:var(--accent);padding:9px 12px;font-size:.8rem;font-weight:650;white-space:normal;overflow-wrap:anywhere}
+.notice-more:hover,.notice-more:focus-visible,.notice-list-button:hover,.notice-list-button:focus-visible{background:var(--bg)}
+.notices-list{border-top:1px solid var(--line)}
+.notices-list[hidden]{display:none}
+.notice-list-button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--ink);font-size:.84rem;text-align:left;min-height:44px;overflow-wrap:anywhere}
+.notice-list-button:last-child{border-bottom:0}
