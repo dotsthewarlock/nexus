@@ -52,6 +52,8 @@ jobs:
         run: node tests/camera_player_control.test.cjs
       - name: DWT miniature-to-modal lab tests
         run: node tests/camera_mini_modal.test.cjs
+      - name: DWT one-tap crop lab tests
+        run: node tests/camera_one_tap.test.cjs
       - name: Recover last published snapshot for stale-only fallback
         run: |
           # Best effort; cached prior reports never become fresh observations.
@@ -83,6 +85,7 @@ jobs:
           cp camera-modal-autoplay.html site/
           cp camera-player-control-lab.html site/
           cp camera-mini-modal-lab.html site/
+          cp camera-one-tap-lab.html site/
           cp data/live.json site/data/live.json
           touch site/.nojekyll
       - uses: actions/configure-pages@v5
