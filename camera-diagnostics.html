@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#112233">
+  <title>Nexus · DWT camera diagnostics</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0b1722;--card:#172a3b;--field:#0e2030;--edge:#344a5a;--text:#eef5fb;--muted:#b2c6d7;--accent:#6db9ff}
+    [hidden]{display:none!important}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,Roboto,sans-serif}
+    main{width:min(100% - 28px,780px);margin:0 auto;padding:24px 0 60px}header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
+    h1{font-size:clamp(1.5rem,5vw,2rem);margin:18px 0 8px;line-height:1.22}h2{font-size:1.16rem;margin:0 0 8px}p{margin:6px 0 14px}a{color:#9dd2ff}a:focus-visible,button:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #ffce68;outline-offset:3px}
+    .muted,small{color:var(--muted)}.eyebrow{font-size:.75rem;text-transform:uppercase;letter-spacing:.1em;color:#9dc5e2;font-weight:700}
+    .card{background:var(--card);border:1px solid var(--edge);border-radius:15px;margin:16px 0;padding:17px}
+    .callout{border-left:3px solid #ffce68;padding-left:12px;color:#e8d7af;margin:14px 0}
+    .actions{display:flex;flex-wrap:wrap;gap:9px;align-items:center}.actions>*{min-width:0}
+    button,.action-link{border:1px solid #678ba6;background:#204a72;color:white;border-radius:9px;padding:10px 15px;font-size:1rem;font-weight:650;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;min-height:44px}
+    button:hover,.action-link:hover{background:#27608f}.secondary{background:var(--field);border-color:#577189}
+    button:disabled{opacity:.55;cursor:not-allowed}select,textarea{display:block;width:100%;border-radius:9px;border:1px solid #698096;background:var(--field);color:var(--text);font:inherit;padding:10px}
+    label{font-weight:650;display:block;margin-bottom:6px}.player-stage{position:relative;aspect-ratio:16/9;background:#04080d;border:1px solid #355165;overflow:hidden;border-radius:9px;margin:15px 0;min-height:160px}
+    .player-stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0}.player-stage[hidden]{display:none}
+    .empty-state{display:grid;place-content:center;text-align:center;min-height:130px;color:var(--muted);background:#081421;border-radius:9px;margin-top:14px;padding:16px}
+    .result-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.result-grid label{font-size:.9rem}.result-grid select{font-size:.92rem}
+    .log{font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:160px;overflow:auto;background:#081421;border:1px solid #263f52;border-radius:9px;padding:11px}
+    @media(max-width:520px){main{width:min(100% - 22px,780px);padding-top:13px}.card{padding:13px}.result-grid{grid-template-columns:1fr}.actions button,.actions .action-link{flex:1 1 135px}h1{margin-top:16px}}
+  </style>
+</head>
+<body>
+<main>
+  <header><span class="eyebrow">Nexus · camera investigation</span><a href="./">Return to Nexus</a></header>
+  <h1>DWT camera playback diagnostic</h1>
+  <p class="muted">An isolated comparison running on the <strong>same website origin as Nexus</strong>. It does not change the main app, border wait data, or camera settings.</p>
+  <p class="callout"><strong>Not an operational camera.</strong> This page tests access to the operator's three existing Dacast streams. A browser iframe <em>load</em> event does not prove video playback. The test cannot automatically read error details inside a third-party player.</p>
+
+  <section class="card" aria-labelledby="viewHeading">
+    <h2 id="viewHeading">1. Select a camera</h2>
+    <label for="cameraView">Use the same camera for every test</label>
+    <select id="cameraView">
+      <option value="4aea1c45-d402-3690-afae-fe635942da82">Canada → USA · Windsor inspection</option>
+      <option value="794566d4-a75e-3cd1-6f95-2d60e54f2fdb">USA → Canada · Detroit inspection</option>
+      <option value="5408b5c3-f8d1-f34b-a18a-9943047905b6">USA → Canada · Randolph Street</option>
+    </select>
+  </section>
+
+  <section class="card" aria-labelledby="testHeading">
+    <h2 id="testHeading">2. Compare player initialization</h2>
+    <p class="muted">Run each test separately. Both require a real button tap; automatic playback is intentionally not attempted. The operator's 15-second cutoff is disabled for diagnosis.</p>
+    <div class="actions">
+      <button id="testOperator" type="button">A · Operator-style iframe</button>
+      <button id="testNexus" class="secondary" type="button">B · Nexus-style iframe</button>
+      <button id="stopTest" class="secondary" type="button">Stop / unload</button>
+    </div>
+    <div id="emptyState" class="empty-state">No video requested. Tap A or B above.</div>
+    <div id="operatorStage" class="player-stage" aria-label="Operator-style video frame" hidden></div>
+    <div id="nexusStage" class="player-stage" aria-label="Nexus-style video frame" hidden>
+      <iframe id="nexusFrame" title="Nexus-style DWT camera player" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" hidden></iframe>
+    </div>
+    <p class="muted" id="activeStatus" role="status">No test started.</p>
+    <small><strong>A:</strong> creates a fresh iframe with the operator's HTML attributes and inserts it into the page. <strong>B:</strong> reuses the existing Nexus-style iframe and assigns its source. Neither attempts to bypass embedding controls.</small>
+  </section>
+
+  <section class="card" aria-labelledby="externalHeading">
+    <h2 id="externalHeading">3. Compare the original destinations</h2>
+    <p class="muted">Test C opens the same player URL as a top-level page. Test D opens the official operator website. These tests distinguish an embedded-domain issue from a broader player failure.</p>
+    <div class="actions">
+      <a id="directPlayer" class="action-link" href="https://iframe.dacast.com/live/8b2b630f-b7c1-262d-f343-118f510224a0/4aea1c45-d402-3690-afae-fe635942da82" target="_blank" rel="noopener noreferrer">C · Open Dacast directly</a>
+      <a id="officialWebsite" class="action-link secondary" href="https://www.dwtunnel.com/" target="_blank" rel="noopener noreferrer">D · Official DWT website</a>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="outcomesHeading">
+    <h2 id="outcomesHeading">4. Record what actually happened</h2>
+    <p class="muted">For A and B, first tap the test button, then press Play inside the player if available. Choose the result yourself; browser code cannot confirm playback from outside the iframe.</p>
+    <div class="result-grid">
+      <div><label for="resultA">A · Operator-style embedded</label><select id="resultA" class="test-result"></select></div>
+      <div><label for="resultB">B · Nexus-style embedded</label><select id="resultB" class="test-result"></select></div>
+      <div><label for="resultC">C · Direct Dacast URL</label><select id="resultC" class="test-result"></select></div>
+      <div><label for="resultD">D · Official DWT website</label><select id="resultD" class="test-result"></select></div>
+    </div>
+    <label for="notes" style="margin-top:14px">Optional notes / exact error</label>
+    <textarea id="notes" rows="2" maxlength="1200" placeholder="For example: 'This content has been blocked on this website' when loading A; C works in a separate tab."></textarea>
+    <div class="actions" style="margin-top:13px">
+      <button id="copyReport" type="button">Copy results</button>
+      <button id="resetResults" class="secondary" type="button">Reset test</button>
+    </div>
+    <p id="copyStatus" role="status" class="muted" aria-live="polite"></p>
+    <textarea id="reportFallback" rows="7" aria-label="Diagnostic report for manual copying" readonly hidden></textarea>
+  </section>
+
+  <details class="card">
+    <summary><strong>Local diagnostic events</strong></summary>
+    <p class="muted">Events remain in this browser tab. They are not uploaded or automatically sent anywhere. An iframe load event does not establish successful playback, and error response headers are inaccessible across origins.</p>
+    <div id="eventLog" class="log" aria-live="off"></div>
+  </details>
+  <p class="muted"><small>Production Nexus is unchanged. Only test videos you are authorized to view. No third-party stream is proxied, recorded or retransmitted by this page.</small></p>
+</main>
+<script>
+(() => {
+  'use strict';
+  const STREAM_ROOT = 'https://iframe.dacast.com/live/8b2b630f-b7c1-262d-f343-118f510224a0/';
+  const OUTCOMES = [
+    ['not_tested','Not tested'],
+    ['playable','Video plays (after Play if needed)'],
+    ['blocked','"Content blocked on this website"'],
+    ['blank','Blank, black, or loading indefinitely'],
+    ['no_play','Player loaded, but Play did not work'],
+    ['other','Other / uncertain']
+  ];
+  const $ = id => document.getElementById(id);
+  const selector = $('cameraView');
+  const stageA = $('operatorStage');
+  const stageB = $('nexusStage');
+  const existingFrame = $('nexusFrame');
+  let activeFrame = null,activeMode = null;
+  const logs=[];
+  function log(message){
+    logs.push(`${new Date().toISOString()} ${message}`);
+    if(logs.length>30)logs.shift();
+    $('eventLog').textContent=logs.join('\n');
+  }
+  function streamUrl(){return STREAM_ROOT + selector.value;}
+  function unload(){
+    if(activeFrame && activeFrame!==existingFrame){activeFrame.remove();}
+    existingFrame.removeAttribute('src');
+    existingFrame.hidden=true;
+    stageA.hidden=true;
+    stageB.hidden=true;
+    $('emptyState').hidden=false;
+    if(activeMode)log(`Stopped test ${activeMode}; unloaded iframe`);
+    activeFrame=null;activeMode=null;
+  }
+  function newIframeForOperator(src){
+    // Mirrors the official DWT page's insertIframe() attributes and ordering.
+    const frame=document.createElement('iframe');
+    frame.className='dacast-iframe';
+    frame.title='Operator-style DWT camera player';
+    frame.width='100%';frame.height='100%';
+    frame.frameBorder='0';frame.scrolling='no';
+    frame.allow='encrypted-media';frame.allowFullscreen=true;
+    for(const name of ['webkitallowfullscreen','mozallowfullscreen','oallowfullscreen','msallowfullscreen'])frame.setAttribute(name,'');
+    frame.style.cssText='position:absolute;top:0;left:0;width:100%;height:100%;';
+    frame.addEventListener('load',()=>log('A iframe load event (not proof of video playback)'));
+    frame.src=src;
+    stageA.insertBefore(frame,stageA.firstChild);
+    return frame;
+  }
+  function begin(mode){
+    unload();
+    const src=streamUrl();
+    activeMode=mode;
+    $('emptyState').hidden=true;
+    if(mode==='A'){
+      stageA.hidden=false;
+      activeFrame=newIframeForOperator(src);
+    }else{
+      stageB.hidden=false;
+      existingFrame.hidden=false;
+      existingFrame.src=src;
+      activeFrame=existingFrame;
+    }
+    $('activeStatus').textContent=`Test ${mode} loaded a player for ${selector.options[selector.selectedIndex].text}. Press Play inside it if offered. Record the result below.`;
+    log(`Started ${mode} · selected camera ${selector.value}`);
+  }
+  existingFrame.addEventListener('load',()=>{if(activeMode==='B' && existingFrame.getAttribute('src'))log('B iframe load event (not proof of video playback)');});
+  $('testOperator').addEventListener('click',()=>begin('A'));
+  $('testNexus').addEventListener('click',()=>begin('B'));
+  $('stopTest').addEventListener('click',()=>{unload();$('activeStatus').textContent='Player unloaded.';});
+  function cameraChanged(){
+    unload();
+    $('directPlayer').href=streamUrl();
+    $('activeStatus').textContent='Camera changed. Start A and B again with this selected stream.';
+    for(const id of ['resultA','resultB','resultC','resultD'])$(id).value='not_tested';
+    $('notes').value='';
+    $('copyStatus').textContent='';
+    $('reportFallback').value='';$('reportFallback').hidden=true;
+    log(`Camera selected: ${selector.options[selector.selectedIndex].text}; previous outcomes cleared`);
+  }
+  selector.addEventListener('change',cameraChanged);
+  $('directPlayer').addEventListener('click',()=>log('C: direct Dacast URL opened in a separate tab'));
+  $('officialWebsite').addEventListener('click',()=>log('D: official DWT website opened in a separate tab'));
+  for(const id of ['resultA','resultB','resultC','resultD']){
+    const el=$(id);
+    for(const [value,label] of OUTCOMES){const o=document.createElement('option');o.value=value;o.textContent=label;el.appendChild(o);}
+  }
+  function report(){
+    return [
+      'Nexus DWT camera diagnostic — manual results',
+      `UTC: ${new Date().toISOString()}`,
+      `Test page origin: ${location.origin}`,
+      `Camera: ${selector.options[selector.selectedIndex].text}`,
+      ...['A','B','C','D'].map(k=>`${k}: ${$(`result${k}`).selectedOptions[0].text}`),
+      `Notes: ${$('notes').value.trim()||'None'}`,
+      'Iframe load events do not establish video playback.',
+      'Local events:',...logs
+    ].join('\n');
+  }
+  $('copyReport').addEventListener('click',async()=>{
+    const content=report();
+    try{
+      if(!navigator.clipboard?.writeText)throw Error('Clipboard API unavailable');
+      await navigator.clipboard.writeText(content);
+      $('reportFallback').hidden=true;
+      $('copyStatus').textContent='Results copied. Paste into your Nexus development conversation.';
+    }catch{
+      // Display the complete report rather than silently truncating a notes field.
+      $('reportFallback').value=content;
+      $('reportFallback').hidden=false;
+      $('reportFallback').select();
+      $('copyStatus').textContent='Clipboard permission unavailable. Select and copy the report in the box below.';
+    }
+  });
+  $('resetResults').addEventListener('click',()=>{
+    unload();
+    for(const id of ['resultA','resultB','resultC','resultD'])$(id).value='not_tested';
+    $('notes').value='';logs.length=0;$('eventLog').textContent='';
+    $('copyStatus').textContent='';$('reportFallback').value='';$('reportFallback').hidden=true;
+    $('activeStatus').textContent='No test started.';
+  });
+  addEventListener('pagehide',unload);
+  log('Diagnostic page ready. Player is not loaded until A or B is tapped.');
+})();
+</script>
+</body>
+</html>

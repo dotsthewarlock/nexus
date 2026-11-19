@@ -38,6 +38,8 @@ jobs:
         run: node tests/decision.test.cjs
       - name: Camera source regression tests
         run: node tests/camera_rc148.test.cjs
+      - name: Standalone camera diagnostic tests
+        run: node tests/camera_diagnostics.test.cjs
       - name: Recover last published snapshot for stale-only fallback
         run: |
           # Best effort; cached prior reports never become fresh observations.
@@ -61,7 +63,7 @@ jobs:
       - name: Stage static website
         run: |
           mkdir -p site/data
-          cp index.html styles.css app.js decision.js site/
+          cp index.html styles.css app.js decision.js camera-diagnostics.html site/
           cp data/live.json site/data/live.json
           touch site/.nojekyll
       - uses: actions/configure-pages@v5
