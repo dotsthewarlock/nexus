@@ -62,9 +62,9 @@ class EvidenceTests(unittest.TestCase):
             hits.append((path, token))
             if '/commits?' in path:
                 return [changed]
-            if 'page=1' in path:
+            if '&page=1' in path:
                 return {'total_count': 101, 'workflow_runs': hundred}
-            if 'page=2' in path:
+            if '&page=2' in path:
                 return {'total_count': 101, 'workflow_runs': [run_at(19, 20, 13)]}
             raise AssertionError('Unexpected REST call')
         modified, runs, complete = audit.load_evidence(
