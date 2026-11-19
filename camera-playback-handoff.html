@@ -35,7 +35,6 @@ button:disabled{opacity:.55;cursor:default}
 @media(prefers-reduced-motion:reduce){.spinner{animation:none}}
 #playerHost{position:absolute;inset:0;z-index:2;border-radius:13px;overflow:hidden}
 #playerHost iframe{position:absolute;width:480px;height:270px;max-width:none;border:0;top:50%;left:50%;transform:translate(-50%,-50%) scale(6);transform-origin:center;opacity:1}
-#playerHost.launch-hide{opacity:0;pointer-events:none}
 #playerHost.minimized{visibility:hidden;pointer-events:none}
 #playerHost.expanded{position:fixed;z-index:1003;top:clamp(77px,14dvh,140px);left:0;right:0;margin:auto;width:min(calc(100vw - 20px),850px);height:auto;aspect-ratio:16/9;background:#06121c;border-radius:12px;box-shadow:0 8px 35px #0007;opacity:1;visibility:visible;pointer-events:auto}
 #playerHost.expanded iframe{width:100%;height:100%;top:0;left:0;transform:none}
@@ -64,8 +63,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,Conso
 <h2>1 · Select launch treatment</h2>
 <label for="mode">Only one variable changes between tests</label>
 <select id="mode">
-<option value="hide">Control · 180 ms hide, 500 ms expansion</option>
-<option value="keep">Candidate · interactive iframe, 0 ms expansion</option>
+<option value="baseline">Baseline · interactive, 500 ms expansion</option>
+<option value="instant">Candidate · interactive, 0 ms expansion</option>
 </select>
 <p id="modeDescription" class="small"></p>
 <p class="small">Both treatments create a fresh iframe on every camera switch. Both use the same 6× centred native Play crop and no-referrer policy. Control expands at 500 ms; candidate expands at 0 ms. The pill looks identical in both conditions.</p>
@@ -125,7 +124,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.5 ui-monospace,Conso
 <section class="card">
 <h2>3 · Compare both launch treatments</h2>
 <p class="small">Repeat the same nine transitions for each treatment: <strong>Windsor → Detroit → Randolph → Windsor → Detroit → Randolph → Windsor → Detroit → Randolph</strong>. This covers failures that appear only after several switches.</p>
-<table><thead><tr><th>Step</th><th>Hide at 180 ms</th><th>Keep interactive</th></tr></thead><tbody id="matrix"></tbody></table>
+<table><thead><tr><th>Step</th><th>Interactive · 500 ms</th><th>Interactive · 0 ms</th></tr></thead><tbody id="matrix"></tbody></table>
 <div class="controls">
 <button id="copy" class="primary" type="button">Copy diagnostic report</button>
 <button id="clear" type="button">Clear all saved results</button>
@@ -147,9 +146,9 @@ const CAMERAS={
  C:{id:'5408b5c3-f8d1-f34b-a18a-9943047905b6',name:'USA → Canada · Randolph Street'}
 };
 const STEPS=['A','B','C','A','B','C','A','B','C'];
-const KEY='nexus-dwt-playback-handoff-v2';
-const MODES=['hide','keep'];
-let saved={mode:'hide',step:0,runs:{hide:[],keep:[]}};
+const KEY='nexus-dwt-playback-handoff-v3';
+const MODES=['baseline','instant'];
+let saved={mode:'baseline',step:0,runs:{baseline:[],instant:[]}};
 try{
  const v=JSON.parse(sessionStorage.getItem(KEY)||'null');
  if(v&&v.runs&&typeof v.runs==='object'){
@@ -159,7 +158,7 @@ try{
  }
 }catch{}
 const st={generation:0,mode:'idle',camera:'A',focus:'none',handoffs:0,reopens:0,restarts:0,manualExpands:0,loaded:false};
-let frame=null,handoffTimer=null,hideTimer=null;
+let frame=null,handoffTimer=null;
 const events=[];
 const host=$('playerHost'),pill=$('pill');
 $('mode').value=saved.mode;
@@ -172,7 +171,6 @@ function writeEvent(message){
 function setStatus(message){$('state').textContent=message;render();}
 function clearTimers(){
  if(handoffTimer!==null){clearTimeout(handoffTimer);handoffTimer=null;}
- if(hideTimer!==null){clearTimeout(hideTimer);hideTimer=null;}
 }
 function cameraUrl(){return ROOT+CAMERAS[st.camera].id;}
 function resetSurface(){
@@ -180,7 +178,7 @@ function resetSurface(){
  $('modalHead').classList.remove('open');
  $('modalFoot').classList.remove('open');
  pill.classList.remove('launching','minimized');
- host.classList.remove('launch-hide','minimized','expanded');
+ host.classList.remove('minimized','expanded');
 }
 function createFrame(generation){
  const next=document.createElement('iframe');
@@ -219,11 +217,11 @@ function freshCamera(cameraKey,reason){
  $('modalTitle').textContent=CAMERAS[cameraKey].name;
  $('external').href=cameraUrl();
  $('sequence').textContent='Step '+(saved.step+1)+' / '+STEPS.length+' · '+STEPS.map((k,i)=>i===saved.step?'['+k+']':k).join(' → ');
- $('modeDescription').textContent=saved.mode==='hide'?
-  'Control: on iframe focus, hide the player and disable its pointer events after 180 ms, then expand at 500 ms.':
-  'Candidate: on iframe focus, leave the player rendered and interactive through immediate (0 ms) expansion.';
+ $('modeDescription').textContent=saved.mode==='baseline'?
+  'Baseline: native player remains rendered and interactive, with expansion after 500 ms.':
+  'Candidate: native player stays rendered and interactive, with a zero-delay expansion task.';
  loadFields();
- setStatus('Idle · tap the native Play target once. Treatment: '+(saved.mode==='hide'?'180 ms hide':'keep interactive')+'.');
+ setStatus('Idle · tap native Play once. Expansion: '+(saved.mode==='baseline'?'500 ms':'0 ms')+'.');
  writeEvent('Created fresh iframe for camera '+cameraKey+' ('+reason+'); mode='+saved.mode+'; generation='+st.generation);
 }
 function launchHandoff(signal,generation){
@@ -231,18 +229,11 @@ function launchHandoff(signal,generation){
  st.mode='launching';st.focus=signal;st.handoffs++;
  pill.classList.add('launching');
  writeEvent('Iframe focus signal '+signal+'; NOT playback proof. Generation '+generation);
- if(saved.mode==='hide'){
-  hideTimer=setTimeout(()=>{
-   if(generation===st.generation&&st.mode==='launching'){
-    host.classList.add('launch-hide');
-    writeEvent('Control only: hid and disabled iframe at 180 ms');
-   }
-  },180);
- }else writeEvent('Candidate: iframe remains visible and interactive through handoff');
+ writeEvent('Iframe stays visible and interactive; only expansion timing differs.');
  handoffTimer=setTimeout(()=>{
   if(generation===st.generation&&st.mode==='launching')expand('first');
- },saved.mode==='keep'?0:500);
- setStatus('Launch signal received · modal expansion pending at '+(saved.mode==='keep'?'0':'500')+' ms. Observe actual video playback.');
+ },saved.mode==='instant'?0:500);
+ setStatus('Launch signal received · modal expansion pending at '+(saved.mode==='instant'?'0':'500')+' ms. Observe actual video playback.');
 }
 window.addEventListener('blur',()=>{
  const generation=st.generation,current=frame;
@@ -259,7 +250,7 @@ function expand(kind){
  if(kind==='reopen')st.reopens++;
  st.mode='expanded';
  pill.classList.remove('launching','minimized');
- host.classList.remove('launch-hide','minimized');
+ host.classList.remove('minimized');
  host.classList.add('expanded');
  document.body.classList.add('modal-open');
  $('modalHead').classList.add('open');$('modalFoot').classList.add('open');
@@ -271,7 +262,7 @@ function minimize(){
  st.mode='minimized';
  document.body.classList.remove('modal-open');
  $('modalHead').classList.remove('open');$('modalFoot').classList.remove('open');
- host.classList.remove('expanded','launch-hide');
+ host.classList.remove('expanded');
  host.classList.add('minimized');
  pill.classList.add('minimized');
  setStatus('Minimized · same player retained. Tap Camera to reopen immediately.');
@@ -336,11 +327,11 @@ function report(){
   'Session mode: '+st.mode,
   'Sequence: '+STEPS.join(' → '),
   'Held constant: fresh iframe per camera switch, same 6x native Play crop, no-referrer, retained iframe on minimize',
-  'Control: HIDE after 180ms, expand at 500ms; Candidate: KEEP interactive, expand at 0ms.',
+  'Timing only: BASELINE keeps iframe interactive and expands at 500ms; INSTANT keeps iframe interactive and expands at 0ms.',
   'NOTE: iframe load/focus does not confirm moving video; all outcomes require manual observation.'
  ];
  for(const mode of MODES){
-  lines.push('--- '+(mode==='hide'?'CONTROL: HIDE at 180ms':'CANDIDATE: KEEP interactive')+' ---');
+  lines.push('--- '+(mode==='baseline'?'BASELINE: 500ms':'CANDIDATE: 0ms')+' ---');
   for(let i=0;i<STEPS.length;i++){
    const r=saved.runs[mode][i]||{};
    lines.push((i+1)+'. '+CAMERAS[STEPS[i]].name+' | first='+(r.first||'untested')+
@@ -380,7 +371,7 @@ $('next').addEventListener('click',()=>{
 });
 $('mode').addEventListener('change',()=>{
  saveFields();
- saved.mode=$('mode').value==='keep'?'keep':'hide';
+ saved.mode=$('mode').value==='instant'?'instant':'baseline';
  saved.step=0;persist();
  freshCamera(STEPS[0],'treatment switched');
  $('saveStatus').textContent='Selected '+saved.mode+' treatment. Starting again at Windsor.';
@@ -391,7 +382,7 @@ $('resetMode').addEventListener('click',()=>{
  $('saveStatus').textContent='Current treatment reset to step 1.';
 });
 $('clear').addEventListener('click',()=>{
- saved.runs={hide:[],keep:[]};saved.mode='hide';saved.step=0;
+ saved.runs={baseline:[],instant:[]};saved.mode='baseline';saved.step=0;
  $('mode').value=saved.mode;persist();
  freshCamera(STEPS[0],'cleared all results');
  $('saveStatus').textContent='Both sets of results cleared.';
