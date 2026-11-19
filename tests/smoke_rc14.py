@@ -64,48 +64,35 @@ def main():
   assert '4' in page.locator('#primaryValue').inner_text()
   assert '2 NEXUS lanes listed' in page.locator('#operatorLine').inner_text()
   page.screenshot(path=str(OUT/'rc14-mobile-dark.png'),full_page=True)
-  # RC1.4.7 DWT: attempt existing iframe on modal open and tab selection.
-  # Retry remains a real user gesture; provider playback requires device QA.
-  page.evaluate('''() => {
-    const original=window.setTimeout.bind(window);
-    window.__cameraTimerCount=0;
-    window.setTimeout=(cb,delay,...args)=>delay===15000
-      ?(window.__cameraTimerCount++,window.__cameraLimit=()=>cb(...args),999999)
-      :original(cb,delay,...args);
-  }''')
+  # RC1.4.9: the real Dacast player is mocked. This tests lifecycle, not playback.
   assert page.locator('#heroCameraText').inner_text()=='Cameras'
+  player=page.locator('#tunnelPlayerHost iframe')
+  assert player.count()==1
+  assert '794566d4' in player.get_attribute('src'), 'Canada-bound default is Detroit'
+  assert player.get_attribute('referrerpolicy')=='no-referrer'
+  assert page.locator('#tunnelCameraTabs button').count()==3
+  assert not page.locator('#cameraDialog').evaluate('(x)=>x.open')
+  page.locator('#heroCamera').dispatch_event('click') # keyboard/fallback route
+  assert page.locator('#tunnelPlayerHost').evaluate("(x)=>x.classList.contains('is-expanded')")
+  player.evaluate("(f)=>f.dataset.qa='initial'")
+  page.locator('#tunnelCameraMinimize').click()
+  assert not page.locator('#tunnelPlayerHost').evaluate("(x)=>x.classList.contains('is-expanded')")
+  assert player.get_attribute('data-qa')=='initial', 'Minimize must not replace iframe'
   page.locator('#heroCamera').click()
-  assert page.locator('#cameraDialog').evaluate('(x)=>x.open')
-  assert page.locator('#cameraViews button').count()==2
-  assert '794566d4' in page.locator('#cameraFrame').get_attribute('src'), 'DWT should attempt auto-load on modal open'
-  assert page.locator('#cameraWatch').is_hidden(), 'No extra initial Watch Live tap required'
-  assert page.locator('#cameraReload').is_visible(), 'Manual Retry video remains available'
-  assert 'Retry video' in page.locator('#cameraReload').inner_text()
-  assert page.evaluate('window.__cameraTimerCount')==1, 'Timer should start once on initial load attempt'
-  assert page.locator('#cameraZoomControls').is_hidden(), 'Bridge zoom must not appear on tunnel'
-  page.screenshot(path=str(OUT/'rc147-tunnel-auto-load.png'))
-  page.locator('#cameraReload').click()
-  assert page.evaluate('window.__cameraTimerCount')==2, 'Manual retry must create a new load attempt'
-  assert '794566d4' in page.locator('#cameraFrame').get_attribute('src')
-  page.locator('#cameraViews button').nth(1).click()
-  assert '5408b5c3' in page.locator('#cameraFrame').get_attribute('src'), 'Camera-tab selection should auto-load'
-  assert page.evaluate('window.__cameraTimerCount')==3
-  page.evaluate('window.__cameraLimit()')
-  assert page.locator('#cameraFrame').get_attribute('src') is None
-  assert page.locator('#cameraContinue').is_visible()
-  assert page.locator('#cameraReload').is_hidden(), 'No redundant retry after timed interval'
-  assert 'Viewing interval complete' in page.locator('#cameraFallbackText').inner_text()
-  page.locator('#cameraContinue').click()
-  assert '5408b5c3' in page.locator('#cameraFrame').get_attribute('src')
-  assert page.locator('#cameraReload').is_visible()
-  page.locator('#closeCamera').click()
-  assert page.locator('#cameraFrame').get_attribute('src') is None
+  assert page.locator('#tunnelPlayerHost').evaluate("(x)=>x.classList.contains('is-expanded')")
+  assert player.get_attribute('data-qa')=='initial', 'Reopen must retain iframe'
+  page.locator('#tunnelCameraTabs button').nth(2).click()
+  assert '5408b5c3' in player.get_attribute('src'), 'Randolph tab loads fresh iframe'
+  assert player.get_attribute('data-qa') is None, 'Camera change must replace old iframe'
+  page.locator('#tunnelCameraRetry').click()
+  assert '5408b5c3' in player.get_attribute('src')
+  page.locator('#tunnelCameraMinimize').click()
   page.locator('#toUS').click()
-  page.locator('#heroCamera').click()
-  assert '4aea1c45' in page.locator('#cameraFrame').get_attribute('src'), 'US-bound stream should auto-load'
-  assert page.locator('#cameraReload').is_visible()
-  assert page.locator('#cameraViews').is_hidden()
-  page.locator('#closeCamera').click()
+  assert '4aea1c45' in player.get_attribute('src'), 'US default is Windsor'
+  page.locator('#heroCamera').dispatch_event('click')
+  assert page.locator('#tunnelPlayerHost').evaluate("(x)=>x.classList.contains('is-expanded')")
+  page.locator('#tunnelCameraStop').click()
+  assert player.count()==0, 'Stop must unload the stream'
   page.locator('#toCA').click()
   page.locator('#alternatives button[data-crossing="ambassador"]').click()
   assert page.locator('#crossingRole').inner_text()=='SELECTED FOR THIS TRIP'
@@ -189,5 +176,5 @@ def main():
   desktop.close()
   assert not errors,errors
   browser.close()
- print('RC1.4.7 camera regression passed: DWT auto-load/retry/15s continue; 4x bridge default with 20% left, 50% up; 320/390/1440px.')
+ print('RC1.4.9 camera regression passed: DWT 0ms/native Play/minimize/three views; 4x bridge default with 20% left, 50% up; 320/390/1440px.')
 if __name__=='__main__': main()
