@@ -50,41 +50,45 @@ if(typeof document!=='undefined')(() => {
   }
   function teardownFrame(){
     generation++;
+    // Hide player first; no about:blank navigation may paint into the video stage.
+    host.hidden=true;
     if(frame){
-      frame.removeAttribute('src');
-      frame.src='about:blank';
-      frame.remove();
+      const prior=frame;
       frame=null;
+      prior.remove();
+      prior.src='about:blank';
+      prior.removeAttribute('src');
     }
     host.replaceChildren();
-    host.hidden=true;
     host.classList.remove('expanded');
-    face.hidden=true;
+    // Resume face visibility belongs to position(), not iframe teardown.
   }
-  function setLayerRect(element){
-    const rect=element.getBoundingClientRect();
-    host.style.left=rect.left+'px';host.style.top=rect.top+'px';
-    host.style.width=rect.width+'px';host.style.height=rect.height+'px';
-    face.style.left=rect.left+'px';face.style.top=rect.top+'px';
-    face.style.width=rect.width+'px';face.style.height=rect.height+'px';
+  function placeFixed(element,rect){
+    element.style.left=rect.left+'px';element.style.top=rect.top+'px';
+    element.style.width=rect.width+'px';element.style.height=rect.height+'px';
   }
   function position(){
-    if(!frame||host.hidden)return;
+    const variant=resumePolicy($('candidate').value);
     const initial=state==='initial-ready'||state==='launching';
     const pendingNative=state==='resuming'&&active?.kind==='resume';
     const resumeTarget=state==='resume-ready'||pendingNative;
-    if(initial)setLayerRect(pill);
-    else if(resumeTarget)setLayerRect(target);
-    else setLayerRect(slot);
-    const variant=resumePolicy($('candidate').value);
+    // A/C maintain an opaque, fixed Resume target through cutoff/prewarm.
+    // It hides the provider reload and remains positioned even without iframe.
+    const showFace=(state==='expired'||resumeTarget)&&
+      ['pill','round'].includes(variant.shape)&&!target.hidden;
+    face.dataset.shape=variant.shape;
+    face.dataset.ready=String(resumeTarget);
+    face.style.borderRadius=variant.shape==='round'?'50%':'11px';
+    if(showFace)placeFixed(face,target.getBoundingClientRect());
+    face.hidden=!showFace;
+    if(!frame||host.hidden)return;
+    const anchor=initial?pill:resumeTarget?target:slot;
+    placeFixed(host,anchor.getBoundingClientRect());
     const compact=initial||(resumeTarget&&variant.shape!=='full');
     host.classList.toggle('under-launcher',initial);
     host.classList.toggle('expanded',!compact);
     host.style.setProperty('--crop-zoom',String(initial?6:variant.zoom));
     host.style.borderRadius=resumeTarget&&variant.shape==='round'?'50%':'11px';
-    face.dataset.shape=variant.shape;
-    face.style.borderRadius=variant.shape==='round'?'50%':'11px';
-    face.hidden=!resumeTarget||!['pill','round'].includes(variant.shape);
   }
   function renderHistory(){
     const ul=$('history');ul.replaceChildren();
@@ -118,32 +122,27 @@ if(typeof document!=='undefined')(() => {
     const variant=resumePolicy($('candidate').value);
     $('modalSubtitle').textContent='9-second preview · '+variant.label;
     cutoff.dataset.shape=variant.shape;
-    $('controlResume').hidden=variant.prewarm;
-    $('rearm').hidden=state!=='expired'||!variant.prewarm;
-    target.hidden=state!=='resume-ready'&&!pendingNative;
-    if(state==='expired') {
-      $('expiredTitle').textContent='Preview ended';
-      $('expiredDescription').textContent=variant.prewarm?'Preparing native Resume control in this modal…':'Regular Resume needs a second Play tap.';
-      $('rearm').textContent='Prepare native Resume';
-    }else if(state==='resume-ready'){
-      $('expiredTitle').textContent=variant.shape==='full'?'Tap native Play to resume':'Ready to resume';
-      $('expiredDescription').textContent=variant.shape==='full'?'Use the original Play control in the full-size player.':'Tap the real Dacast Play control under the Resume surface.';
-    }else if(state==='resume-wait'){
-      $('expiredTitle').textContent='Resume standby expired';
-      $('expiredDescription').textContent='The unused iframe has been unloaded. Re-arm to try again.';
-      $('rearm').hidden=false;
-    }
+    $('controlResume').hidden=variant.prewarm||state!=='expired';
+    // The re-arm button must not flash during normal 250ms preparation.
+    $('rearm').hidden=state!=='resume-wait'||!variant.prewarm;
+    target.hidden=!variant.prewarm||(!['expired','resume-ready'].includes(state)&&!pendingNative);
+    $('expiredTitle').textContent=state==='resume-wait'?'Standby expired':'Preview ended';
+    $('expiredDescription').textContent=state==='resume-wait'
+      ?'Tap Re-arm to prepare the next preview.'
+      :variant.prewarm
+        ?'Tap Resume for another 9-second preview.'
+        :'Reload to continue; native Play may be needed.';
     $('launchStatus').textContent=state==='initial-ready'?'Ready · tap the cropped Camera control once':
       state==='idle'?'Not prepared. Tap Prepare first.':
       state==='launching'?'Native Play focus detected; opening modal.':
       state==='playing'?'Video area expanded; nine-second timer is running.':
       state==='resume-ready'?'Tap native Resume inside the same modal.':
       'Camera modal and diagnostic active.';
-    $('modalStatus').textContent=state==='resume-ready'?'Standby player prepared (up to 15s). This may consume data while waiting for your tap.':
-      state==='resuming'?'Resume invoked; native Dacast playback may require a second Play tap.':
-      state==='playing'?'Observe moving footage; iframe focus does not confirm it.':
-      state==='resume-wait'?'Standby iframe released.':
-      state==='expired'?'Prior player unloaded. Modal stays open.':'';
+    $('modalStatus').textContent=state==='resume-ready'?'Ready. Tap Resume; standby loads may consume data.':
+      state==='resuming'?'Resume started. Native Play may still be required.':
+      state==='playing'?'Observe moving video; focus is not playback proof.':
+      state==='resume-wait'?'Standby released. Re-arm to try again.':
+      state==='expired'?'Stream stopped. Preparing the next Resume target…':'';
     position();renderHistory();
   }
   function newFrame(){
@@ -202,7 +201,7 @@ if(typeof document!=='undefined')(() => {
     tick();
     cutTimer=setTimeout(()=>{if(active===s&&!s.ended)expire();},RESUME_SESSION_MS);
     tickTimer=setInterval(tick,100);
-    $('timerLabel').textContent=kind==='control'?'9s from Resume button':'9s from iframe focus (not playback proof)';
+    $('timerLabel').textContent='9-second preview window';
     log('Session #'+s.id+' started: '+kind+' · '+signal+' · 9s cutoff');
     renderHistory();
   }
@@ -245,7 +244,7 @@ if(typeof document!=='undefined')(() => {
     recordEnd('Nine-second cutoff; iframe destroyed');
     clearTimers();teardownFrame();
     state='expired';
-    $('timer').textContent='0.0s';$('timerLabel').textContent='Preview ended · player removed';
+    $('timer').textContent='0.0s';$('timerLabel').textContent='9-second preview window';
     render();
     scheduleResume();
   }

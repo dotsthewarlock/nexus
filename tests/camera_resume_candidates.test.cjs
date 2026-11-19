@@ -25,10 +25,10 @@ for(const id of ['main','camera','candidate','prewarm','handoff','launcherPill',
  assert.match(html,new RegExp('id="'+id+'"'));
 assert.match(html,/scale\(var\(--crop-zoom,6\)\)/);
 assert.match(html,/width:480px;height:270px/);
-assert.match(html,/<script src="\.\/camera-resume-candidates\.js\?v=1" defer><\/script>/);
-assert.match(js,/frame\.removeAttribute\('src'\)/);
-assert.match(js,/frame\.src='about:blank'/);
-assert.match(js,/frame\.remove\(\)/);
+assert.match(html,/<script src="\.\/camera-resume-candidates\.js\?v=2" defer><\/script>/);
+assert.match(js,/prior\.removeAttribute\('src'\)/);
+assert.match(js,/prior\.src='about:blank'/);
+assert.match(js,/prior\.remove\(\)/);
 assert.match(js,/generation\+\+/);
 assert.match(js,/if\(document\.hidden\)closeAll\('Page hidden \/ visibilitychange'\)/);
 assert.match(js,/window\.addEventListener\('pagehide'/);
@@ -44,4 +44,16 @@ assert.match(js, /pill\.hidden=modal&&state!=='launching'/, 'initial focus trans
 assert.match(js, /const pendingNative=state==='resuming'&&active\?\.kind==='resume'/, 'native Resume must retain crop during handoff');
 assert.match(js, /target\.hidden=state!=='resume-ready'&&!pendingNative/, 'native Resume must retain target during handoff');
 assert.match(js, /host\.classList\.toggle\('under-launcher',initial\)/, 'crop layering must switch between launcher and modal');
-console.log('In-modal Resume variants: policy and lifecycle static tests passed.');
+
+assert.match(html, /#cutoffArea\{position:absolute;inset:0/, 'fixed overlay must not resize player area');
+assert.match(html, /#resumeTarget\{position:absolute;top:50%;left:50%;transform:translate\(-50%,-50%\)/, 'Resume target remains centered');
+assert.match(html, /#modalStatus\{[^}]*min-height:54px/, 'status changes reserve space');
+assert.match(html, /#resumeFace\[data-ready="false"\]/, 'prewarm and ready states share mask geometry');
+assert.match(js, /host\.hidden=true;[\s\S]*?prior\.remove\(\);[\s\S]*?prior\.src='about:blank'/, 'detach provider before blank navigation');
+assert.match(js, /const showFace=\(state==='expired'\|\|resumeTarget\)/, 'opaque Resume face remains through cutoff and prewarm');
+assert.match(js, /if\(showFace\)placeFixed\(face,target\.getBoundingClientRect\(\)\)/, 'mask position does not require a mounted iframe');
+assert.match(js, /\$\('rearm'\)\.hidden=state!=='resume-wait'\|\|!variant\.prewarm/, 'no transient Re-arm on cutoff');
+assert.match(js, /target\.hidden=!variant\.prewarm\|\|\(!\['expired','resume-ready'\]\.includes\(state\)&&!pendingNative\)/, 'target footprint reserved');
+assert.match(js, /\$\('timerLabel'\)\.textContent='9-second preview window'/, 'constant timer label length');
+
+console.log('In-modal Resume variants: policy and stable-cutoff layout tests passed.');
