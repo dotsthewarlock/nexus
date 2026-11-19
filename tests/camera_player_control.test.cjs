@@ -34,7 +34,7 @@ for(const s of [
  'player.onPlay(',
  'player.onError(',
  'sessionStorage.setItem(STORE',
- 'NOT proof of playback'
+ 'NOT proof of video playback'
 ]){
  assert.ok(script.includes(s),'required diagnostic or caveat missing: '+s);
 }
