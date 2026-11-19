@@ -130,17 +130,17 @@ function expand(kind){
  note('Modal expanded; iframe retained, not reparented.');
 }
 function beginHandoff(signal){
- if(!focusArmed || state.mode!=='idle')return;
+ if(state.mode!=='idle')return;
  focusArmed=false;state.iframeFocus=signal;
  state.mode='launching';state.launches++;
  slot.classList.add('launching');host.classList.add('launching');
  display('First-tap signal ('+signal+'). Showing 1500 ms spinner before modal expansion.');
- note('Possible native player interaction detected via '+signal+'; NOT proof that video started.');
+ note('Possible iframe interaction detected via '+signal+'; NOT proof that video started.');
  handoffTimer=setTimeout(()=>expand('first'),1500);
 }
 frame.addEventListener('focus',()=>beginHandoff('iframe focus'));
 window.addEventListener('blur',()=>{
- if(!focusArmed || state.mode!=='idle')return;
+ if(state.mode!=='idle')return;
  setTimeout(()=>{
   if(state.mode==='idle' && document.activeElement===frame)beginHandoff('window blur + iframe activeElement');
  },0);
@@ -153,8 +153,9 @@ const arm=()=>{
   setTimeout(()=>{if(state.mode==='idle'&&focusArmed){focusArmed=false;note('No iframe focus detected. Try manual open to inspect player geometry.');}},2500);
  }
 };
+// Pointer events inside a cross-origin iframe do not bubble to this parent.
+// Focus/blur is the primary inference; the parent pointer listener is only supplemental.
 host.addEventListener('pointerdown',arm);
-host.addEventListener('touchstart',arm,{passive:true});
 function minimize(){
  if(state.mode!=='expanded')return;
  state.mode='minimized';
