@@ -24,7 +24,7 @@ for(const token of [
  "if(saved.mode==='hide'){",
  "host.classList.add('launch-hide');",
  "},180);",
- "},500);",
+ "},saved.mode==='keep'?0:500);",
  "host.classList.add('expanded');",
  "host.classList.add('minimized');",
  "next.referrerPolicy='no-referrer';",
@@ -40,6 +40,8 @@ for(const token of [
 ]){
  assert.ok(js.includes(token),'missing regression guarantee: '+token);
 }
+assert.ok(js.includes("const KEY='nexus-dwt-playback-handoff-v2';"),'0ms trial results separated from older timings');
+assert.ok(html.includes('0 ms expansion')&&html.includes('500 ms expansion'),'both timing treatments labeled');
 assert.ok(html.includes('scale(6)'),'preserve 6x crop');
 assert.ok(html.includes('value="idle"'),'diagnose modal-with-no-play case');
 assert.ok(html.includes('value="works"'),'manual Play recovery must be reported');
