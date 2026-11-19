@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#f5f7fa">
 <meta name="description" content="Nexus border wait times and reported lane counts for the three Windsor–Detroit crossings.">
 <title>Nexus · Border Status</title>
-<link rel="stylesheet" href="./board.css?v=board2">
+<link rel="stylesheet" href="./board.css?v=board3">
 </head>
 <body>
 <main class="shell">
@@ -37,14 +37,50 @@
   </details>
   <footer>Independent border information viewer · Not affiliated with CBP or CBSA</footer>
 </main>
-<dialog id="cameraDialog" aria-labelledby="cameraTitle">
-  <div class="camera-header"><div><h2 id="cameraTitle">Crossing camera</h2><p id="cameraSubtitle">Official operator feed, playback not guaranteed</p></div><button id="closeCamera" aria-label="Close camera" type="button">×</button></div>
+<dialog id="cameraDialog" class="camera-modal" aria-labelledby="cameraTitle">
+  <div class="camera-header">
+    <div><h2 id="cameraTitle">Crossing camera</h2><p id="cameraSubtitle">Official camera · inspection wait snapshot</p></div>
+    <button id="closeCamera" aria-label="Close and stop camera" type="button">×</button>
+  </div>
+  <section class="camera-report" aria-label="Latest crossing wait and lane reports">
+    <div class="camera-metrics">
+      <div class="camera-metric">
+        <span class="camera-metric-label">NEXUS</span>
+        <strong id="cameraNexusWait">—</strong>
+        <span id="cameraNexusLanes" class="camera-metric-lanes">Lanes not reported</span>
+        <small id="cameraNexusStatus">Waiting for agency data</small>
+      </div>
+      <div class="camera-metric">
+        <span class="camera-metric-label">REGULAR</span>
+        <strong id="cameraRegularWait">—</strong>
+        <span id="cameraRegularLanes" class="camera-metric-lanes">Lanes not reported</span>
+        <small id="cameraRegularStatus">Waiting for agency data</small>
+      </div>
+    </div>
+    <div class="camera-schedule" id="cameraScheduleBox" role="status">
+      <strong id="cameraNexusSchedule">NEXUS schedule unavailable</strong>
+      <span id="cameraNexusScheduleNote">Published operating hours are not live lane status.</span>
+    </div>
+  </section>
   <div id="cameraViewChoices" class="camera-views" role="group" aria-label="Camera angles"></div>
-  <div class="camera-surface"><iframe id="cameraFrame" title="Crossing camera feed" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="no-referrer" hidden></iframe><p id="cameraNotice">Connecting to official camera…</p></div>
-  <div class="camera-actions"><button type="button" id="cameraRetry">Retry camera</button><a id="officialCamera" target="_blank" rel="noopener noreferrer">Official camera page ↗</a></div>
-  <p class="camera-disclaimer">A camera image cannot confirm inspection wait times, NEXUS lane availability, or open lanes. Some providers block in-app playback.</p>
+  <div class="camera-surface" id="cameraStage">
+    <iframe id="cameraFrame" title="Official crossing camera" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="no-referrer" hidden></iframe>
+    <div id="cameraZoomSurface" role="button" tabindex="0" aria-label="Drag to pan camera; tap to fit" aria-pressed="true" hidden></div>
+    <p id="cameraNotice">Connecting to official camera…</p>
+  </div>
+  <div id="cameraZoomControls" class="camera-zoom-controls" role="group" aria-label="Bridge camera zoom" hidden>
+    <div class="camera-zoom-buttons">
+      <button type="button" data-scale="1">Fit</button>
+      <button type="button" data-scale="2">2×</button>
+      <button type="button" data-scale="3">3×</button>
+      <button type="button" data-scale="4">4×</button>
+    </div>
+    <span id="cameraZoomHint">Drag to pan · Tap to fit</span>
+  </div>
+  <div class="camera-actions"><button type="button" id="cameraRetry">Reload camera</button><a id="officialCamera" target="_blank" rel="noopener noreferrer">Official camera page ↗</a></div>
+  <p class="camera-disclaimer">Agency wait and lane counts do not include approach traffic. Published NEXUS schedules do not confirm actual lane availability. Camera playback depends on the operator.</p>
 </dialog>
-<script src="./decision.js?v=rc149"></script>
-<script src="./board.js?v=board2" defer></script>
+<script src="./decision.js?v=rc149-schedule"></script>
+<script src="./board.js?v=board3" defer></script>
 </body>
 </html>
