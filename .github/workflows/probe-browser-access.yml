@@ -1,0 +1,24 @@
+name: Official border-feed browser compatibility (beta)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/probe-browser-access.yml
+      - scripts/probe_browser_access.py
+
+permissions:
+  contents: read
+
+jobs:
+  cors-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Probe official public feed CORS response headers
+        run: python scripts/probe_browser_access.py
