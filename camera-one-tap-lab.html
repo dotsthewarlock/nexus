@@ -24,6 +24,18 @@ textarea{min-height:68px;resize:vertical}
 <p class="note"><strong>Unverified:</strong> a cropped tile does not automatically make every pixel a Play button. Only the Dacast control's real hit area can play. Focus is not a playback signal, and some browsers won't expose a usable focus transition. No synthetic clicks or cross-origin player access are used.</p>
 <section class="card">
 <h2>1. Configure the crop</h2>
+<label for="preset">Quick permutation</label>
+<select id="preset">
+<option value="A">A · Control: 96px, normal crop, manual Expand</option>
+<option value="B" selected>B · 96px, 1× crop, focus + 500ms</option>
+<option value="C">C · 96px, 1.5× crop, focus + 250ms</option>
+<option value="D">D · 96px, 2× crop, focus + 500ms</option>
+<option value="E">E · 80px, 2× crop, focus + 500ms</option>
+<option value="F">F · 64px, 2.5× crop, focus + 900ms</option>
+<option value="G">G · 112px, 1.5× crop, focus + 0ms</option>
+</select>
+<button id="applyPreset" type="button" class="secondary wide">Apply preset (retains iframe)</button>
+<p class="fine">Presets change only CSS crop/size and expansion trigger. Adjust sliders afterward to locate Dacast's actual Play hit target.</p>
 <label for="camera">Camera</label>
 <select id="camera">
 <option value="4aea1c45-d402-3690-afae-fe635942da82">Canada → USA · Windsor inspection</option>
@@ -63,7 +75,11 @@ textarea{min-height:68px;resize:vertical}
 <label for="continuity">Did playback continue during expansion?</label>
 <select id="continuity"><option value="untested">Not tested</option><option value="yes">Yes</option><option value="no">No</option></select>
 <label for="notes">Notes</label><textarea id="notes" maxlength="600"></textarea>
-<button id="copy" class="wide">Copy diagnostic report</button>
+<button id="saveTrial" class="wide">Save current permutation result</button>
+<p id="saveState" class="fine" role="status"></p>
+<p class="fine"><strong>Saved trial results</strong> (this browser tab only, separated by camera):</p>
+<pre id="trialSummary">No saved trials yet.</pre>
+<div class="grid"><button id="copy" class="wide">Copy diagnostic report</button><button id="clearTrials" class="secondary wide">Clear this camera's saved trials</button></div>
 <p id="copyStatus" role="status" class="fine"></p><pre id="report"></pre>
 </section>
 <script>
@@ -73,6 +89,52 @@ const $=id=>document.getElementById(id),ROOT='https://iframe.dacast.com/live/8b2
 const names={'4aea1c45-d402-3690-afae-fe635942da82':'Windsor inspection','794566d4-a75e-3cd1-6f95-2d60e54f2fdb':'Detroit inspection','5408b5c3-f8d1-f34b-a18a-9943047905b6':'Randolph Street'};
 let loaded=false,expanded=false,armed=false,loadCount=0,events=[],pending=null,focusCount=0,previousOverflow='';
 const config=['size','zoom','x','y','delay','trigger'],observations=['playResult','expandResult','continuity','notes'];
+const STORE='nexus-dwt-one-tap-trials-v1';
+const PRESETS={
+ A:{size:'96',zoom:'1',x:'0',y:'0',delay:'500',trigger:'manual'},
+ B:{size:'96',zoom:'1',x:'0',y:'0',delay:'500',trigger:'focus'},
+ C:{size:'96',zoom:'1.5',x:'0',y:'0',delay:'250',trigger:'focus'},
+ D:{size:'96',zoom:'2',x:'0',y:'0',delay:'500',trigger:'focus'},
+ E:{size:'80',zoom:'2',x:'0',y:'0',delay:'500',trigger:'focus'},
+ F:{size:'64',zoom:'2.5',x:'0',y:'0',delay:'900',trigger:'focus'},
+ G:{size:'112',zoom:'1.5',x:'0',y:'0',delay:'0',trigger:'focus'}
+};
+let trials={};
+try{const v=JSON.parse(sessionStorage.getItem(STORE)||'{}');if(v&&typeof v==='object'&&!Array.isArray(v))trials=v;}catch{}
+function persistTrials(){try{sessionStorage.setItem(STORE,JSON.stringify(trials));}catch{}}
+function applyPreset(){
+ const p=PRESETS[$('preset').value]||PRESETS.B;
+ cancelPending();
+ for(const id of config)$(id).value=p[id];
+ armed=loaded&&p.trigger==='focus';
+ applyCrop();
+ log('Applied preset '+$('preset').value+', '+(armed?'armed for next iframe focus':'manual Expand control')+'.');
+}
+function saveTrial(){
+ const camera=$('camera').value;
+ const t={
+  utc:new Date().toISOString(),preset:$('preset').value,
+  configuration:Object.fromEntries(config.map(id=>[id,$(id).value])),
+  playback:$('playResult').value,expansion:$('expandResult').value,
+  continuity:$('continuity').value,
+  notes:$('notes').value.slice(0,600),
+  iframeLoads:loadCount,focusSignals:focusCount
+ };
+ if(!Array.isArray(trials[camera]))trials[camera]=[];
+ trials[camera].push(t);
+ trials[camera]=trials[camera].slice(-25);
+ persistTrials();renderTrials();
+ $('saveState').textContent='Trial saved for '+names[camera]+'; '+trials[camera].length+' total.';
+ log('Saved trial '+t.preset+'; playback='+t.playback+', expansion='+t.expansion+', continuity='+t.continuity+'.');
+}
+function renderTrials(){
+ const list=Array.isArray(trials[$('camera').value])?trials[$('camera').value]:[];
+ $('trialSummary').textContent=list.length?list.map((t,i)=>[
+  (i+1)+'. '+t.preset+' | '+t.utc+' | video='+t.playback+' | expand='+t.expansion+' | continuity='+t.continuity,
+  '   '+Object.entries(t.configuration).map(([k,v])=>k+'='+v).join(', '),
+  t.notes?'   Notes: '+t.notes:''
+ ].filter(Boolean).join('\n')).join('\n'):'No saved trials for this camera.';
+}
 function log(s){events.push(new Date().toISOString()+' '+s);events=events.slice(-35);report();}
 function applyCrop(){
  $('tile').style.setProperty('--tile-size',$('size').value+'px');
@@ -91,6 +153,9 @@ function report(){
  'Loaded='+loaded+'; iframe load events='+loadCount+'; focus signals='+focusCount,
  ...observations.map(id=>id+'='+$(id).value),
  'Playback observations are manual; focus and iframe load are NOT proof of playback.',
+ 'Saved trials for this camera:',
+ ...(Array.isArray(trials[$('camera').value])&&trials[$('camera').value].length?
+ trials[$('camera').value].map(t=>JSON.stringify(t)):['None']),
  'Events:',...events
  ].join('\n');
 }
@@ -149,6 +214,18 @@ $('unload').addEventListener('click',unload);
 $('expand').addEventListener('click',()=>expand(true,'manual button'));
 $('minimize').addEventListener('click',()=>{expand(false,'minimize button');armed=false;});
 $('arm').addEventListener('click',()=>{armed=true;log('Focus detection re-armed.');});
+$('applyPreset').addEventListener('click',applyPreset);
+$('camera').addEventListener('change',()=>{
+ for(const id of observations)$(id).value=id==='notes'?'':'untested';
+ events=[];loadCount=0;focusCount=0;
+ renderTrials();report();
+ log('Camera changed: results and focus diagnostics reset for this stream.');
+});
+$('saveTrial').addEventListener('click',saveTrial);
+$('clearTrials').addEventListener('click',()=>{
+ delete trials[$('camera').value];persistTrials();renderTrials();report();
+ $('saveState').textContent='Cleared saved trials for selected camera.';
+});
 document.addEventListener('keydown',e=>{if(expanded&&e.key==='Escape'){e.preventDefault();expand(false,'Escape');armed=false;}});
 for(const id of config)$(id).addEventListener('input',()=>{applyCrop();report();});
 for(const id of observations)$(id).addEventListener(id==='notes'?'input':'change',report);
@@ -156,6 +233,6 @@ $('copy').addEventListener('click',async()=>{
  try{await navigator.clipboard.writeText($('report').textContent);$('copyStatus').textContent='Report copied.';}
  catch{$('copyStatus').textContent='Clipboard unavailable; select the report manually.';}
 });
-applyCrop();log('Ready; video not loaded.');
+applyCrop();renderTrials();log('Ready; video not loaded.');
 })();
 </script></body></html>
