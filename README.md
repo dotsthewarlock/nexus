@@ -8,7 +8,7 @@ The primary screen is a compact border-status viewer with an **Into USA / Into C
 
 - Ambassador Bridge opens with the preserved **4× zoom** and a default 20% left / 50% upward inspection-area framing. Fit, 2×, 3× and 4×, touch/mouse drag-to-pan, and keyboard zoom are available.
 - Clicking/tapping the backdrop (outside the dialog), pressing Escape, selecting the close control or changing directions closes the modal and unloads the camera iframe. Camera content and zoom interactions inside the dialog do not dismiss it.
-- The modal header shows the same NEXUS/regular waits, reported lane counts, and 20-minute observation freshness policy as the main board. It must not upgrade stale or missing source data.
+- The modal header shares the dashboard's current-versus-historical wait and lane presentation; expired readings remain explicitly unavailable. It must not upgrade stale or missing source data.
 - **Canada-bound:** Use the existing CBSA office-directory NEXUS schedule cache to show whether the current time is inside or outside a published NEXUS window, and the next confidently derived scheduled opening or end of availability. Multiple lane windows are merged for availability; ambiguous day/holiday rules suppress precise times. A published schedule never establishes live lane availability.
 - **US-bound:** CBP reported NEXUS wait/closure status can be shown if current, but the current data source has no validated NEXUS opening/closing schedule. Do not infer one from 24-hour port hours, lane counts, or historical closure reports.
 - **Tunnel:** A recent tunnel-operator NEXUS lane count may be labeled as operator-listed, separate from CBSA inspection wait and live lane availability.
@@ -17,10 +17,10 @@ The primary screen is a compact border-status viewer with an **Into USA / Into C
 ### Current UX defaults
 
 - Main screen: three equally weighted crossings, NEXUS/Regular values and lane counts, direction control, and camera buttons. Routine update timestamps are kept as accessible metadata rather than repeated visible status lines.
-- An outdated wait shows the **agency observation time** on the affected metric. An undated reported closure stays visibly historical or uncertain, never promoted to a confirmed current closure. Canada-bound NEXUS inspection data remain explicitly unpublished.
+- An outdated but still eligible observation shows its **historical wait and observation age** on the affected metric. An undated reported closure stays visibly historical or uncertain, never promoted to a confirmed current closure. Canada-bound NEXUS inspection data remain explicitly unpublished.
 - General reading caveats and source/collection diagnostics are progressive disclosures below the board. Exceptional source status stays visible without expansion.
 - Camera modal is **camera-first**: a compact NEXUS/Regular summary above the video, with schedule and precise source timestamps available in expandable details below. The existing 4× Ambassador zoom/pan, backdrop dismissal, iframe teardown and official links remain.
-- Source eligibility, the 20-minute freshness policy, CBSA published-hours semantics, GitHub Actions collection and external camera endpoints remain unchanged. No extra account, personalization or feature settings are introduced.
+- Source eligibility for **current** readings, CBSA published-hours semantics, GitHub Actions collection and external camera endpoints remain unchanged. No extra account, personalization or feature settings are introduced.
 
 ### Current direction-specific source-check UX
 
@@ -28,17 +28,17 @@ The primary screen is a compact border-status viewer with an **Into USA / Into C
 - A successful source check with at least one reported observation aged **120 minutes or more** shows an amber status and a minimal warning at the affected crossing, `Official report … ago`. This is a provisional beta reporting-lag heuristic (not a CBP/CBSA update SLA) and must be refined using historical observations.
 - If the latest official check or site snapshot is 30 minutes old, warn about **Nexus collection delay** instead. Failed official requests identify the last successful check; they do not count as successful refreshes or trigger an unsubstantiated agency-delay claim.
 - The full browser snapshot-download time, server publication time, actual source-check time, source status and agency observations remain in technical diagnostics. No direct-browser API retrieval is enabled by this UX release.
-- This release **does not change** the existing 20-minute numeric wait and lane-display eligibility policy; display thresholds should be evaluated separately from the communication of check freshness.
+- The initial check-status release did not alter the 20-minute current-reading eligibility. The subsequent no-dash release adds explicitly labeled historical display for reports under two hours without changing the underlying decision engine.
 
-### Current-display trust policy
+### Current-display trust policy (beta; November 19, 2026)
 
-- Show a numeric wait **only when the official agency observation is younger than 20 minutes**, the source retrieval is younger than 20 minutes, the published snapshot is younger than 20 minutes, and the source reports a valid observation. At exactly 20 minutes, it is no longer current.
-- Display an agency-reported **0-minute wait as “No Delay”**. Missing, invalid, older, or unverified waits are never rendered as a current zero.
-- For observations aged 20 minutes or more, **replace the main wait with a dash and show the agency's last actual observation time**. Do not substitute collector/publishing time for a missing observation timestamp.
-- Display source-reported lane counts where available, and clearly label **old counts as last reported**, not live. A missing count is unknown, not zero; a reported lane closure is not proof of exactly zero reported lanes.
-- Canada-bound CBSA data do not provide a separate NEXUS inspection wait or NEXUS lane count. A tunnel-operator-listed NEXUS count is a separate measurement disclosed only in diagnostics.
-- Keep the detailed agency observation times, retrieval times, source status, historical counts and warnings in the expanded diagnostics.
-- Do not alter the existing Python collector, periodic GitHub Actions publication or source credentials. The older RC1.4.8 reliability and routing discussion below documents the preserved legacy interface, not the redesigned primary screen.
+- Dashboard/camera wait placeholders use meaningful labels: `Checking…`, `Not reported`, `Not published`, `Unavailable`, `Not applicable`, `Closed`, or `Closure unverified`; never an unlabelled dash.
+- Current numerical waits still require a valid source measurement less than 20 minutes old, with successful retrieval and snapshot publication less than 20 minutes old. Only a verified current zero displays `No Delay`.
+- **Historical, not current:** a valid official numerical wait up to but excluding 120 minutes old may remain visible with `Reported Xm ago` and muted styling, provided the last successful source check and published snapshot are also under 120 minutes old. Historical zero displays `0 min`, not `No Delay`.
+- At the provisional two-hour expiry boundary, or with missing observation time, suppress numeric waits and show `Unavailable` with concise age/availability context. Source errors may show dated historical values only when the backend explicitly marks `retained_previous`; never upgrade them to current.
+- Only sufficiently dated and source-verified **current** closures show `Closed`. Older or undated closure reports show `Closure unverified`, not a live closure.
+- Lane counts are source-reported, not independently confirmed. Counts from historical measurements are labeled `last report`; unknown counts are omitted rather than represented with a dash or zero. CBSA does not publish a distinct Canada-bound NEXUS inspection wait/count.
+- The source-check status, report age alerts, and full technical diagnostics retain separate clocks. The 120-minute display expiry and report-delay signals are provisional beta policy, not agency promises. The existing conservative routing decision engine is unchanged.
 
 ## Legacy RC1.4.8 project notes
 

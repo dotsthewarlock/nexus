@@ -69,61 +69,83 @@
     return r;
   }
   function entry(raw,category){
-    // CBSA does not publish a distinct Canada-bound NEXUS inspection wait or lane count.
+    // Agency observation time, a successful source check, and snapshot
+    // publication are different clocks. None can substitute for another.
+    const missingLanes='Lanes not reported';
+    if(!data)return {display:'Checking…',unit:'',variant:'checking',
+      lanes:missingLanes,historical:false,kind:'unavailable',status:'Checking official reports'};
+    // Canada-bound NEXUS inspection waits/counts are not published by CBSA.
     if(direction==='ca'&&category==='nexus')
-      return {display:'—',unit:'',variant:'unknown',lanes:'Lanes not reported',
-        historical:false,kind:'unavailable',status:'Not reported by CBSA'};
-    if(!raw)return {display:'—',unit:'',variant:'unknown',lanes:'Lanes not reported',
-      historical:false,kind:'unavailable',status:'Not reported'};
-    const age=D.age(raw.observation_at,Date.now()),r=freshness(raw);
-    const sourceCurrent=source()?.status==='ok'&&sourceAge()<CURRENT_LIMIT_MINUTES&&snapshotAge()<CURRENT_LIMIT_MINUTES;
-    const observedCurrent=Number.isFinite(age)&&age<CURRENT_LIMIT_MINUTES;
-    const current=sourceCurrent&&observedCurrent&&
+      return {display:'Not published',unit:'',variant:'not-published',
+        lanes:'Lanes not published',historical:false,kind:'unavailable',status:'CBSA does not publish NEXUS waits'};
+    if(!raw)return {display:'Not reported',unit:'',variant:'not-reported',
+      lanes:missingLanes,historical:false,kind:'unavailable',status:'No official reading'};
+    const now=Date.now(),s=source(),obsAge=D.age(raw.observation_at,now);
+    const checkAge=D.age(lastOfficialCheck(s),now),snapAge=snapshotAge(),r=freshness(raw);
+    const verified=s?.status==='ok';
+    const retained=s?.status==='error'&&s?.retained_previous===true;
+    const dated=Number.isFinite(obsAge);
+    const withinHistory=(verified||retained)&&dated&&
+      obsAge<D.READING_EXPIRE_AGE&&checkAge<D.READING_EXPIRE_AGE&&snapAge<D.READING_EXPIRE_AGE;
+    const current=verified&&obsAge<CURRENT_LIMIT_MINUTES&&
+      checkAge<CURRENT_LIMIT_MINUTES&&snapAge<CURRENT_LIMIT_MINUTES&&
       (D.usable(r)||r.kind==='closed'||r.kind==='not_applicable');
-    const count=Number.isInteger(raw?.lanes_open)&&raw.lanes_open>=0?raw.lanes_open:null;
-    const plural=count===1?'lane':'lanes';
-    const lanes=count===null?'Lanes not reported':current
-      ?count+' '+plural+' reported':count+' '+plural+' last reported';
-    const valid=raw.status==='reported'&&Number.isInteger(raw.minutes)&&raw.minutes>=0&&raw.minutes<=720;
-    if(current&&valid)return {
-      display:raw.minutes===0?'No Delay':String(raw.minutes),
+    const count=withinHistory&&Number.isInteger(raw.lanes_open)&&raw.lanes_open>=0
+      ?raw.lanes_open:null;
+    const lanes=count===null?missingLanes
+      :count+' '+(count===1?'lane':'lanes')+(current?' reported':' last reported');
+    const valid=raw.status==='reported'&&Number.isInteger(raw.minutes)&&
+      raw.minutes>=0&&raw.minutes<=720;
+    if(current&&valid)return {display:raw.minutes===0?'No Delay':String(raw.minutes),
       unit:raw.minutes===0?'':'min',variant:raw.minutes===0?'no-delay':'number',
-      lanes,historical:false,kind:r.kind,status:'Updated '+ago(age)
-    };
-    if(current&&raw.status==='closed')return {
-      display:'Closed',unit:'',variant:'closed',lanes,historical:false,
-      kind:'warning',status:'Agency reported · '+ago(age)
+      lanes,historical:false,kind:r.kind,status:'Observed '+ago(obsAge)};
+    if(current&&raw.status==='closed')return {display:'Closed',unit:'',variant:'closed',
+      lanes,historical:false,kind:'warning',status:'Official report · '+ago(obsAge)};
+    if(raw.status==='closed'&&(verified||retained))return {
+      display:'Closure unverified',unit:'',variant:'unverified',
+      lanes:withinHistory?lanes:missingLanes,historical:true,kind:'warning',
+      status:dated?'Last reported '+ago(obsAge):'Report time unknown'
     };
     if(current&&raw.status==='not_applicable')return {
-      display:'N/A',unit:'',variant:'unknown',lanes,historical:false,
-      kind:'unavailable',status:'Agency status · '+ago(age)
+      display:'Not applicable',unit:'',variant:'not-published',lanes:missingLanes,
+      historical:false,kind:'unavailable',status:'Not applicable to this lane'
     };
-    // A stale/undated closure is important historical context, but not a live closure.
-    if(raw.status==='closed')return {
-      display:'—',unit:'',variant:'expired',lanes,historical:count!==null,kind:'warning',
-      status:Number.isFinite(age)?'Last reported closed · '+timeOnly(raw.observation_at):
-        'Closure reported · observation time missing'
+    // Historical numerical reports remain visible for context only.
+    // A historical 0 is *not* presented as a fresh "No Delay".
+    if(withinHistory&&valid)return {
+      display:String(raw.minutes),unit:'min',variant:'number',lanes,
+      historical:true,kind:'historical',status:'Reported '+ago(obsAge)
     };
-    // At 20 minutes or older, hide the numeric wait and show the agency observation clock.
-    return {
-      display:'—',unit:'',variant:Number.isFinite(age)?'expired':'unknown',
-      lanes,historical:count!==null,kind:Number.isFinite(age)?'old':'unavailable',
-      status:Number.isFinite(age)?'Last update '+timeOnly(raw.observation_at):'Agency update time unavailable'
+    if(raw.status==='not_applicable')return {
+      display:'Not applicable',unit:'',variant:'not-published',lanes:missingLanes,
+      historical:false,kind:'unavailable',status:'Not applicable to this lane'
     };
+    if(valid&&dated&&(verified||retained))return {
+      display:'Unavailable',unit:'',variant:'expired',lanes:missingLanes,
+      historical:true,kind:'old',status:'Last report '+ago(obsAge)
+    };
+    if(s?.status==='error'&&!retained)return {
+      display:'Unavailable',unit:'',variant:'unavailable',lanes:missingLanes,
+      historical:false,kind:'unavailable',status:'Source check failed'
+    };
+    if(valid&&!dated)return {
+      display:'Unavailable',unit:'',variant:'unavailable',lanes:missingLanes,
+      historical:false,kind:'unavailable',status:'Report time unknown'
+    };
+    return {display:'Unavailable',unit:'',variant:'unavailable',lanes:missingLanes,
+      historical:false,kind:'unavailable',status:'No verified wait'};
   }
-  // Keep normal readings quiet; surface age and caveats only when actionable.
+  // Normal measurements stay compact. Historical measurements are explicitly aged.
   function metric(m,id,cat){
-    const isCanadaNexus=direction==='ca'&&cat==='NEXUS';
-    const laneLine=isCanadaNexus?'':m.lanes==='Lanes not reported'?'Lanes —':
-      m.lanes.replace(/ last reported$/,' (last report)').replace(/ reported$/,'');
-    let hint='';
-    if(isCanadaNexus)hint='Not published by CBSA';
-    else if(['expired','unknown','closed'].includes(m.variant))hint=m.status;
-    else if(m.kind==='aging')hint=m.status.replace(/^Updated /,'');
+    const missing=m.lanes==='Lanes not reported'||m.lanes==='Lanes not published';
+    const laneLine=missing?'':m.lanes.replace(/ last reported$/,' (last report)').replace(/ reported$/,'');
+    const hint=(m.kind==='historical'||m.kind==='old'||m.kind==='warning'||
+      (m.variant==='unavailable'&&m.status==='Report time unknown'))?m.status:'';
     return '<div class="reading '+cat+'" aria-label="'+esc(cat)+' for '+esc(LABELS[id][0])+': '+
       esc(m.display)+(m.unit?' '+esc(m.unit):'')+', '+esc(m.lanes)+', '+esc(m.status)+'">'+
       '<div class="reading-label">'+esc(cat)+'</div>'+
-      '<div class="reading-main" data-display="'+esc(m.variant)+'">'+esc(m.display)+
+      '<div class="reading-main" data-display="'+esc(m.variant)+'" data-historical="'+
+      String(m.historical)+'">'+esc(m.display)+
       (m.unit?' <small>'+esc(m.unit)+'</small>':'')+'</div>'+
       (laneLine?'<div class="reading-lanes" data-historical="'+String(m.historical)+'">'+esc(laneLine)+'</div>':'')+
       (hint?'<div class="reading-hint" data-state="'+esc(m.kind)+'">'+esc(hint)+'</div>':'')+'</div>';
@@ -158,7 +180,7 @@
     }else if(s?.status!=='ok')note=name+' data unavailable';
     else if(!Number.isFinite(checkAge))note=name+' check time unavailable';
     else if(checksDelayed)note=checkedLabel+' · collection delayed';
-    else if(lateCount)note=checkedLabel+' · '+lateCount+' older agency report'+(lateCount===1?'':'s');
+    else if(lateCount)note=checkedLabel+' · Older report'+(lateCount===1?'':'s');
     else{state='ok';note=checkedLabel;}
     $('statusDot').dataset.state=state;
     $('summary').textContent=note;
@@ -169,7 +191,7 @@
       const port=data?.directions?.[direction]?.[id]||{};
       const reportAge=lateReports[id];
       const reportWarning=Number.isFinite(reportAge)
-        ?'<div class="crossing-report-warning">Official report '+esc(ago(reportAge))+'</div>':'';
+        ?'<div class="crossing-report-warning">Report '+esc(ago(reportAge))+'</div>':'';
       return '<article class="crossing-row" aria-label="'+esc(LABELS[id][0])+'">'+
         '<div class="crossing-identity"><div class="crossing-name">'+esc(LABELS[id][0])+'</div>'+reportWarning+'</div>'+
         '<div class="metrics">'+metric(entry(port.nexus,'nexus'),id,'NEXUS')+
@@ -178,9 +200,9 @@
     }).join('');
     $('crossingRows').querySelectorAll('button[data-camera]:not(:disabled)')
       .forEach(b=>b.addEventListener('click',()=>openCamera(b.dataset.camera)));
-    $('freshnessNote').textContent='Only agency observations, source retrievals, and published snapshots under 20 minutes old qualify as current. '+
-      '“No Delay” means a verified zero-minute report. Older lane counts are historical, not live. '+
-      'Missing data are not zero; waits exclude approach traffic and full-trip time.';
+    $('freshnessNote').textContent='“Checked” means Nexus last successfully queried CBP or CBSA, not that the agency report is new. '+
+      'Reports under 20 minutes old may appear current; older numerical waits are labeled with their observation age and expire after 2 hours. '+
+      '“No Delay” is a verified current zero. Older lane counts are historical, missing data are never zero, and waits exclude approach roads.';
     renderDiagnostics();
     if(camera)renderCameraInfo();
   }
@@ -212,13 +234,13 @@
     for(const [name,src] of Object.entries(data?.sources||{})){
       const url=typeof src?.url==='string'&&/^https:\/\//.test(src.url)?src.url:null;
       lines.push('<div class="diag-source"><strong>'+esc(name.toUpperCase())+'</strong> · '+esc(src?.status||'?')+
-        ' · '+esc(src?.coverage??'—')+' records'+(src.retained_previous?' · HISTORICAL FALLBACK':'')+
+        ' · '+esc(src?.coverage??'not available')+' records'+(src.retained_previous?' · HISTORICAL FALLBACK':'')+
         '<div>Last attempt: '+esc(clock(src?.retrieved_at))+' · last successful check: '+
         esc(clock(src?.last_success_at||(src?.status==='ok'?src?.retrieved_at:null)))+
         (src?.cache_reused?' · reused from collector cache':'')+'</div>'+
         (url?'<a href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">Official source ↗</a>':'')+'</div>');
     }
-    lines.push('<p>“Checked” refers to the last successful official-source retrieval, not opening this page. Amber agency-report notices are based on the age of the agency observations, and are shown only after a recent successful source check. Source retrieval, agency observation, and page publication are different timestamps. “Closed” and “0 min” are different reports; missing lanes do not mean zero lanes. Counts are source-reported, not independently confirmed.</p>');
+    lines.push('<p>Historical numbers are context, not live wait estimates. “Checked” refers to the last successful official-source retrieval, not opening this page. Amber agency-report notices are based on the age of the agency observations, and are shown only after a recent successful source check. Source retrieval, agency observation, and page publication are different timestamps. “Closed” and “0 min” are different reports; missing lanes do not mean zero lanes. Counts are source-reported, not independently confirmed.</p>');
     $('diagnosticBody').innerHTML=lines.join('');
   }
   async function refresh(){
@@ -250,6 +272,7 @@
       const wait=$('camera'+label+'Wait');
       wait.textContent=r.display+(r.unit?' '+r.unit:'');
       wait.dataset.display=r.variant;
+      wait.dataset.historical=String(r.historical);
       $('camera'+label+'Lanes').textContent=r.lanes;
       $('camera'+label+'Status').textContent=r.status;
     }
