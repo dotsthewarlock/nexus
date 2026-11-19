@@ -7,7 +7,7 @@ from playwright.sync_api import sync_playwright
 from smoke_rc14 import sample,ROOT
 
 def boot(page,payload):
-  html=(ROOT/'index.html').read_text()
+  html=(ROOT/'legacy.html').read_text()
   html=re.sub(r'<link rel="stylesheet" href="\./styles\.css(?:\?[^\"]*)?">','',html)
   html=re.sub(r'<script src="\./(?:decision|app)\.js(?:\?[^\"]*)?"(?: defer)?></script>','',html)
   page.set_content(html,wait_until='domcontentloaded')

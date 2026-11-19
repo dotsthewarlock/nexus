@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f7fa">
+  <meta name="description" content="Nexus: a clear, source-aware Windsor–Detroit crossing comparison for everyday commuters.">
+  <title>Nexus RC1.4.8 · Border commuter</title>
+  <link rel="stylesheet" href="./styles.css?v=rc149">
+</head>
+<body>
+<svg aria-hidden="true" class="sprite" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-bridge" viewBox="0 0 32 32"><path d="M2 25h28M6 25V9l10 10L26 9v16M6 9 16 4 26 9"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2"/><circle cx="16" cy="17" r="2"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M5.5 9A7 7 0 0 1 18 6l2 6M4 12l2 6a7 7 0 0 0 12.5-3"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-7-7 7 7-7 7"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m8 10 4 4 4-4"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></symbol>
+  <symbol id="i-zoom" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M10.5 7v7M7 10.5h7"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><path d="m5 21 2-6m0 0 4-5c2-2-1-4-3-2L5 11M19 3l-2 6m0 0-5 5c-2 2 1 4 3 2l4-3"/><circle cx="5" cy="21" r="1"/><circle cx="19" cy="3" r="1"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.8 6 6.6.8-4.8 4.7 1.2 6.5-5.8-3.2-5.8 3.2 1.2-6.5-4.8-4.7L9.2 9z"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 21h20zM12 9v5m0 3v.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10v.5"/></symbol>
+  <symbol id="i-location" viewBox="0 0 24 24"><path d="M12 22s7-7 7-12a7 7 0 0 0-14 0c0 5 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M13 4h7v7M20 4l-10 10M19 13v6H5V5h6"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M5 5 19 19M19 5 5 19"/></symbol>
+</svg>
+<div class="app-shell">
+  <header class="app-header">
+    <a class="brand" href="./" aria-label="Nexus home"><span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#i-bridge"/></svg></span><span class="brand-copy"><strong>nexus</strong><small>border commuter</small></span></a>
+    <div class="header-actions"><button class="icon-button" id="refreshButton" type="button" aria-label="Check latest published border data" title="Check latest published snapshot"><svg class="icon"><use href="#i-refresh"/></svg></button><button class="icon-button" id="settingsButton" type="button" aria-label="Open settings" title="Settings"><svg class="icon"><use href="#i-settings"/></svg></button></div>
+  </header>
+  <main>
+    <section class="trip-bar" aria-label="Current trip">
+      <div class="trip-top"><div><span class="eyebrow">YOUR TRIP</span><label class="visually-hidden" for="tripSelect">Destination preset</label><select id="tripSelect" class="trip-select"><option value="work">Work</option><option value="home">Home</option><option value="custom">Other destination</option></select></div><div class="trip-time">Leave now</div></div>
+      <div class="trip-bottom"><div class="direction" role="group" aria-label="Travel direction"><button type="button" id="toUS" aria-pressed="true">Canada <svg class="icon"><use href="#i-arrow"/></svg> USA</button><button type="button" id="toCA" aria-pressed="false">USA <svg class="icon"><use href="#i-arrow"/></svg> Canada</button></div><button id="locateDirection" type="button" class="icon-button location-button" title="Detect direction from device location" aria-label="Detect direction from location"><svg class="icon"><use href="#i-location"/></svg></button></div>
+      <p id="locationStatus" class="location-status" role="status"></p>
+    </section>
+    <div class="data-bar" id="dataBar" role="status"><span class="small-indicator"></span><span id="dataStatus">Checking official sources…</span><button type="button" id="dataDetailsButton">Sources</button></div>
+
+    <section class="main-card" aria-labelledby="heroName">
+      <div class="hero-eyebrow"><span id="crossingRole">PREFERRED CROSSING</span><span class="starline"><svg class="icon"><use href="#i-star"/></svg><span id="preferredLabel">Your default</span></span></div>
+      <h1 id="heroName">Detroit–Windsor Tunnel</h1>
+      <div class="metrics">
+        <div class="metric primary-metric"><span class="metric-label" id="primaryLabel">NEXUS · CBP</span><div class="metric-value"><span id="primaryValue">—</span><span class="unit" id="primaryUnit"></span></div><span class="metric-note" id="primaryNote">Waiting for official report</span></div>
+        <div class="metric"><span class="metric-label" id="regularLabel">Regular · CBP</span><div class="metric-value"><span id="regularValue">—</span><span class="unit" id="regularUnit"></span></div><span class="metric-note" id="regularNote">Wait unavailable</span></div>
+      </div>
+      <div id="operatorLine" class="operator-line" hidden></div>
+      <div id="finding" class="finding" data-level="unknown"><svg class="icon" id="findingIcon"><use href="#i-info"/></svg><div><strong id="findingHeading">Checking conditions</strong><p id="findingDetail">Loading data from official sources.</p></div></div>
+      <div class="hero-actions"><button class="primary-button" id="navigateButton" type="button"><svg class="icon"><use href="#i-route"/></svg><span id="navigateText">Set destination</span></button><div class="tunnel-camera-launch" id="tunnelCameraLauncher"><button class="secondary-button camera-button" id="heroCamera" type="button"><svg class="icon"><use href="#i-camera"/></svg><span id="heroCameraText">Camera</span></button><div id="tunnelPlayerHost" class="tunnel-player-host"></div></div></div>
+      <div class="hero-secondary"><button id="heroDetails" type="button" class="text-button">Crossing details <svg class="icon"><use href="#i-chevron"/></svg></button><button id="resetTrip" type="button" class="text-button" hidden>Use preferred crossing</button></div>
+      <div class="hero-footnote"><svg class="icon"><use href="#i-clock"/></svg><span id="heroFreshness">Reading time unavailable</span></div>
+    </section>
+
+    <section class="alternatives-section" aria-labelledby="alternativesTitle"><div class="section-head"><h2 id="alternativesTitle">Other crossings</h2><button type="button" class="text-button" id="compareButton">Compare details</button></div><div id="alternatives" class="alternatives"></div></section>
+    <section class="alerts-section" id="alertsSection" hidden><div class="section-head"><h2>Regional advisories</h2><a href="https://511on.ca/" target="_blank" rel="noopener noreferrer">Ontario 511 <svg class="icon"><use href="#i-external"/></svg></a></div><div id="advisories"></div><p class="subtle">Regional advisories are not verified delays on a selected route.</p></section>
+    <details id="allConditions" class="all-conditions"><summary>Full conditions &amp; source details <svg class="icon"><use href="#i-chevron"/></svg></summary><div id="detailsBody" class="details-body"></div></details>
+    <p class="route-disclaimer">Border wait estimates exclude approach traffic. Navigation is a route preview; verify the selected crossing in Maps.</p>
+    <footer><span>Nexus RC1.4.9</span><span>Independent commuter tool · Not affiliated with border agencies</span></footer>
+  </main>
+</div>
+
+<dialog id="settingsDialog" class="modal" aria-labelledby="settingsTitle"><form id="settingsForm" method="dialog" novalidate>
+  <div class="modal-header"><div><h2 id="settingsTitle">Preferences</h2><p>Saved on this device. No account required.</p></div><button class="icon-button close-modal" id="closeSettings" type="button" aria-label="Close settings"><svg class="icon"><use href="#i-close"/></svg></button></div>
+  <div class="modal-scroll">
+    <div class="settings-group"><h3>Crossings</h3><div class="form-row"><label for="preferredUs">Preferred · Canada → USA</label><select id="preferredUs"><option value="tunnel">Detroit–Windsor Tunnel</option><option value="ambassador">Ambassador Bridge</option><option value="gordie">Gordie Howe Bridge</option></select></div><div class="form-row"><label for="preferredCa">Preferred · USA → Canada</label><select id="preferredCa"><option value="tunnel">Detroit–Windsor Tunnel</option><option value="ambassador">Ambassador Bridge</option><option value="gordie">Gordie Howe Bridge</option></select></div><label class="check-row"><span><strong>Use NEXUS</strong><small>Prioritize reported NEXUS waits where available</small></span><input id="nexusInput" type="checkbox"></label></div>
+    <div class="settings-group"><h3>Recommendation behaviour</h3><div class="form-row"><label for="recommendationInput">Sensitivity</label><select id="recommendationInput"><option value="conservative">Conservative · Default</option><option value="balanced">Balanced · Highlight smaller differences</option><option value="information">Information only · No suggestions</option></select><small>Differences are in inspection waits only, not verified total-trip savings.</small></div></div>
+    <div class="settings-group"><h3>Saved destinations</h3><div class="form-row"><label for="homeInput">Home</label><input id="homeInput" type="text" placeholder="Street address or place" maxlength="180" autocomplete="street-address"></div><div class="form-row"><label for="workInput">Work</label><input id="workInput" type="text" placeholder="Street address or place" maxlength="180"></div><div class="form-row"><label for="themeInput">Appearance</label><select id="themeInput"><option value="system">Follow device</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div>
+    <details class="diagnostics"><summary>Technical diagnostics</summary><div id="diagnosticText" class="diagnostic-content">Not yet loaded</div></details>
+  </div><div class="modal-footer"><button type="submit" class="primary-button">Save preferences</button></div>
+</form></dialog>
+
+<dialog id="routeDialog" class="modal" aria-labelledby="routeTitle"><form id="routeForm" method="dialog">
+  <div class="modal-header"><div><h2 id="routeTitle">Plan route</h2><p>Verify the crossing in your navigation app.</p></div><button class="icon-button close-modal" id="closeRoute" type="button" aria-label="Close route planner"><svg class="icon"><use href="#i-close"/></svg></button></div>
+  <div class="modal-scroll"><div class="form-row"><label for="originRoute">Origin (optional)</label><input id="originRoute" type="text" placeholder="Current location in Maps" maxlength="180"></div><div class="form-row"><label for="destinationRoute">Destination</label><input id="destinationRoute" type="text" required placeholder="Address or place" maxlength="180"></div><p class="subtle" id="routeCrossingLabel"></p><p class="subtle">Google Maps may choose a different crossing despite the waypoint. Review the route before departure.</p></div>
+  <div class="modal-footer route-footer"><button class="secondary-button" id="copyLink" type="button">Copy trip link</button><button class="primary-button" type="submit">Preview in Maps <svg class="icon"><use href="#i-external"/></svg></button></div>
+</form></dialog>
+
+<dialog id="cameraDialog" class="modal camera-modal" aria-labelledby="cameraTitle"><div class="modal-header"><div><h2 id="cameraTitle">Crossing camera</h2><p id="cameraDescription">Official operator view</p></div><button class="icon-button close-modal" id="closeCamera" type="button" aria-label="Close camera"><svg class="icon"><use href="#i-close"/></svg></button></div><div class="camera-content"><div class="camera-stage" id="cameraStage"><iframe id="cameraFrame" title="Live crossing camera" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" hidden></iframe><div id="cameraZoomSurface" class="camera-zoom-surface" role="button" tabindex="0" aria-pressed="false" aria-label="Zoom bridge camera" hidden></div><div id="cameraZoomControls" class="camera-zoom-controls" role="group" aria-label="Bridge camera zoom" hidden><button type="button" data-scale="1" aria-pressed="false">Fit</button><button type="button" data-scale="2" aria-pressed="false">2×</button><button type="button" data-scale="3" aria-pressed="false">3×</button><button type="button" data-scale="4" aria-pressed="false">4×</button></div><span id="cameraZoomHint" class="camera-zoom-hint" aria-hidden="true" hidden><svg class="icon"><use href="#i-zoom"/></svg><span id="cameraZoomHintText">Tap to zoom</span></span><div id="cameraFallback" class="camera-fallback"><svg class="icon"><use href="#i-camera"/></svg><p id="cameraFallbackText">Official camera unavailable</p><button type="button" id="cameraWatch" class="camera-watch-button" hidden>▶ Watch Live</button><button type="button" id="cameraContinue" class="camera-watch-button" hidden>Continue watching</button></div></div><div id="cameraViews" class="camera-tabs" role="group" aria-label="Camera view"></div><div class="camera-links"><span id="cameraProvider"></span><button type="button" id="cameraReload" class="camera-reload" hidden><svg class="icon" aria-hidden="true"><use href="#i-refresh"/></svg> Reload video</button><a id="cameraOfficial" target="_blank" rel="noopener noreferrer">Official camera page <svg class="icon"><use href="#i-external"/></svg></a></div><p class="subtle">Camera views are supplemental and do not establish inspection waits or NEXUS availability. Playback depends on the operator.</p></div></dialog>
+<div id="tunnelCameraHead" class="tunnel-camera-head" role="group" aria-label="Tunnel camera controls" hidden><strong id="tunnelCameraTitle">Tunnel live camera</strong><div class="tunnel-camera-head-actions"><button id="tunnelCameraMinimize" type="button">Minimize</button><button id="tunnelCameraStop" type="button">Stop</button></div></div>
+<div id="tunnelCameraFoot" class="tunnel-camera-foot" role="region" aria-label="Tunnel camera selection" hidden><div id="tunnelCameraTabs" class="tunnel-camera-tabs" role="group" aria-label="Tunnel camera view"></div><div class="tunnel-camera-foot-actions"><button id="tunnelCameraRetry" type="button">Restart camera</button><a id="tunnelCameraDirect" target="_blank" rel="noopener noreferrer">Open video directly</a><a href="https://www.dwtunnel.com/" target="_blank" rel="noopener noreferrer">Operator site</a></div><p id="tunnelCameraHint">If video is not moving, tap the native Play button.</p></div>
+<script src="./decision.js?v=rc149"></script><script src="./app.js?v=rc149" defer></script>
+</body>
+</html>

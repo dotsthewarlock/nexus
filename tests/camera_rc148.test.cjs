@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const app=fs.readFileSync('app.js','utf8');
-const html=fs.readFileSync('index.html','utf8');
+const html=fs.readFileSync('legacy.html','utf8');
 const css=fs.readFileSync('styles.css','utf8');
 new vm.Script(app);
 for(const id of [
