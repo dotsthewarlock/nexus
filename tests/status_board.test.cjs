@@ -14,7 +14,7 @@ assert.ok(!html.includes('Destination preset')&&!html.includes('Preview route')&
 assert.ok(!html.includes('tripSelect')&&!html.includes('navigateButton'));
 assert.ok(js.includes("const IDS=['ambassador','tunnel','gordie'];"));
 assert.ok(js.includes("id==='gordie'?'disabled'"),'Gordie Howe camera must be disabled');
-assert.ok(js.includes("if(id==='gordie')return;"),'Gordie Howe must not load camera');
+assert.ok(js.includes("if(id==='gordie'||!CAMERAS[id])return;"),'Gordie Howe must not load camera');
 assert.ok(js.includes("direction==='ca'&&category==='nexus'"),'Canada NEXUS waits unavailable');
 assert.ok(js.includes("fetch('./data/live.json?ts='"),'must use published snapshot');
 assert.ok(js.includes("'nexus-live-v2'"),'must accept collector schema');
