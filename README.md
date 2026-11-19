@@ -57,7 +57,7 @@ If any feed is unavailable, the collector emits the other sources independently 
 
 ## Optional Ontario 511 credential
 
-Ontario 511 requires a developer account and key. Create an authorized key at `https://511on.ca/developers/doc` and set `ONTARIO_511_KEY` as a **GitHub Actions repository secret**. Do not put the key in HTML, query strings committed to the repo, or browser preferences.
+Ontario 511 requires a developer account and key. Create an authorized key at `https://511on.ca/developers/doc` and set `ONTARIO_511_API_KEY` as a **GitHub Actions repository secret**. Do not put the key in HTML, query strings committed to the repo, or browser preferences.
 
 The GitHub workflow reads the secret only in the server-side collection step. Without a key, Ontario 511 advisories are marked `not_configured` and the dashboard remains functional using CBP/CBSA data.
 
@@ -69,7 +69,7 @@ The GitHub workflow reads the secret only in the server-side collection step. Wi
 | CBSA waits | `https://www.cbsa-asfc.gc.ca/bwt-taf/bwt-eng.csv` | Parser implemented; official HTML fallback retained |
 | CBSA NEXUS schedules | `https://www.cbsa-asfc.gc.ca/data/cbsa-offices-services-bureaux-asfc-en.json` | Structured parser implemented; schedules cannot establish live availability |
 | DWT operator | `https://api.dwtunnel.com/api/traffic/conditionspublic` | Captured in user-supplied XHR; parser implemented; backend availability, permissions and update cadence remain to validate |
-| Ontario 511 | `https://511on.ca/api/v2/get/event` | Optional developer-key integration, coarse Windsor–Essex vicinity filtering only |
+| Ontario 511 | Events (`/api/v2/get/event`), construction (`/api/v2/get/constructionprojects`), road conditions (`/api/v3/get/roadconditions`), alerts (`/api/v2/get/alerts`) at `https://511on.ca` | Four independently checked feeds; conservative Windsor–Essex relevance filtering |
 | MDOT RIDE | `https://www.michigan.gov/mdot/travel/safety/efforts/its/its-data` | MiLogin for Business needed; linked only, no simulated API |
 | Official cameras | Operator-site links and player iframes | Ambassador Bridge embedded; Tunnel opt-in Dacast experiment with external-site fallback. Playback may be blocked by the provider |
 
@@ -125,3 +125,23 @@ The collector records status, the last successful retrieval time, previous-repor
 ### Isolated DWT camera diagnostic (non-production)
 
 The standalone page at `/nexus/camera-diagnostics.html` compares the operator-style freshly created iframe (Test A), the Nexus-style reused iframe (Test B), direct Dacast navigation (C), and the operator's own website (D). It is intentionally not linked from the main dashboard, and it does not alter the live camera or border-data collection. The operator's 15-second timer is omitted to allow diagnosis; iframe load events are **not** proof of successful video playback. Results are recorded locally and copied by the tester, never submitted automatically. In the repository, `node tests/camera_diagnostics.test.cjs` checks isolation and source IDs; `python tests/ui_camera_diagnostics.py` runs local Chromium interaction tests with mocked player responses.
+
+## Ontario 511 integration
+
+The existing `.github/workflows/publish.yml` remains the **only** site publisher. Its scheduled or manually dispatched collector reads the `ONTARIO_511_API_KEY` Actions secret at runtime, performs **four** Ontario 511 calls per collection (below the documented 10 calls/60 seconds), and stages the sanitized output with the existing `data/live.json`. No frontend or committed file receives the API key. No user-triggered requests reach Ontario 511.
+
+Documented sources: [Ontario 511 developer API](https://511on.ca/developers/doc), [events](https://511on.ca/help/endpoint/event), [construction](https://511on.ca/help/endpoint/constructionprojects), [road conditions](https://511on.ca/help/endpoint/roadconditions), [alerts](https://511on.ca/help/endpoint/alerts).
+
+Public JSON (after a successful deployment): **https://dotsthewarlock.github.io/nexus/data/live.json**. Existing `nexus-live-v2` schema remains compatible. New fields within `supplemental` are `ontario511_construction`, `ontario511_road_conditions`, and `ontario511_alerts`; `ontario511_events` remains. Each has a corresponding `sources` key (the existing events key is `ontario511`). A source status of `ok` with `coverage: 0` means successfully retrieved but nothing matched the narrow local filter. `error`, `not_configured`, `not_collected`, and `retained_previous` are not assertions of clear roads. The official `LastUpdated` and other source times are retained as distinct ISO timestamps, and `retrieved_at` is the collection timestamp. Unavailable source timestamps remain null.
+
+Regional matching is deliberately conservative: local coordinates or polyline evidence and a named corridor for traffic/construction; local descriptions or geometry for road conditions; explicit local road mentions for unlocated alerts. The following are **not** validated for exact route impact: corridor-specific access, border inspection delay, NEXUS operation, or U.S.-side road status. Construction recurrence schedules are not interpreted; the dashboard labels future reported projects as upcoming. A successful empty filtered feed is **not** a positive confirmation of unrestricted traffic.
+
+### Verify
+
+1. In GitHub → Settings → Secrets and variables → Actions, confirm secret **`ONTARIO_511_API_KEY`** exists (its value is not inspectable). No second secret is necessary.
+2. GitHub → Actions → **Publish Nexus live snapshot** → **Run workflow** on `main` (after merge).
+3. Confirm **Python collector tests**, **Collect official data**, **Report collection health**, and **Deploy Pages** pass. In the summary, review each of `ontario511`, `ontario511_construction`, `ontario511_road_conditions`, `ontario511_alerts`.
+4. Open the published JSON above with a cache-busting query string, verify each source status is `ok`, inspect the four arrays and source timestamps. If a source is `error`, look for the **exception class** in JSON; error details and credential-bearing URLs are deliberately omitted from outputs.
+5. Run `python3 -m unittest discover -s tests -v` and existing Node test commands locally. All test fixtures are synthetic. Never print the secret or invoke a `curl` command with its value.
+
+An actual authenticated Ontario 511 response cannot be tested outside the Actions secret-bearing runner. Even with successful four-feed retrieval, the data only describes Ontario road context, not confirmed crossing access or border wait times.
