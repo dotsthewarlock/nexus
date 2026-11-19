@@ -42,7 +42,7 @@ assert.match(html, /\*\[hidden\]\{display:none!important\}/, 'hidden modal eleme
 assert.match(html, /#playerLayer\.under-launcher\{z-index:9\}/, 'first-tap layer must stay under its click-through label');
 assert.match(js, /pill\.hidden=modal&&state!=='launching'/, 'initial focus transition must preserve pill geometry');
 assert.match(js, /const pendingNative=state==='resuming'&&active\?\.kind==='resume'/, 'native Resume must retain crop during handoff');
-assert.match(js, /target\.hidden=state!=='resume-ready'&&!pendingNative/, 'native Resume must retain target during handoff');
+assert.match(js, /target\.hidden=!variant\.prewarm\|\|\(!\['expired','resume-ready'\]\.includes\(state\)&&!pendingNative\)/, 'native Resume target must remain stable from cutoff through handoff');
 assert.match(js, /host\.classList\.toggle\('under-launcher',initial\)/, 'crop layering must switch between launcher and modal');
 
 assert.match(html, /#cutoffArea\{position:absolute;inset:0/, 'fixed overlay must not resize player area');
