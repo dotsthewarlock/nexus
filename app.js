@@ -10,13 +10,13 @@
     gordie: {waypoint:'Gordie Howe International Bridge'}
   };
   const CBSA_HOURS_URL = 'https://www.cbsa-asfc.gc.ca/data/cbsa-offices-services-bureaux-asfc-en.json';
-  // Source URLs come from the operator's public camera page. The Tunnel player
-  // is attempted when its modal opens; a user-activated Retry remains available
-  // if the browser or provider disallows autoplay. Do not change embed URLs.
+  // Original operator-hosted camera URLs. Tunnel native Play is activated by
+  // a real user tap on the cropped iframe; focus alone does not prove playback.
+  // Do not change embed URLs or synthesize player clicks.
   const DACAST_ROOT='https://iframe.dacast.com/live/8b2b630f-b7c1-262d-f343-118f510224a0/';
   const CAMERAS = {
-    tunnel:{us:{provider:'Detroit–Windsor Tunnel',official:'https://www.dwtunnel.com/',views:[{title:'Windsor inspection',embed:DACAST_ROOT+'4aea1c45-d402-3690-afae-fe635942da82',limit:15}]},
-      ca:{provider:'Detroit–Windsor Tunnel',official:'https://www.dwtunnel.com/',views:[{title:'Detroit inspection',embed:DACAST_ROOT+'794566d4-a75e-3cd1-6f95-2d60e54f2fdb',limit:15},{title:'Randolph Street',embed:DACAST_ROOT+'5408b5c3-f8d1-f34b-a18a-9943047905b6',limit:15}]}},
+    tunnel:{us:{provider:'Detroit–Windsor Tunnel',official:'https://www.dwtunnel.com/',views:[{title:'Windsor inspection',embed:DACAST_ROOT+'4aea1c45-d402-3690-afae-fe635942da82'}]},
+      ca:{provider:'Detroit–Windsor Tunnel',official:'https://www.dwtunnel.com/',views:[{title:'Detroit inspection',embed:DACAST_ROOT+'794566d4-a75e-3cd1-6f95-2d60e54f2fdb'},{title:'Randolph Street',embed:DACAST_ROOT+'5408b5c3-f8d1-f34b-a18a-9943047905b6'}]}},
     ambassador:{us:{provider:'Ambassador Bridge',official:'https://www.ambassadorbridge.com/into-the-united-states/',views:[{title:'Towards USA',embed:'https://ambassador.solutionspal.com/cams/cam2.html'}]},
       ca:{provider:'Ambassador Bridge',official:'https://www.ambassadorbridge.com/into-canada/',views:[{title:'Towards Canada',embed:'https://ambassador.solutionspal.com/cams/cam1.html'}]}},
     gordie:{us:{provider:'Ontario 511',official:'https://511on.ca/?SelectedLayers=Cameras',views:[]},
@@ -494,7 +494,7 @@
   $('tunnelCameraMinimize').addEventListener('click',minimizeTunnelCamera);
   $('tunnelCameraStop').addEventListener('click',()=>{
     stopTunnelCamera();
-    tunnelMode='stopped';
+    tunnelMode='stopped';tunnelDirection=prefs.direction;
     $('tunnelCameraLauncher').classList.add('is-stopped');
   });
   $('tunnelCameraRetry').addEventListener('click',()=>{
