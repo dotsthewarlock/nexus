@@ -175,6 +175,8 @@
       if(!Array.isArray(rows))continue;
       for(const entry of rows){
         if(entry.category==='road_condition'&&!entry.is_adverse)continue;
+        // Historical road/weather readings are not current conditions.
+        if(entry.category==='road_condition'&&(!Number.isFinite(D.age(entry.last_updated,now))||D.age(entry.last_updated,now)>120))continue;
         advisory.push(entry);
       }
     }
