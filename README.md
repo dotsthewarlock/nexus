@@ -1,4 +1,20 @@
-# Nexus RC1.4.8 — trustworthy commuter data
+# Nexus — Border Status
+
+## Current homepage: three-crossing status board (November 19, 2026)
+
+The primary screen is a compact border-status viewer with an **Into USA / Into Canada** selector, exactly three crossing rows, and side-by-side **NEXUS** and **Regular** inspection wait / lane-count fields. A camera action appears on each row; the Gordie Howe action stays disabled pending a verified official feed. Legacy trip planning and the original camera experiments remain at \`legacy.html\`.
+
+### Current-display trust policy
+
+- Show a numeric wait **only when the official agency observation is younger than 20 minutes**, the source retrieval is younger than 20 minutes, the published snapshot is younger than 20 minutes, and the source reports a valid observation. At exactly 20 minutes, it is no longer current.
+- Display an agency-reported **0-minute wait as “No Delay”**. Missing, invalid, older, or unverified waits are never rendered as a current zero.
+- For observations aged 20 minutes or more, **replace the main wait with a dash and show the agency's last actual observation time**. Do not substitute collector/publishing time for a missing observation timestamp.
+- Display source-reported lane counts where available, and clearly label **old counts as last reported**, not live. A missing count is unknown, not zero; a reported lane closure is not proof of exactly zero reported lanes.
+- Canada-bound CBSA data do not provide a separate NEXUS inspection wait or NEXUS lane count. A tunnel-operator-listed NEXUS count is a separate measurement disclosed only in diagnostics.
+- Keep the detailed agency observation times, retrieval times, source status, historical counts and warnings in the expanded diagnostics.
+- Do not alter the existing Python collector, periodic GitHub Actions publication or source credentials. The older RC1.4.8 reliability and routing discussion below documents the preserved legacy interface, not the redesigned primary screen.
+
+## Legacy RC1.4.8 project notes
 
 **Status:** RC1.4.8 trust-aware last-known reports and scheduled collection improvements, preserving RC1.4.7 cameras and RC1.4.6 conservative decision logic; deployment is managed by GitHub Actions. The publishing workflow generates a fresh `data/live.json` from official sources.
 

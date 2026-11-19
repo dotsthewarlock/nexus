@@ -3,16 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f3f6fb">
+<meta name="theme-color" content="#f5f7fa">
 <meta name="description" content="Nexus border wait times and reported lane counts for the three Windsor–Detroit crossings.">
 <title>Nexus · Border Status</title>
-<link rel="stylesheet" href="./board.css?v=board1">
+<link rel="stylesheet" href="./board.css?v=board2">
 </head>
 <body>
 <main class="shell">
   <header class="masthead">
     <div class="branding"><div class="mark" aria-hidden="true">N</div><div><h1>nexus</h1><p>Border status</p></div></div>
-    <button class="refresh" id="refresh" type="button" aria-label="Check the latest published border snapshot" title="Refresh snapshot">↻ <span>Refresh</span></button>
+    <button class="refresh" id="refresh" type="button" aria-label="Check the latest published border snapshot" title="Refresh snapshot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.5 9a7 7 0 0 1 12.5-3l2 6M4 12l2 6a7 7 0 0 0 12.5 3"/></svg><span>Refresh</span></button>
   </header>
   <section class="selector" aria-label="Crossing direction">
     <div class="segment" role="group" aria-label="Border crossing direction">
@@ -24,11 +24,11 @@
     <span class="status-dot" id="statusDot"></span><span id="summary">Loading latest published official data…</span>
   </section>
   <section class="board" aria-label="Border crossing status">
-    <div class="column-headers" aria-hidden="true"><span>Crossing</span><span>NEXUS</span><span>Regular</span><span>Camera</span></div>
+    <div class="board-heading"><h2>Crossings</h2><span>Inspection waits · reported lanes</span></div>
     <div id="crossingRows">
       <div class="loading">Checking published border data…</div>
     </div>
-    <div class="board-footer"><span><strong>Wait</strong> = border inspection minutes</span><span><strong>Lanes</strong> = source-reported lanes open, not independently verified</span></div>
+    <div class="board-footer"><span><strong>Wait</strong> · border inspection only</span><span><strong>Lanes</strong> · source-reported, not independently verified</span></div>
   </section>
   <p class="freshness-note" id="freshnessNote">Missing or outdated agency values are never converted to zero. Road approach and full-trip times are excluded.</p>
   <details class="diagnostics" id="diagnostics">
@@ -45,6 +45,6 @@
   <p class="camera-disclaimer">A camera image cannot confirm inspection wait times, NEXUS lane availability, or open lanes. Some providers block in-app playback.</p>
 </dialog>
 <script src="./decision.js?v=rc149"></script>
-<script src="./board.js?v=board1" defer></script>
+<script src="./board.js?v=board2" defer></script>
 </body>
 </html>
