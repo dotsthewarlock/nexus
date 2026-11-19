@@ -398,6 +398,12 @@ def empty_snapshot():
     return {
         'schema': 'nexus-live-v2',
         'generated_at': now_utc(),
+        'collection': {
+            # Used for diagnostics only; not proof that a scheduled trigger is healthy.
+            'trigger': os.environ.get('GITHUB_EVENT_NAME', 'local')[:30],
+            'run_id': os.environ.get('GITHUB_RUN_ID', '')[:30] or None,
+            'configured_interval_minutes': 15,
+        },
         'sources': {},
         'supplemental': {'dwt': {}, 'ontario511_events': [], 'cbsa_nexus_hours': {}},
         'directions': {'us': {}, 'ca': {}},

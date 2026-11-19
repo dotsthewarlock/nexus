@@ -1,4 +1,4 @@
-// RC1.4.5 source regression checks. The provider playback requires device QA.
+// RC1.4.6 preserves RC1.4.5 camera source regression checks. The provider playback requires device QA.
 const fs=require('node:fs');
 const assert=require('node:assert/strict');
 const app=fs.readFileSync('app.js','utf8');
@@ -16,5 +16,5 @@ assert(html.includes('data-scale="4"') && html.includes('data-scale="3"') && htm
 assert(app.includes('const BRIDGE_DEFAULT_ZOOM=4'));
 assert(app.includes('left:0.20,up:0.50'));
 assert(css.includes('.camera-watch-button'));
-assert(html.includes('app.js?v=rc145') && html.includes('styles.css?v=rc145'));
+assert(html.includes('app.js?v=rc146') && html.includes('styles.css?v=rc146'));
 console.log('RC1.4.5 camera source assertions passed');

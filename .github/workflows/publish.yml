@@ -5,7 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    - cron: '*/15 * * * *'
+    # Stagger away from minute 0 to reduce GitHub's high-load schedule delays.
+    # Actual execution remains best-effort, not a freshness guarantee.
+    - cron: '7,22,37,52 * * * *'
 
 permissions:
   contents: read

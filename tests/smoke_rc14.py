@@ -46,7 +46,7 @@ def main():
    page.add_script_tag(content=(ROOT/'app.js').read_text())
    page.wait_for_function("document.querySelector('#primaryValue').textContent === '5'")
   boot(page)
-  assert page.locator('#findingHeading').inner_text()=='No significant disruptions reported'
+  assert page.locator('#findingHeading').inner_text()=='No significant crossing disruptions reported'
   assert page.locator('#alternatives button').count()==2
   assert page.locator('#heroName').inner_text()=='Detroit–Windsor Tunnel'
   page.screenshot(path=str(OUT/'rc14-mobile-light.png'),full_page=True)
@@ -185,5 +185,5 @@ def main():
   desktop.close()
   assert not errors,errors
   browser.close()
- print('RC1.4.5 camera smoke passed: DWT Watch Live/15s continue; 4x bridge default with 20% left, 50% up; 320/390/1440px.')
+ print('RC1.4.6 camera regression passed: DWT Watch Live/15s continue; 4x bridge default with 20% left, 50% up; 320/390/1440px.')
 if __name__=='__main__': main()

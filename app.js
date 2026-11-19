@@ -28,13 +28,15 @@
   const esc = x=>safeText(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const fmtAge = n=>!Number.isFinite(n)?'time unknown':n<2?'just now':n<60?`${Math.round(n)} min ago`:`${Math.floor(n/60)}h ${Math.floor(n%60)}m ago`;
   const fmtClock=x=>{const t=new Date(x||'');return Number.isNaN(t.getTime())?'time unknown':new Intl.DateTimeFormat('en-CA',{hour:'numeric',minute:'2-digit',timeZone:'America/Toronto'}).format(t);};
-  const fmtWait=r=>D.usable(r)?String(r.minutes):r.kind==='closed'?'Closed':'—';
-  const waitUnit=r=>D.usable(r)?'min':'';
+  const fmtWait=r=>D.usable(r)||r?.kind==='stale'&&Number.isInteger(r.minutes)?String(r.minutes):r?.kind==='closed'?'Closed':'—';
+  const waitUnit=r=>D.usable(r)||r?.kind==='stale'&&Number.isInteger(r.minutes)?'min':'';
   function load(){try{const raw=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');return {...defaults,...raw,
     favorites:{...defaults.favorites,...raw.favorites},selected:{...defaults.selected,...raw.selected},
     destinations:{...defaults.destinations,...raw.destinations},
     recommendation:['conservative','balanced','information'].includes(raw.recommendation)?raw.recommendation:'conservative'};}catch{return structuredClone(defaults);}}
   let prefs=load(), tripOverride=null, customDestination='', routeOrigin='', data=null, lastClientFetch='', loadError='', busy=false;
+  let lastRefreshRequest=0,refreshCooldownUntil=0,refreshFeedback='';
+  const MANUAL_REFRESH_COOLDOWN_MS=30000, AUTO_REFRESH_MS=120000;
   let camera=null, cameraIndex=0, cameraTimeout=null, manuallySelectedDirection=false;
   // The camera is a cross-origin iframe; zoom/pan the visible bridge frame, never its internal DOM.
   const BRIDGE_DEFAULT_ZOOM=4;
@@ -72,11 +74,11 @@
       reading:prefs.direction==='us'?home.nexus:{kind:'unavailable'},
       note:prefs.direction==='ca'?(home.dwt?.lane_counts?.nexus!=null?`${home.dwt.lane_counts.nexus} operator-listed lanes · Wait unavailable`:'Canada-bound NEXUS wait not reported'):
         D.usable(home.nexus)&&Number.isInteger(nxLanes)?`${nxLanes} ${nxLanes===1?'lane':'lanes'} reported`:
-        home.nexus.kind==='closed'?'Lane reported closed':home.nexus.kind==='stale'?'Reading too old':'Wait not available'};
+        home.nexus.kind==='closed'?'Lane reported closed':home.nexus.kind==='stale'?`Stale · observed ${fmtAge(home.nexus.age)}`:'Wait not available'};
     const lanes=home.port?.standard?.lanes_open;
     const regularMetric={label:`Regular · ${prefs.direction==='us'?'CBP':'CBSA'}`,reading:home.standard,
       note:D.usable(home.standard)?Number.isInteger(lanes)?`${lanes} ${lanes===1?'lane':'lanes'} reported`:`Reported ${fmtAge(home.standard.age)}`:
-        home.standard.kind==='closed'?'Lane reported closed':home.standard.kind==='stale'?'Reading too old':'Wait not available'};
+        home.standard.kind==='closed'?'Lane reported closed':home.standard.kind==='stale'?`Stale · observed ${fmtAge(home.standard.age)}`:'Wait not available'};
     const leadNexus=prefs.nexus&&prefs.direction==='us';
     const lead=leadNexus?nexusMetric:regularMetric;
     const secondary=leadNexus?regularMetric:nexusMetric;
@@ -84,8 +86,10 @@
     $('regularLabel').closest('.metric').classList.remove('primary-metric');
     setText('primaryLabel',lead.label);setText('primaryValue',fmtWait(lead.reading));
     setText('primaryUnit',waitUnit(lead.reading));setText('primaryNote',lead.note);
+    $('primaryValue').closest('.metric').dataset.state=lead.reading.kind;
     setText('regularLabel',secondary.label);setText('regularValue',fmtWait(secondary.reading));
     setText('regularUnit',waitUnit(secondary.reading));setText('regularNote',secondary.note);
+    $('regularValue').closest('.metric').dataset.state=secondary.reading.kind;
     $('operatorLine').hidden=!home.dwt;
     if(home.dwt){const c=home.dwt.lane_counts;setText('operatorLine',`Tunnel operator · ${c.nexus??'—'} NEXUS lanes listed · ${c.car??'—'} car lanes listed · ${home.dwt.travel_time_category?'Travel category '+home.dwt.travel_time_category+' min':''} · Reported ${fmtAge(D.age(home.dwt.observation_at,Date.now()))}`);}
     setText('findingHeading',evaluation.headline);setText('findingDetail',evaluation.detail);
@@ -96,37 +100,59 @@
     const tunnelCamera=activeId()==='tunnel';
     setText('heroCameraText',tunnelCamera?'Cameras':'Camera');
     $('heroCamera').setAttribute('aria-label',tunnelCamera?'Open embedded Detroit–Windsor Tunnel camera':`Open ${NAMES[activeId()]} camera`);
-    setText('heroFreshness',D.usable(home.primary)?`${home.primaryType==='nexus'?'NEXUS':'Regular'} report ${fmtAge(home.primary.age)} · ${prefs.direction==='us'?'CBP':'CBSA'}`:'No current inspection reading');
+    renderHeroFreshness(home);
     renderAlternatives(evaluation);
     renderDataStatus();renderEvents();renderDetails();renderDiagnostics();
+  }
+  function renderHeroFreshness(home){
+    // Must describe the lead wait actually shown to the user, not the engine's
+    // regular-lane fallback when the requested NEXUS observation is stale.
+    const leadNexus=prefs.nexus&&prefs.direction==='us';
+    const r=leadNexus?home.nexus:home.standard,source=prefs.direction==='us'?'CBP':'CBSA';
+    const category=leadNexus?'NEXUS':'Regular';
+    const state=r?.kind==='current'?'Current':r?.kind==='aging'?'Aging':r?.kind==='stale'?'Stale':r?.kind==='closed'?'Closed':'Unavailable';
+    const observation=Number.isFinite(r?.age)?` · observed ${fmtAge(r.age)}`:'';
+    setText('heroFreshness',`${source} · ${category} · ${state}${observation} · inspection only`);
   }
   function renderAlternatives(result){
     const alt=result.alternatives;
     $('alternatives').innerHTML=alt.map(c=>{
       const isNx=prefs.nexus&&prefs.direction==='us'&&c.primaryType==='nexus';
       const source=prefs.direction==='us'?'CBP':'CBSA';
-      const note=c.portClosed?'Port reported closed':D.usable(c.primary)?`${isNx?'NEXUS':'Regular'} inspection · ${source}`:c.primary.kind==='stale'?'Inspection reading stale':'Inspection wait unavailable';
-      return `<button type="button" class="alternative" data-crossing="${c.id}" aria-label="Select ${esc(c.name)} for this trip"><span class="alt-caption"><h3>${esc(c.name)}</h3><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></span><span class="alt-wait">${c.portClosed?'Closed':fmtWait(c.primary)} <small>${!c.portClosed&&D.usable(c.primary)?'min':''}</small></span><span class="alt-sub">${esc(note)}</span></button>`;
+      const note=c.portClosed?'Port reported closed':c.primary.kind==='stale'?`${isNx?'NEXUS':'Regular'} · STALE ${fmtAge(c.primary.age)}`:D.usable(c.primary)?`${isNx?'NEXUS':'Regular'} · observed ${fmtAge(c.primary.age)} · ${source}`:'Inspection wait unavailable';
+      return `<button type="button" class="alternative${result.suggested===c.id?' alternative--suggested':''}" data-crossing="${c.id}" aria-label="Select ${esc(c.name)} for this trip"><span class="alt-caption"><h3>${esc(c.name)}</h3><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></span><span class="alt-wait">${c.portClosed?'Closed':fmtWait(c.primary)} <small>${!c.portClosed&&Number.isInteger(c.primary.minutes)&&c.primary.kind!=='unavailable'?'min':''}</small></span>${result.suggested===c.id?'<span class="alt-suggested">Inspection alternative to consider</span>':''}<span class="alt-sub">${esc(note)}</span></button>`;
     }).join('');
     $('alternatives').querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>{tripOverride=button.dataset.crossing;render();scrollTo({top:0,behavior:'smooth'});}));
   }
   function renderDataStatus(){
     const source=data?.sources?.[prefs.direction==='us'?'cbp':'cbsa'];
-    const freshness=D.age(data?.generated_at,Date.now());
-    const result=D.evaluate(data,prefs.direction,activeId(),prefs.nexus,prefs.recommendation);
+    const sourceName=prefs.direction==='us'?'CBP':'CBSA';
+    const now=Date.now(),snapAge=D.age(data?.generated_at,now),sourceAge=D.age(source?.retrieved_at,now);
+    const readings=D.IDS.map(id=>D.crossing(data,prefs.direction,id,prefs.nexus,now).standard);
+    const current=readings.filter(r=>r.kind==='current').length;
+    const aging=readings.filter(r=>r.kind==='aging').length;
     let level='unknown',line='Official reports unavailable';
-    if(busy&&!data)line='Checking official sources…';
-    else if(source?.status==='ok'&&freshness<=150){
-      const count=result.crossings.filter(c=>D.usable(c.standard)).length;
-      level=count===3?'ok':'caution';line=`${prefs.direction==='us'?'CBP':'CBSA'} · ${count}/3 usable crossing reports · Snapshot ${fmtAge(freshness)}`;
-    }else if(data&&freshness>150){level='caution';line=`Snapshot stale (${fmtAge(freshness)}). Official readings may be outdated.`;}
-    else if(loadError){level='caution';line='Latest report unavailable';}
+    if(busy&&!data) line='Checking published snapshot…';
+    else if(loadError){level='caution';line=`Update failed · last snapshot ${fmtAge(snapAge)}`;}
+    else if(!data || source?.status!=='ok') {level='caution';line=`${sourceName} source unavailable · verify before travelling`;}
+    else if(!Number.isFinite(snapAge)||snapAge>60){level='caution';line=`Snapshot expired · last collected ${fmtAge(snapAge)}`;}
+    else if(snapAge>20||sourceAge>20){level='caution';line=`${sourceName} publication overdue · collected ${fmtAge(snapAge)} · source ${fmtAge(sourceAge)}`;}
+    else {
+      level=current===3?'ok':'caution';
+      line=`${sourceName} · ${current}/3 current, ${aging} aging · collected ${fmtAge(snapAge)}`;
+    }
+    // A cooldown message must not linger after the cooldown has expired.
+    if(refreshFeedback.startsWith('Next check')) {
+      if(now>=refreshCooldownUntil)refreshFeedback='';
+      else refreshFeedback=`Next check in ${Math.ceil((refreshCooldownUntil-now)/1000)}s`;
+    }
+    if(refreshFeedback)line+=` · ${refreshFeedback}`;
     $('dataBar').dataset.level=level;setText('dataStatus',line);
   }
   function renderEvents(){
     const source=data?.sources?.ontario511;
     const list=data?.supplemental?.ontario511_events||[];
-    const fresh=source?.status==='ok'&&D.age(source.retrieved_at,Date.now())<=150&&D.age(data.generated_at,Date.now())<=150;
+    const fresh=source?.status==='ok'&&D.age(source.retrieved_at,Date.now())<=20&&D.age(data.generated_at,Date.now())<=20;
     $('alertsSection').hidden=!fresh||list.length===0;
     if(!fresh)return;
     $('advisories').innerHTML=list.slice(0,3).map(e=>`<div class="alert-row"><strong>${esc(e.roadway)}${e.is_full_closure?' · Closure reported':''}</strong><div class="subtle">${esc(e.description||e.type)}${e.direction?' · '+esc(e.direction):''}</div></div>`).join('');
@@ -135,7 +161,7 @@
   function fieldWait(c,key,label){
     const reading=c[key];const raw=c.port?.[key];
     let value=reading?.kind==='closed'?'Closed':reading?.kind==='not_applicable'?'Not applicable':D.usable(reading)?`${reading.minutes} min`:'Unavailable';
-    if(reading?.kind==='stale')value='Stale';
+    if(reading?.kind==='stale')value=`${reading.minutes} min · STALE (${fmtAge(reading.age)} old; not for recommendations)`;
     const lane=raw?.lanes_open;
     if(Number.isInteger(lane)&&D.usable(reading))value+=` · ${lane} lanes reported`;
     return detailLine(label,value);
@@ -169,16 +195,37 @@
   }
   function renderDiagnostics(){
     const sources=data?.sources||{};
-    $('diagnosticText').innerHTML=[`<p>Build: RC1.4.5 · Schema: ${esc(data?.schema||'No snapshot')}</p>`,`<p>Generated: ${esc(data?.generated_at||'Unavailable')} · Browser fetch: ${esc(lastClientFetch||'Not yet')}</p>`,...Object.entries(sources).map(([k,v])=>`<p><strong>${esc(k.toUpperCase())}</strong> · ${esc(v.status||'?')} · ${esc(v.coverage===undefined?'':v.coverage+' records')} · Retrieved ${esc(v.retrieved_at||'unknown')}${v.error?' · '+esc(v.error):''}<br><a href="${esc(v.url||'#')}" target="_blank" rel="noopener noreferrer">Official source</a></p>`),
+    $('diagnosticText').innerHTML=[`<p>Build: RC1.4.6 · Schema: ${esc(data?.schema||'No snapshot')}</p>`,`<p>Generated: ${esc(data?.generated_at||'Unavailable')} · Browser fetch: ${esc(lastClientFetch||'Not yet')}</p>`,
+      `<p>Collector trigger: ${esc(data?.collection?.trigger||'Unknown')} · Run: ${esc(data?.collection?.run_id||'Unreported')} · Job cadence configured for 15 minutes. Scheduled execution must be confirmed in GitHub Actions.</p>`,
+      `<p>Current ≤10 min; aging 10–20 min; stale 20–60 min; older readings unavailable. Recommendations require recent, comparable observations ≤5 min apart. Published NEXUS hours are not live lane status.</p>`,...Object.entries(sources).map(([k,v])=>`<p><strong>${esc(k.toUpperCase())}</strong> · ${esc(v.status||'?')} · ${esc(v.coverage===undefined?'':v.coverage+' records')} · Retrieved ${esc(v.retrieved_at||'unknown')}${v.error?' · '+esc(v.error):''}<br><a href="${esc(v.url||'#')}" target="_blank" rel="noopener noreferrer">Official source</a></p>`),
     '<p>MDOT RIDE requires MiLogin for Business. Ontario 511 event ingestion requires a developer key. Supplemental feed failure never fabricates a delay or closure.</p>'].join('');
   }
-  async function refresh(){
+  async function refresh(manual=false){
     if(busy)return;
-    busy=true;renderDataStatus();const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),13000);
-    try{const response=await fetch(`./data/live.json?ts=${Date.now()}`,{cache:'no-store',signal:controller.signal});if(!response.ok)throw Error(`HTTP ${response.status}`);
-      const payload=await response.json();if(!['nexus-live-v2','nexus-live-v1'].includes(payload.schema)||!payload.sources||!payload.directions)throw Error('Unrecognized snapshot');
+    const now=Date.now();
+    if(manual&&now<refreshCooldownUntil){
+      refreshFeedback=`Next check in ${Math.ceil((refreshCooldownUntil-now)/1000)}s`;
+      renderDataStatus();return;
+    }
+    if(manual)refreshCooldownUntil=now+MANUAL_REFRESH_COOLDOWN_MS;
+    lastRefreshRequest=now;
+    refreshFeedback='';busy=true;renderDataStatus();
+    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),13000);
+    try{
+      // Browser always fetches the ONE shared GitHub Pages snapshot, never agency APIs.
+      const response=await fetch(`./data/live.json?ts=${now}`,{cache:'no-store',signal:controller.signal});
+      if(!response.ok)throw Error(`HTTP ${response.status}`);
+      const payload=await response.json();
+      if(!['nexus-live-v2','nexus-live-v1'].includes(payload.schema)||!payload.sources||!payload.directions)throw Error('Unrecognized snapshot');
+      // Never replace known data with an older snapshot returned by a stale edge cache.
+      const incoming=Date.parse(payload.generated_at||''),previous=Date.parse(data?.generated_at||'');
+      if(!Number.isFinite(incoming))throw Error('Snapshot timestamp missing');
+      if(Number.isFinite(previous)&&incoming<previous)throw Error('Older published snapshot returned');
+      if(!Number.isFinite(D.age(payload.generated_at,Date.now())))throw Error('Future snapshot timestamp');
       data=payload;loadError='';lastClientFetch=new Date().toISOString();
-    }catch(e){loadError=safeText(e.message||e);}finally{clearTimeout(timeout);busy=false;render();}
+      if(manual)refreshFeedback='Latest published snapshot checked';
+    }catch(e){loadError=safeText(e?.message||e);}
+    finally{clearTimeout(timeout);busy=false;render();}
   }
   function setDirection(dir,manual){prefs.direction=dir;tripOverride=null;if(manual)manuallySelectedDirection=true;save();render();}
   function locationFeedback(text){setText('locationStatus',text);}
@@ -391,7 +438,7 @@
   $('compareButton').addEventListener('click',()=>{$('allConditions').open=true;$('allConditions').scrollIntoView({behavior:'smooth',block:'start'});});
   $('dataDetailsButton').addEventListener('click',()=>{$('allConditions').open=true;$('allConditions').scrollIntoView({behavior:'smooth',block:'start'});});
   $('resetTrip').addEventListener('click',()=>{tripOverride=null;render();});
-  $('refreshButton').addEventListener('click',refresh);
+  $('refreshButton').addEventListener('click',()=>refresh(true));
   $('closeRoute').addEventListener('click',()=>$('routeDialog').close());
   $('routeForm').addEventListener('submit',e=>{e.preventDefault();routeOrigin=$('originRoute').value.trim().slice(0,180);const dest=$('destinationRoute').value.trim().slice(0,180);if(!dest){$('destinationRoute').focus();return;}
     if(prefs.destinationChoice==='custom'){customDestination=dest;}else{prefs.destinations[prefs.destinationChoice]=dest;save();}
@@ -406,6 +453,7 @@
   for(const id of ['settingsDialog','routeDialog','cameraDialog'])$(id).addEventListener('click',e=>{if(e.target===$(id))$(id).close();});
   if(matchMedia('(prefers-color-scheme: dark)').addEventListener)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(prefs.theme==='system')applyTheme();});
   render();autoLocation();refresh();
-  setInterval(()=>{if(!document.hidden)refresh();},120000);
-  setInterval(()=>{if(!document.hidden){renderDataStatus();const current=D.crossing(data,prefs.direction,activeId(),prefs.nexus,Date.now());setText('heroFreshness',D.usable(current.primary)?`${current.primaryType==='nexus'?'NEXUS':'Regular'} report ${fmtAge(current.primary.age)} · ${prefs.direction==='us'?'CBP':'CBSA'}`:'No current inspection reading');}},60000);
+  setInterval(()=>{if(!document.hidden)refresh();},AUTO_REFRESH_MS);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-lastRefreshRequest>=AUTO_REFRESH_MS)refresh();});
+  setInterval(()=>{if(!document.hidden){renderDataStatus();const current=D.crossing(data,prefs.direction,activeId(),prefs.nexus,Date.now());renderHeroFreshness(current);}},60000);
 })();

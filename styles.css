@@ -97,3 +97,9 @@ body[data-theme="dark"] {color-scheme:dark; --bg:#101a24; --surface:#182633; --s
 .camera-watch-button:focus-visible{outline:3px solid #d1e6ff;outline-offset:3px}
 .camera-zoom-controls button{min-width:39px;min-height:44px;padding:8px 6px}
 @media(max-width:360px){.camera-zoom-controls{right:6px;top:6px;gap:1px;padding:3px}.camera-zoom-controls button{min-width:38px;font-size:13px}}
+
+/* RC1.4.6: stale readings remain visible but cannot be mistaken for current. */
+.metric[data-state="stale"]{border-color:var(--warn);background:var(--soft)}
+.metric[data-state="stale"] .metric-value{opacity:.78}
+.alternative--suggested{border-color:var(--blue-border);background:var(--blue-soft)}
+.alt-suggested{font-size:11px;font-weight:740;color:var(--accent-strong)}

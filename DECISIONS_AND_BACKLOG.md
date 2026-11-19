@@ -96,3 +96,13 @@
 ## Deferred
 - Road-based automated crossing detours until routes and incident geofences are validated.
 - Permanent historical warehouse, predictive wait model, weather/holiday/event integrations and toll-based optimization.
+
+## RC1.4.6 — Data integrity implementation (2026-11-18)
+
+**Confirmed priority:** Truthful source status and conservative recommendations over speed/feature breadth.
+
+**Implemented in release candidate:** 0–10 current / 10–20 aging / 20–60 explicitly stale / >60 unavailable; separate publisher and observation timestamps; reject future/invalid dates; only recommend when source and observations are <10 min and measured within 5 min of each other; classify routine Ready Lane hours separately from disruptions; apply weekday/weekend/known holiday label rules to Canada-bound CBSA published NEXUS schedules, returning unknown on ambiguous dates. Existing preference and camera behavior retained.
+
+**Unverified:** Scheduled GitHub Actions execution; GitHub commit-triggered execution does not establish a working cron. Official CBSA 'Holidays' semantics may differ from public holiday calendars. No assumption of live NEXUS open status or total-trip routing benefit.
+
+**Deferred:** New backend, 5-minute collector and direct source refresh, predictive routing, new mobile three-crossing layout, permanent time-series storage.
