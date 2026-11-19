@@ -38,6 +38,8 @@ jobs:
         run: node tests/decision.test.cjs
       - name: Three-crossing status dashboard tests
         run: node tests/status_board.test.cjs
+      - name: Camera modal and NEXUS schedule tests
+        run: node tests/camera_modal_board.test.cjs
       - name: Camera source regression tests
         run: node tests/camera_rc148.test.cjs
       - name: Standalone camera diagnostic tests

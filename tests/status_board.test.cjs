@@ -14,7 +14,7 @@ assert.ok(!html.includes('Destination preset')&&!html.includes('Preview route')&
 assert.ok(!html.includes('tripSelect')&&!html.includes('navigateButton'));
 assert.ok(js.includes("const IDS=['ambassador','tunnel','gordie'];"));
 assert.ok(js.includes("id==='gordie'?'disabled'"),'Gordie Howe camera must be disabled');
-assert.ok(js.includes("if(id==='gordie')return;"),'Gordie Howe must not load camera');
+assert.ok(js.includes("if(id==='gordie'||!CAMERAS[id])return;"),'Gordie Howe must not load camera');
 assert.ok(js.includes("direction==='ca'&&category==='nexus'"),'Canada NEXUS waits unavailable');
 assert.ok(js.includes("fetch('./data/live.json?ts='"),'must use published snapshot');
 assert.ok(js.includes("'nexus-live-v2'"),'must accept collector schema');
@@ -26,7 +26,7 @@ assert.ok(js.includes("if(raw.status==='closed')")||js.includes("raw.status==='c
 assert.ok(js.includes('lastFetch')&&js.includes('renderDiagnostics()'));
 assert.ok(js.includes('removeAttribute(\'src\')'),'camera must unload on close');
 assert.ok(css.includes('grid-template-columns')&&css.includes('@media (max-width: 720px)'));
-assert.ok(html.includes('board.js?v=board2')&&html.includes('board.css?v=board2'));
+assert.ok(html.includes('board.js?v=board3')&&html.includes('board.css?v=board3'));
 assert.ok(workflow.includes('cp board.css board.js legacy.html site/'), 'board and legacy page must be published');
 assert.ok(workflow.includes('cp index.html styles.css app.js decision.js camera-diagnostics.html site/'), 'original camera scripts must remain deployed');
 console.log('Border-status board static checks passed: direction, three rows, lanes, unavailable semantics, cameras, deployment.');
@@ -51,9 +51,10 @@ const document={
 };
 const sandbox={
   document,
-  window:{NexusDecision:D},
+  window:{NexusDecision:D,addEventListener(){}},
   localStorage:{getItem(){return null},setItem(){}},
   AbortController,
+  requestAnimationFrame(){},
   setInterval(){},
   setTimeout(){return 0},
   clearTimeout(){},

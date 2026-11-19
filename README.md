@@ -4,6 +4,16 @@
 
 The primary screen is a compact border-status viewer with an **Into USA / Into Canada** selector, exactly three crossing rows, and side-by-side **NEXUS** and **Regular** inspection wait / lane-count fields. A camera action appears on each row; the Gordie Howe action stays disabled pending a verified official feed. Legacy trip planning and the original camera experiments remain at \`legacy.html\`.
 
+### Camera modal and NEXUS schedule context
+
+- Ambassador Bridge opens with the preserved **4× zoom** and a default 20% left / 50% upward inspection-area framing. Fit, 2×, 3× and 4×, touch/mouse drag-to-pan, and keyboard zoom are available.
+- Clicking/tapping the backdrop (outside the dialog), pressing Escape, selecting the close control or changing directions closes the modal and unloads the camera iframe. Camera content and zoom interactions inside the dialog do not dismiss it.
+- The modal header shows the same NEXUS/regular waits, reported lane counts, and 20-minute observation freshness policy as the main board. It must not upgrade stale or missing source data.
+- **Canada-bound:** Use the existing CBSA office-directory NEXUS schedule cache to show whether the current time is inside or outside a published NEXUS window, and the next confidently derived scheduled opening or end of availability. Multiple lane windows are merged for availability; ambiguous day/holiday rules suppress precise times. A published schedule never establishes live lane availability.
+- **US-bound:** CBP reported NEXUS wait/closure status can be shown if current, but the current data source has no validated NEXUS opening/closing schedule. Do not infer one from 24-hour port hours, lane counts, or historical closure reports.
+- **Tunnel:** A recent tunnel-operator NEXUS lane count may be labeled as operator-listed, separate from CBSA inspection wait and live lane availability.
+- Gordie Howe's camera remains disabled until a verifiable official camera feed is available. Camera playback on real devices remains subject to provider/browser restrictions.
+
 ### Current-display trust policy
 
 - Show a numeric wait **only when the official agency observation is younger than 20 minutes**, the source retrieval is younger than 20 minutes, the published snapshot is younger than 20 minutes, and the source reports a valid observation. At exactly 20 minutes, it is no longer current.
