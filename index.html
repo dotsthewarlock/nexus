@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7f9fb">
   <meta name="description" content="Nexus Windsor–Detroit border inspection waits, both directions and three crossings.">
   <title>Nexus - Commuter · Border inspection waits</title>
-  <link rel="stylesheet" href="./dashboard.css?v=m3-foundation1">
+  <link rel="stylesheet" href="./dashboard.css?v=m3-paired1">
 </head>
 <body>
 <main class="app-shell" id="main">
@@ -19,14 +19,6 @@
   </header>
 
   <div class="controls" aria-label="Comparison controls">
-    <div class="sort-wrap">
-      <button class="icon-button" id="sortToggle" type="button" aria-label="Sort crossings; current order: crossing order" aria-expanded="false" aria-haspopup="true" aria-controls="sortMenu" title="Sort crossings">⇅</button>
-      <div class="sort-menu" id="sortMenu" hidden aria-label="Sort options">
-        <button type="button" data-sort="fixed">Crossing order</button>
-        <button type="button" data-sort="ca">Lowest Canada wait</button>
-        <button type="button" data-sort="us">Lowest USA wait</button>
-      </div>
-    </div>
     <label class="sr-only" for="vehicleSelect">Vehicle type</label>
     <select id="vehicleSelect" class="mode-pill pill-vehicle" aria-label="Vehicle type">
       <option value="passenger">Passenger</option>
@@ -49,6 +41,7 @@
     </div>
   </section>
 
+  <p class="pair-legend" id="pairLegend" hidden>USA: <strong>NEXUS first / Regular second</strong>, independently reported. Canada: CBSA general passenger wait.</p>
   <div class="source-summary" aria-live="polite" aria-atomic="true">
     <span class="status-dot" id="statusDot" aria-hidden="true"></span>
     <button id="sourceDetails" class="status-link" type="button" aria-label="View official source freshness details"><span id="summary">Checking reported observations…</span></button>
@@ -90,7 +83,19 @@
 <dialog id="settingsDialog" class="settings-screen" aria-labelledby="settingsTitle">
   <div class="settings-body">
     <div class="sheet-header"><h2 id="settingsTitle" tabindex="-1">Settings</h2><button id="settingsClose" class="icon-button" type="button" aria-label="Close Settings">×</button></div>
-    <section><h3>Comparison</h3><p>Sorting is remembered locally. Vehicle and lane choices apply to this visit.</p><button id="resetSort" class="secondary-button" type="button">Reset crossing order</button></section>
+    <section><h3>Comparison</h3>
+      <div class="sort-wrap">
+        <button class="secondary-button sort-settings-button" id="sortToggle" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="sortMenu" aria-label="Sort crossings; current order: crossing order">Sorting: Crossing order ▾</button>
+        <div class="sort-menu" id="sortMenu" hidden aria-label="Sort options">
+          <button type="button" data-sort="fixed">Crossing order</button>
+          <button type="button" data-sort="ca">Lowest Canada inspection wait</button>
+          <button type="button" data-sort="us">Lowest USA inspection wait</button>
+        </div>
+      </div>
+      <p class="detail-note" id="sortHint">Whole crossing rows move together. Sorting is based on official inspection reports, not total trip time.</p>
+      <p>Sorting is remembered locally. Vehicle and lane choices apply to this visit.</p>
+      <button id="resetSort" class="secondary-button" type="button">Reset crossing order</button>
+    </section>
     <section><h3>Data &amp; diagnostics</h3><div id="diagnosticBody" class="diagnostics">No official snapshot loaded.</div></section>
     <section><h3>Camera viewer</h3><a href="./classic-board.html">Open existing camera viewer</a></section>
     <p class="detail-note">No account required. No location permission requested. Data is based on periodically published reports, not live lane confirmation.</p>
@@ -98,6 +103,6 @@
 </dialog>
 
 <script src="./decision.js?v=rc149-dwt1"></script>
-<script src="./dashboard.js?v=m3-foundation1" defer></script>
+<script src="./dashboard.js?v=m3-paired1" defer></script>
 </body>
 </html>

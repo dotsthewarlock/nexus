@@ -26,7 +26,7 @@ for(const forbidden of [
 ]){
  assert.doesNotMatch(app,forbidden,'Deferred navigation code must not execute');
 }
-assert.match(html,/dashboard\.js\?v=m3-foundation1/);
+assert.match(html,/dashboard\.js\?v=m3-paired1/);
 assert.match(publish,/cp dashboard\.css dashboard\.js classic-board\.html site\//);
 assert.doesNotMatch(publish,/cp dashboard\.css dashboard\.js destinations\.js routing\.js/);
 assert.match(html,/id="detailDialog"/);

@@ -90,7 +90,7 @@ def check_geometry(page, width, large=False):
     assert page.locator(".crossing-row [role=rowheader]").count() == 3
     assert page.locator(".crossing-row [role=cell]").count() == 6
     assert page.locator(".crossing-row").first.locator(".wait-cell").count() == 2
-    for selector in ("#sortToggle", "#vehicleSelect", "#laneSelect",
+    for selector in ("#vehicleSelect", "#laneSelect",
                      ".wait-cell[data-crossing=tunnel][data-direction=ca]"):
         box = rect(page, selector)
         assert box["height"] >= 43.5, f"Touch target too small: {selector}, {box}"
@@ -106,61 +106,96 @@ def check_geometry(page, width, large=False):
         rowheader = rect(page, ".crossing-row:first-child .crossing-name")
         cell = rect(page, ".crossing-row:first-child .wait-wrap")
         assert abs(rowheader["y"] - cell["y"]) < 2, "Normal mode must keep a compact three-column row"
-        a, b, c = (rect(page, x)["y"] for x in
-                   ("#sortToggle", "#vehicleSelect", "#laneSelect"))
-        assert max(a, b, c) - min(a, b, c) < 3, "Exactly one normal quick-controls row"
+        a, b = (rect(page, x)["y"] for x in
+                   ("#vehicleSelect", "#laneSelect"))
+        assert max(a, b) - min(a, b) < 3, "Exactly one normal quick-controls row"
+
 
 
 def test_interactions(page):
-    # Source field semantics and strict lane selection.
+    # G1: first launch is Passenger + NEXUS, with CBSA general on Canada side.
     ca = page.locator('.wait-cell[data-crossing="tunnel"][data-direction="ca"]')
     us = page.locator('.wait-cell[data-crossing="tunnel"][data-direction="us"]')
-    assert "6 min" in ca.inner_text()
-    assert "0 min" in us.inner_text(), "Verified zero must not become unavailable"
-    assert "2 lanes" not in ca.inner_text(), "Regular Canada count must not borrow DWT NEXUS"
+    assert page.locator("#vehicleSelect").input_value() == "passenger"
+    assert page.locator("#laneSelect").input_value() == "nexus"
+    assert "6 min" in ca.inner_text(), "CBSA general passenger reading remains visible once"
+    assert "2 lanes" in ca.inner_text() and "DWT" in ca.inner_text(), (
+        "Current DWT supplemental count is independent of the CBSA general wait")
+    assert us.locator(".pair-amount").all_inner_texts() == ["7", "0"], (
+        "USA must pair CBP NEXUS 7 with CBP Regular verified zero")
+    assert us.locator(".pair-separator").inner_text().strip() == "/"
+    separator_padding = us.locator(".pair-separator").evaluate(
+        "(el)=>parseFloat(getComputedStyle(el).paddingLeft)")
+    assert separator_padding >= 3, "Slash requires visible spacing; 7/0 is ambiguous"
+    assert "min" in us.locator(".wait-unit").inner_text()
+    assert "1 / 3 lanes" in us.inner_text(), "Each CBP lane count keeps its category"
+    assert page.locator("#pairLegend").is_visible()
+    assert "NEXUS first / Regular second" in page.locator("#pairLegend").inner_text()
+    spoken = us.get_attribute("aria-label") or ""
+    assert "NEXUS 7 minutes" in spoken and "Regular 0 minutes" in spoken
+    assert "CBP observed" in spoken
+    sizes = us.locator(".pair-amount").evaluate_all(
+        "(els)=>els.map(el=>getComputedStyle(el).fontSize)")
+    assert len(sizes) == 2 and len(set(sizes)) == 1, (
+        "NEXUS and Regular digits must have identical font size")
 
-    page.locator("#laneSelect").select_option("nexus")
-    assert "--" in ca.inner_text(), "No Canada-bound NEXUS wait is published"
-    assert "2 lanes" in ca.inner_text() and "DWT" in ca.inner_text()
-    assert "7 min" in us.inner_text(), "US NEXUS must use its own CBP category"
-    assert "DWT reports 2 NEXUS lanes open" in (ca.get_attribute("aria-label") or "")
-
-    # Native dialog: directional selection, keyboard navigation and accessible name.
+    # G2: details identify independently sourced categories and Canada general reading.
     ca.focus()
     ca.press("Enter")
     assert page.locator("#detailDialog").evaluate("(el)=>el.open")
     assert page.locator("#detailTitle").inner_text() == "Detroit–Windsor Tunnel"
     assert page.locator("#detailTitle").evaluate("(el)=>document.activeElement===el")
     assert page.locator("#detailCa").get_attribute("aria-pressed") == "true"
+    assert "CBSA general passenger" in page.locator("#detailCategory").inner_text()
     assert "2 NEXUS lanes open" in page.locator("#detailDwtReport").inner_text()
     page.locator("#detailUs").click()
     assert page.locator("#detailUs").get_attribute("aria-pressed") == "true"
     assert page.locator("#detailDwt").is_hidden()
+    assert page.locator("#detailWait").inner_text() == "7 / 0 min"
+    source_text = page.locator("#detailProvenance").inner_text()
+    assert "NEXUS" in source_text and "Regular" in source_text
+    assert "Physical additivity is unverified" in source_text
     page.keyboard.press("Escape")
-    assert not page.locator("#detailDialog").evaluate("(el)=>el.open"), "Escape closes native bottom sheet"
+    assert not page.locator("#detailDialog").evaluate("(el)=>el.open")
 
-    # Sort moves entire crossing rows, never country cells independently.
+    # G1: Regular is strict when chosen, and removes the paired legend.
     page.locator("#laneSelect").select_option("regular")
+    assert "0 min" in us.inner_text() and "/" not in us.inner_text()
+    assert page.locator("#pairLegend").is_hidden()
+
+    # G3: sort is available only in Settings, moves entire crossing rows,
+    # and retains clear country direction labels.
+    assert page.locator("#sortToggle").is_hidden()
+    page.locator("#settingsOpen").click()
+    assert page.locator("#settingsDialog").evaluate("(el)=>el.open")
+    assert page.locator("#settingsTitle").evaluate("(el)=>document.activeElement===el")
+    assert rect(page, "#settingsClose")["height"] >= 43.5
     page.locator("#sortToggle").click()
     page.locator('#sortMenu [data-sort="us"]').click()
-    assert page.locator(".crossing-row .crossing-name").all_inner_texts() == [
-        "Tunnel", "Ambassador", "Gordie Howe"]
+    assert "Lowest USA wait" in page.locator("#sortToggle").inner_text()
     assert page.locator("#usHeading").inner_text().endswith("↓")
     assert "To Canada" in page.locator("#caHeading").inner_text()
+    page.locator("#settingsClose").click()
+    assert page.locator(".crossing-row .crossing-name").all_inner_texts() == [
+        "Tunnel", "Ambassador", "Gordie Howe"]
 
-    # Theme toggle changes CSS mode with a readable accessible name.
+    # Theme control stays directly before Settings and switches without resetting sort.
     before = page.locator("body").evaluate("(el)=>getComputedStyle(el).backgroundColor")
     page.locator("#themeToggle").click()
     assert page.locator("html").get_attribute("data-theme") == "dark"
     assert page.locator("#themeToggle").get_attribute("aria-label") == "Switch to light mode"
     after = page.locator("body").evaluate("(el)=>getComputedStyle(el).backgroundColor")
     assert before != after
-    page.locator("#settingsOpen").click()
-    assert page.locator("#settingsDialog").evaluate("(el)=>el.open")
-    assert page.locator("#settingsTitle").evaluate("(el)=>document.activeElement===el")
-    assert rect(page, "#settingsClose")["height"] >= 43.5
-    page.locator("#settingsClose").click()
-    assert not page.locator("#settingsDialog").evaluate("(el)=>el.open")
+
+
+def test_long_pair(page):
+    # G2/G5: three-digit values must reflow instead of reducing numeric font sizes.
+    assert page.locator("#laneSelect").input_value() == "nexus"
+    us = page.locator('.wait-cell[data-crossing="ambassador"][data-direction="us"]')
+    assert us.locator(".pair-stacked-row").count() == 2
+    assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
+    assert us.bounding_box()["width"] >= 44
+    assert "NEXUS" in us.inner_text() and "Regular" in us.inner_text()
 
 
 def main():
@@ -188,6 +223,19 @@ def main():
                     page.screenshot(path=str(OUT / "dashboard-390-dark.png"), full_page=True)
                 assert not errors, f"Browser JS errors at {width}px: {errors}"
                 context.close()
+
+            stress = snapshot()
+            stress["directions"]["us"]["ambassador"]["nexus"]["minutes"] = 120
+            stress["directions"]["us"]["ambassador"]["standard"]["minutes"] = 135
+            context = browser.new_context(
+                viewport={"width": 320, "height": 844},
+                is_mobile=True, has_touch=True, device_scale_factor=1)
+            page = context.new_page()
+            boot(page, stress)
+            check_geometry(page, 320)
+            test_long_pair(page)
+            page.screenshot(path=str(OUT / "dashboard-320-long-pair.png"), full_page=True)
+            context.close()
 
             for width in (320, 390, 430):
                 context = browser.new_context(

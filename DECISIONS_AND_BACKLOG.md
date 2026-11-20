@@ -1,3 +1,23 @@
+# Nexus - Commuter M3 dashboard — owner decisions (2026-11-20)
+
+**Selected — G1–G5.** These are the owner's explicit approvals, superseding the conflicting Nov 19 strict NEXUS-only dashboard presentation and Regular first-run default. This is an update to the existing repository decision/backlog record; the Project Product/UX register must be kept aligned. The M3 foundation (PR #34) preceded these approvals.
+
+| Gate | Selected behavior | Guardrail |
+|---|---|---|
+| G1 | New installation: Passenger + NEXUS. In USA passenger NEXUS mode show **CBP NEXUS / CBP Regular** side by side. Regular displays only Regular; Ready and FAST remain strict category selections. | Never substitute, relabel or infer a NEXUS reading from Regular; keep categories vehicle-/crossing-/direction-specific. Changing to Commercial resets incompatible NEXUS selection to Regular. No silent reset of previously stored user preferences. |
+| G2 | Each paired category has independent current/stale/missing/not-applicable/closed status and provenance. | Missing/stale NEXUS cannot be replaced by Regular or visually treated as equally current. Keep zero distinct from missing. |
+| G3 | Sort control belongs in Settings, with persisted fixed/Canada/USA whole-crossing-row sort. Lowest eligible **current** wait for selected category governs USA; Canada passenger NEXUS mode uses **CBSA general** wait for Canada sorting. | Never sort by the lower of paired NEXUS/Regular figures, stale data, or full-trip ETA. Disclose governing metric. |
+| G4 | Paired **source-reported** NEXUS / Regular lane counts may appear when separately verified current for exact crossing, direction and vehicle. | No derived sum, exclusive-lane or booth-additivity claim without source verification. DWT Canada operator lane report remains separately attributed, not a Canada NEXUS inspection wait. |
+| G5 | One subtle USA legend explains **NEXUS first / Regular second**; full accessible category/source labels, no repeated N/R abbreviations. | Avoid implying slash means a range. At zoom or 3-digit waits use an accessible within-cell category-labeled reflow rather than shrinking numbers. |
+
+**Selected other dashboard elements:** Three Windsor–Detroit crossings, both directions, integrated panel, `Nexus - Commuter` branding, small tonal pills, source-health summary, directional detail sheet. Canada in Passenger/NEXUS mode displays the single CBSA **general passenger wait**, never a fabricated NEXUS-specific wait.
+
+**Still Proposed/Unverified/Deferred — not approved by G1–G5:** G6 timed yellow/amber/red NEXUS clocks, inferred operational restriction indicators, physical lane additivity, lane-hour exceptions, new cameras/videos, favorites and pinning, destination/navigation flow, precise location, full-trip recommendation, new source collection. Existing source freshness, outage and secret controls remain unchanged.
+
+**Implementation:** PR #35 (G1–G5) requires full Python/Node/Chromium mobile QA and verified Pages publication before marking Implemented. Do not treat approval as proof of deployment.
+
+---
+
 # RC1.3 decision / risk update
 
 ## Confirmed for this release
