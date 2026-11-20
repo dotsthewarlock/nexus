@@ -1,5 +1,5 @@
 /*
- * M2c PROPOSED independent publication watchdog, not deployed.
+ * M2c independent publication watchdog; Worker deployed dormant (no cron or secret).
  *
  * Cloudflare Cron: '8,18,28,38,48,58 * * * *' (UTC).
  * GitHub Actions native cron is '3,13,23,33,43,53 * * * *'.
@@ -9,7 +9,7 @@
  * A separate, single-repository GitHub fine-grained PAT with Actions:write
  * must be provisioned as the encrypted Worker secret GITHUB_ACTIONS_TOKEN.
  * Do not put the token in GitHub, source, logs, Pages assets or HTTP routes.
- * No Worker is created or triggered by committing this file.
+ * Repository changes alone do not activate Cron or provision any secret.
  */
 export const SNAPSHOT_URL = 'https://dotsthewarlock.github.io/nexus/data/live.json';
 export const PUBLISH_RUNS_URL = 'https://api.github.com/repos/dotsthewarlock/nexus/actions/workflows/publish.yml/runs?branch=main&per_page=8';
