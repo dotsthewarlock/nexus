@@ -146,7 +146,7 @@ def test_interactions(page):
     assert page.locator(".crossing-row .crossing-name").all_inner_texts() == [
         "Tunnel", "Ambassador", "Gordie Howe"]
     assert page.locator("#usHeading").inner_text().endswith("↓")
-    assert page.locator("#caHeading").inner_text() == "Canada"
+    assert "To Canada" in page.locator("#caHeading").inner_text()
 
     # Theme toggle changes CSS mode with a readable accessible name.
     before = page.locator("body").evaluate("(el)=>getComputedStyle(el).backgroundColor")

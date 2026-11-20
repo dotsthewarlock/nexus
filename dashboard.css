@@ -38,3 +38,67 @@
 .notices-list[hidden]{display:none}
 .notice-list-button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--ink);font-size:.84rem;text-align:left;min-height:44px;overflow-wrap:anywhere}
 .notice-list-button:last-child{border-bottom:0}
+
+/* M3-inspired visual foundation: selected presentation only; source/category rules unchanged. */
+:root{
+ --m3-surface-container:#f1f4f8;--m3-outline-variant:#e2e8f0;
+ --m3-primary-container:#deecff;--m3-on-primary-container:#153e71;
+ --m3-secondary-container:#efe7fd;--m3-on-secondary-container:#543875;
+}
+@media(prefers-color-scheme:dark){
+ :root:not([data-theme="light"]){
+  --m3-surface-container:#202c39;--m3-outline-variant:#354453;
+  --m3-primary-container:#28486e;--m3-on-primary-container:#e6f0ff;
+  --m3-secondary-container:#45345d;--m3-on-secondary-container:#f2e8ff;
+ }
+}
+:root[data-theme="dark"]{
+ --m3-surface-container:#202c39;--m3-outline-variant:#354453;
+ --m3-primary-container:#28486e;--m3-on-primary-container:#e6f0ff;
+ --m3-secondary-container:#45345d;--m3-on-secondary-container:#f2e8ff;
+}
+.topbar{min-height:58px}
+.topbar h1{font-size:1.24rem;letter-spacing:-.035em;white-space:nowrap}
+.brand-tail{font-size:.84em;font-weight:575;letter-spacing:-.015em}
+.icon-button{border-radius:999px;min-width:44px;min-height:44px}
+.controls{gap:7px;margin:2px 0 12px}
+.controls select.mode-pill{
+ height:44px;border:1px solid transparent;border-radius:999px;
+ padding:0 9px;font-size:.87rem;font-weight:675;
+}
+.controls select.pill-vehicle{background:var(--m3-primary-container);color:var(--m3-on-primary-container)}
+.controls select.pill-lane{background:var(--m3-secondary-container);color:var(--m3-on-secondary-container)}
+.comparison{border:1px solid var(--m3-outline-variant);border-radius:21px;box-shadow:0 2px 9px #0e29420b}
+.table-header{background:var(--m3-surface-container);font-size:.75rem;font-weight:675;letter-spacing:0}
+.table-header>div{padding:11px 5px}
+.table-header>div:not(:first-child){display:flex;align-items:center;justify-content:center;gap:3px;white-space:nowrap}
+.country-flag{font-size:1.04em}
+.sort-arrow{font-weight:800;color:var(--accent)}
+.crossing-row{border-top:1px solid var(--m3-outline-variant);min-height:78px}
+.crossing-name{padding:10px 6px 10px 10px;font-size:.86rem;font-weight:690}
+.wait-wrap,.wait-wrap + .wait-wrap{border-left:0}
+.wait-wrap .wait-cell{height:auto;width:calc(100% - 4px);margin:2px;border-radius:12px;padding:9px 2px}
+.wait-cell:hover,.wait-cell:focus-visible{background:var(--m3-surface-container)}
+.wait-cell:active{background:var(--m3-primary-container)}
+.wait-value{font-size:clamp(1.06rem,4.45vw,1.4rem);font-weight:750;font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.wait-number{font:inherit;font-variant-numeric:tabular-nums}
+.wait-unit{font-size:.63em;font-weight:640;letter-spacing:0;margin-left:2px}
+.lanes,.cell-note{font-size:.73rem;line-height:1.25}
+.source-summary{margin-top:7px}
+.bottom-sheet{border-radius:27px 27px 0 0}
+.sheet-body:before{content:"";display:block;width:34px;height:4px;border-radius:999px;background:var(--line);margin:-6px auto 14px}
+.direction-picker{border:0;background:var(--m3-surface-container);border-radius:999px;padding:3px;gap:3px}
+.direction-picker button{min-height:44px;border-radius:999px}
+.direction-picker button[aria-pressed="true"]{background:var(--m3-primary-container);color:var(--m3-on-primary-container)}
+@media(max-width:360px){
+ .table-header>div{padding:10px 3px}
+ .crossing-name{padding-left:7px;font-size:.81rem}
+ .wait-wrap .wait-cell{padding:9px 1px}
+}
+:root[data-large-text="true"] .wait-wrap + .wait-wrap{border-left:1px solid var(--m3-outline-variant)}
+:root[data-large-text="true"] .table-header>div:not(:first-child){white-space:normal;text-align:center}
+
+/* Accessible zoom: allow the longer selected title to reflow without widening the mobile viewport. */
+:root[data-large-text="true"] .topbar h1{white-space:normal;min-width:0;font-size:1rem;line-height:1.15}
+:root[data-large-text="true"] .brand-tail{display:block;font-size:.72em;line-height:1.2}
+:root[data-large-text="true"] .top-actions{flex:none}

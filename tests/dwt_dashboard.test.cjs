@@ -79,7 +79,7 @@ const dashboard=fs.readFileSync('dashboard.js','utf8');
 assert.match(html,/id="detailDwt"/);
 assert.match(html,/id="detailDwtReport"/);
 assert.match(html,/decision\.js\?v=rc149-dwt1/);
-assert.match(html,/dashboard\.js\?v=m6-dwt2/);
+assert.match(html,/dashboard\.js\?v=m3-foundation1/);
 new vm.Script(dashboard);
 const instrumented=dashboard.replace(/\ninit\(\);\n\}\)\(\);\s*$/,
  "\nwindow.__dwtTest={store,cell,renderDetail,classify};\n})();");

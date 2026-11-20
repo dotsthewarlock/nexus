@@ -68,7 +68,12 @@ function cell(id,dir){
    v.kind==='closed'?'Source-reported closure':v.kind==='unsupported'?'Not applicable':
    v.kind==='unpublished'?(operatorCurrent?'Wait not published':'Not published'):v.kind==='unavailable'?'Unavailable':null;
  const operatorLabel=operatorCurrent?', DWT reports '+dwt.count+' NEXUS '+(dwt.count===1?'lane':'lanes')+' open':'';
- return '<div class="wait-wrap" role="cell"><button class="wait-cell" type="button" data-crossing="'+id+'" data-direction="'+dir+'" aria-label="'+escape(NAMES[id]+', into '+(dir==='ca'?'Canada':'USA')+', '+v.text+', '+(sub||'recent report')+operatorLabel)+'"><span class="wait-value" data-kind="'+v.kind+'">'+escape(v.text)+'</span>'+laneCount+(sub?'<span class="cell-note">'+escape(sub)+'</span>':'')+'</button></div>';
+ const category=store.vehicle+' '+(store.lane==='regular'?'Regular':store.lane.toUpperCase());
+ const label=NAMES[id]+', to '+(dir==='ca'?'Canada':'USA')+', '+category+', '+(dir==='ca'?'CBSA':'CBP')+' inspection report: '+v.text+', '+(sub||'recent report')+operatorLabel+'. Open details.';
+ const visual=Number.isInteger(v.minutes)&&['current','stale'].includes(v.kind)
+   ?'<span class="wait-number">'+escape(v.minutes)+'</span><span class="wait-unit"> min</span>'
+   :escape(v.text);
+ return '<div class="wait-wrap" role="cell"><button class="wait-cell" type="button" data-crossing="'+id+'" data-direction="'+dir+'" aria-label="'+escape(label)+'"><span class="wait-value" data-kind="'+v.kind+'">'+visual+'</span>'+laneCount+(sub?'<span class="cell-note">'+escape(sub)+'</span>':'')+'</button></div>';
 }
 /* Selected D2-07: show all material agency notices without a permanent Alerts tab.
  * This uses recent source retrieval + snapshot timestamps, not an invented
@@ -123,8 +128,8 @@ function renderNotices(){
   :'';
 }
 function render(){
- $('caHeading').textContent='Canada'+(store.sort==='ca'?' ↓':'');
- $('usHeading').textContent='USA'+(store.sort==='us'?' ↓':'');
+ $('caHeading').innerHTML='<span class="country-flag" aria-hidden="true">🇨🇦</span><span>To Canada</span>'+(store.sort==='ca'?' <span class="sort-arrow" aria-hidden="true">↓</span>':'');
+ $('usHeading').innerHTML='<span class="country-flag" aria-hidden="true">🇺🇸</span><span>To USA</span>'+(store.sort==='us'?' <span class="sort-arrow" aria-hidden="true">↓</span>':'');
  $('sortToggle').setAttribute('aria-label','Sort crossings; current order: '+({fixed:'crossing order',ca:'lowest Canada wait',us:'lowest USA wait'}[store.sort]));
  document.querySelectorAll('[data-sort]').forEach(b=>b.setAttribute('aria-current',String(b.dataset.sort===store.sort)));
  $('crossingRows').innerHTML=sortIds().map(id=>'<div class="crossing-row" role="row"><span class="crossing-name" role="rowheader" aria-label="'+escape(NAMES[id])+'">'+escape(SHORT_NAMES[id])+'</span>'+cell(id,'ca')+cell(id,'us')+'</div>').join('');
