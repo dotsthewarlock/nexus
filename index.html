@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#f7f9fb">
   <meta name="description" content="Nexus Windsor–Detroit border inspection waits, both directions and three crossings.">
-  <title>Nexus · Border comparison</title>
-  <link rel="stylesheet" href="./dashboard.css?v=m6-data-only">
+  <title>Nexus - Commuter · Border inspection waits</title>
+  <link rel="stylesheet" href="./dashboard.css?v=m3-foundation1">
 </head>
 <body>
 <main class="app-shell" id="main">
   <header class="topbar">
-    <h1>Nexus</h1>
+    <h1>Nexus <span class="brand-tail">- Commuter</span></h1>
     <div class="top-actions">
       <button id="themeToggle" class="icon-button" type="button" aria-label="Switch to dark mode" title="Toggle light/dark">◐</button>
       <button id="settingsOpen" class="icon-button" type="button" aria-label="Settings" title="Settings">⚙</button>
@@ -28,20 +28,20 @@
       </div>
     </div>
     <label class="sr-only" for="vehicleSelect">Vehicle type</label>
-    <select id="vehicleSelect" aria-label="Vehicle type">
+    <select id="vehicleSelect" class="mode-pill pill-vehicle" aria-label="Vehicle type">
       <option value="passenger">Passenger</option>
       <option value="commercial">Commercial</option>
     </select>
     <label class="sr-only" for="laneSelect">Lane category</label>
-    <select id="laneSelect" aria-label="Lane category"><option value="regular">Regular</option></select>
+    <select id="laneSelect" class="mode-pill pill-lane" aria-label="Lane category"><option value="regular">Regular</option></select>
   </div>
 
   <section aria-label="Official border inspection wait comparison">
     <div class="comparison" role="table" aria-label="Three crossings, Canada and USA direction">
       <div class="table-header" role="row">
         <div role="columnheader">Crossing</div>
-        <div role="columnheader" id="caHeading">Canada</div>
-        <div role="columnheader" id="usHeading">USA</div>
+        <div role="columnheader" id="caHeading"><span class="country-flag" aria-hidden="true">🇨🇦</span><span>To Canada</span></div>
+        <div role="columnheader" id="usHeading"><span class="country-flag" aria-hidden="true">🇺🇸</span><span>To USA</span></div>
       </div>
       <div id="crossingRows" role="rowgroup">
         <div class="loading" role="status">Checking official border reports…</div>
@@ -98,6 +98,6 @@
 </dialog>
 
 <script src="./decision.js?v=rc149-dwt1"></script>
-<script src="./dashboard.js?v=m6-dwt2" defer></script>
+<script src="./dashboard.js?v=m3-foundation1" defer></script>
 </body>
 </html>
