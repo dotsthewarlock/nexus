@@ -19,7 +19,11 @@
   const MAX_OPERATOR_AGE = 20;
   const THRESHOLDS = {conservative:20, balanced:10};
   function age(stamp, now=Date.now()) {
-    const parsed = typeof stamp === 'string' && stamp.trim() ? Date.parse(stamp) : NaN;
+    // Require an explicit UTC/offset suffix. Browser-local interpretation of
+    // timestamp strings without a zone would corrupt freshness at DST changes.
+    const value = typeof stamp === 'string' ? stamp.trim() : '';
+    const dated = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
+    const parsed = dated ? Date.parse(value) : NaN;
     if (!Number.isFinite(parsed)) return Infinity;
     const minutes=(now-parsed)/60000;
     // Small positive clock differences are tolerated; implausible future data isn't.
