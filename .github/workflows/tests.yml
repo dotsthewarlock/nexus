@@ -25,6 +25,8 @@ jobs:
         run: node tests/decision.test.cjs
       - name: Current scope excludes navigation and preserves core border dashboard
         run: node tests/navigation_deferred.test.cjs
+      - name: M2c proposed independent scheduler offline safety tests
+        run: node tests/watchdog_m2c.test.cjs
       - name: Approved M1 dual-direction dashboard checks
         run: node tests/dashboard_m1.test.cjs
       - name: M4a material notices and closure-priority regression checks
