@@ -1,6 +1,6 @@
 # M2c proposal — independent Nexus publication watchdog
 
-**Status:** Proposed, **not deployed or activated**. This is an implementation candidate, not approval of infrastructure.  
+**Status:** Selected for deployment (owner approval). **Worker uploaded to Cloudflare on November 19, 2026 (EST); cron remains DISABLED and no GitHub dispatch secret is configured.** This is deployed code, not an active recovery scheduler.  
 **Verified:** November 19, 2026.  
 **Current architecture:** Python collector, GitHub Actions, GitHub Pages; retain all.
 
@@ -22,20 +22,19 @@ The thresholds are **provisional operational heuristics**, not official agency S
 
 ## Secret and security
 
-**Explicit owner action is required before activation.** Create a GitHub fine-grained personal access token restricted to **dotsthewarlock/nexus only**, with repository **Actions: Read and write** permission. This permission is required by the [official workflow dispatch API](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event). Prefer an expiration and rotation plan.
+**One owner action remains before activation.** Create a GitHub fine-grained personal access token restricted to **dotsthewarlock/nexus only**, with repository **Actions: Read and write** permission. This permission is required by the [official workflow dispatch API](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event). Prefer an expiration and rotation plan.
 
 Store the token as Cloudflare Worker **encrypted secret GITHUB_ACTIONS_TOKEN**. Never put its value into chat, repository source, logs, Pages assets, public JSON or a URL. The Worker has **no public dispatch endpoint**; all incoming HTTP requests get a 404.
 
-The connected Cloudflare account currently has three Workers, no configured cron triggers, and no Nexus watchdog to overwrite. Activation should create a new, separately named Worker only.
+The Cloudflare account already has the new isolated Worker **nexus-publish-watchdog** (deployment `f08d5f6da62b4a1f9b2485316a027c66`). Verified immediately after upload: **0 cron triggers, no secret bindings, workers.dev disabled, previews disabled**. No existing Workers were modified.
 
 ## Activation sequence (requires approval)
 
-1. Review ops/cloudflare/nexus-publish-watchdog.mjs and run the offline fixtures: node tests/watchdog_m2c.test.cjs.
-2. Provision a new Cloudflare Worker called nexus-publish-watchdog from the reviewed module; leave GitHub Pages hosting unchanged.
-3. Add the encrypted GITHUB_ACTIONS_TOKEN Worker secret privately **before** enabling the cron trigger.
-4. Set cron exactly to 8,18,28,38,48,58 * * * * (UTC). No public routes required.
-5. Verify one overdue-snapshot test yields an actual workflow_dispatch run in GitHub Actions, and a recent snapshot/active publisher yields no duplicate.
-6. Review 24h logs and resulting publication cadence, then assess overlap/cost. Initially keep GitHub cron as redundant fallback.
+1. **Complete:** Reviewed source and offline fixtures (CI passed); uploaded the new Worker, no public route and cron disabled.
+2. **Owner action:** Create the least-privilege fine-grained GitHub token and securely configure encrypted Worker secret `GITHUB_ACTIONS_TOKEN` via the Cloudflare dashboard. Do not paste the token into a chat or commit.
+3. Verify the Worker exposes the secret *binding name only* (not its value); only then enable cron `8,18,28,38,48,58 * * * *` UTC.
+4. Verify one overdue-snapshot test yields an actual workflow_dispatch run in GitHub Actions, and a recent snapshot/active publisher yields no duplicate.
+5. Review 24h logs and resulting publication cadence, then assess overlap/cost. Initially keep GitHub cron as redundant fallback.
 
 **Do not enable cron before the secret is installed.** No keys are read or published in the frontend.
 
@@ -54,3 +53,7 @@ A status-only external uptime monitor needs no GitHub credential, but can only *
 - [GitHub workflow dispatch API and fine-grained token permissions](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event)
 
 **Recommendation (Proposed):** Approve a single Cloudflare Cron watchdog as a backup to existing GitHub scheduled collection. Do not migrate the current collector/host. The current code proposal alone does not activate scheduling.
+
+## Deployment verification (November 19, 2026 EST)
+
+Cloudflare API returned success for the uploaded module: `nexus-publish-watchdog`, deployment `f08d5f6da62b4a1f9b2485316a027c66`. A separate read-back confirmed **0 scheduled triggers**, **no secret bindings**, and workers.dev/preview URLs **disabled**. This is deliberately dormant, not a successful automatic recovery. The current Pages publisher and CBP/CBSA/511 collector are untouched. Enabling the schedule before the encrypted token is configured would only generate failures.
