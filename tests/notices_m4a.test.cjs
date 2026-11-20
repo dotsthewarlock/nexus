@@ -11,7 +11,7 @@ for(const id of ['notices','noticeOpen','noticeText','noticesMore','noticesList'
  assert.ok(html.includes('id="'+id+'"'),'Missing M4a UI id '+id);
 assert.match(html,/noticesMore"[^>]*aria-expanded="false"[^>]*aria-controls="noticesList"/);
 assert.match(html,/dashboard\.js\?v=m6-data-only/);
-assert.match(html,/dashboard\.css\?v=m5-routeqa/);
+assert.match(html,/dashboard\.css\?v=m6-data-only/);
 assert.match(css,/\.notice-list-button/);
 assert.match(css,/\.notice-more/);
 // The new code must not create an unapproved automatic two-hour NEXUS alert.
