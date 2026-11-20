@@ -106,9 +106,9 @@ def check_geometry(page, width, large=False):
         rowheader = rect(page, ".crossing-row:first-child .crossing-name")
         cell = rect(page, ".crossing-row:first-child .wait-wrap")
         assert abs(rowheader["y"] - cell["y"]) < 2, "Normal mode must keep a compact three-column row"
-        a, b, c = (rect(page, x)["y"] for x in
+        a, b = (rect(page, x)["y"] for x in
                    ("#vehicleSelect", "#laneSelect"))
-        assert max(a, b, c) - min(a, b, c) < 3, "Exactly one normal quick-controls row"
+        assert max(a, b) - min(a, b) < 3, "Exactly one normal quick-controls row"
 
 
 
