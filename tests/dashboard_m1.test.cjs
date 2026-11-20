@@ -9,7 +9,7 @@ for(const id of ['crossingRows','caHeading','usHeading','sortToggle','sortMenu',
  assert.ok(html.includes('id="'+id+'"'),'missing dashboard control '+id);
 for(const label of ['Canada','USA','Passenger','Commercial'])assert.ok(html.includes(label));
 assert.match(html,/dashboard\.js\?v=m6-data-only/);
-assert.match(html,/dashboard\.css\?v=m5-routeqa/);
+assert.match(html,/dashboard\.css\?v=m6-data-only/);
 assert.match(js,/const IDS=\['ambassador','tunnel','gordie'\]/);
 assert.match(js,/D\.reading\(raw,store\.data,Date\.now\(\)\)/);
 assert.match(js,/good\(x\)!==good\(y\)/);
