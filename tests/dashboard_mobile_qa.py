@@ -121,8 +121,10 @@ def test_interactions(page):
     assert "6 min" in ca.inner_text(), "CBSA general passenger reading remains visible once"
     assert "2 lanes" in ca.inner_text() and "DWT" in ca.inner_text(), (
         "Current DWT supplemental count is independent of the CBSA general wait")
-    assert "7 / 0 min" in us.inner_text(), (
+    assert us.locator(".pair-amount").all_inner_texts() == ["7", "0"], (
         "USA must pair CBP NEXUS 7 with CBP Regular verified zero")
+    assert us.locator(".pair-separator").inner_text().strip() == "/"
+    assert "min" in us.locator(".wait-unit").inner_text()
     assert "1 / 3 lanes" in us.inner_text(), "Each CBP lane count keeps its category"
     assert page.locator("#pairLegend").is_visible()
     assert "NEXUS first / Regular second" in page.locator("#pairLegend").inner_text()
