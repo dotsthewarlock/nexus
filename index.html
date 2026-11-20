@@ -82,32 +82,7 @@
       <div id="detailProvenance" class="detail-provenance"></div>
     </details>
     <a id="cameraViewer" class="secondary-link" href="./classic-board.html">Open existing camera viewer</a>
-    <section class="destination-action" aria-labelledby="detailDestinationHeading">
-      <h3 id="detailDestinationHeading">Destination</h3>
-      <p id="detailDestination" class="destination-summary" aria-live="polite">Choose a destination to prepare your trip.</p>
-      <div class="destination-actions">
-        <button id="chooseDestination" class="primary-button" type="button">Choose destination</button>
-        <button id="changeDestination" class="secondary-button" type="button" hidden>Change</button>
-      </div>
-      <a id="openDirections" class="primary-button" target="_blank" rel="noopener noreferrer" aria-describedby="routeNotValidated" hidden>Open directions</a>
-      <p class="route-warning" id="routeNotValidated">Google Maps may ignore crossing waypoints. Confirm the route uses your selected crossing before driving.</p>
-    </section>
     </div>
-    <section id="destinationPicker" class="destination-picker" hidden aria-labelledby="destinationPickerHeading">
-      <h3 id="destinationPickerHeading" tabindex="-1">Choose destination</h3>
-      <p class="detail-note" id="destinationPickerCountry"></p>
-      <div id="destinationPickerSaved" class="picker-saved"></div>
-      <form id="oneTimeDestinationForm" autocomplete="off">
-        <label for="oneTimeAddress">Or enter a one-time address or place</label>
-        <input id="oneTimeAddress" name="oneTimeAddress" type="text" maxlength="200" required placeholder="Street address or place">
-        <button type="submit" class="primary-button">Use once</button>
-      </form>
-      <p class="detail-note">Saved destinations are filtered by the country you selected. Destination countries are user-declared, not geocoded or verified.</p>
-      <div class="destination-actions">
-        <button id="destinationPickerBack" class="secondary-button" type="button">Back to crossing</button>
-        <button id="openDestinationSettings" class="secondary-button" type="button">Manage saved destinations</button>
-      </div>
-    </section>
   </div>
 </dialog>
 
@@ -115,69 +90,13 @@
   <div class="settings-body">
     <div class="sheet-header"><h2 id="settingsTitle" tabindex="-1">Settings</h2><button id="settingsClose" class="icon-button" type="button" aria-label="Close Settings">×</button></div>
     <section><h3>Comparison</h3><p>Sorting is remembered locally. Vehicle and lane choices apply to this visit.</p><button id="resetSort" class="secondary-button" type="button">Reset crossing order</button></section>
-    <section class="settings-destinations" aria-labelledby="settingsDestinationTitle">
-      <h3 id="settingsDestinationTitle">Destinations</h3>
-      <p>Saved only in this browser. Add Home, Work or custom places; choose a destination country yourself. No account, GPS or geocoding required.</p>
-      <div id="savedDestinations" aria-live="polite"></div>
-      <form id="destinationForm" class="destination-form" autocomplete="off">
-        <input id="destinationEditingId" type="hidden">
-        <label for="destinationKind">Type</label>
-        <select id="destinationKind" required><option value="home">Home</option><option value="work">Work</option><option value="custom">Custom</option></select>
-        <div id="destinationLabelRow" hidden>
-          <label for="destinationLabel">Custom name</label>
-          <input id="destinationLabel" type="text" maxlength="40" placeholder="e.g. School">
-        </div>
-        <label for="destinationCountry">Destination country</label>
-        <select id="destinationCountry" required><option value="ca">Canada</option><option value="us">USA</option></select>
-        <label for="destinationAddress">Address or place</label>
-        <input id="destinationAddress" type="text" maxlength="200" required placeholder="Street address or place">
-        <div class="destination-actions">
-          <button id="destinationSave" type="submit" class="primary-button">Save destination</button>
-          <button id="destinationCancel" type="button" class="secondary-button" hidden>Cancel edit</button>
-        </div>
-      </form>
-      <p id="destinationMessage" class="detail-note" role="status" aria-live="polite"></p>
-      <button id="removeAllDestinations" class="secondary-button destructive" type="button">Remove all saved destinations</button>
-      <div id="removeAllConfirm" hidden>
-        <p>Remove every saved destination and both defaults from this browser?</p>
-        <div class="destination-actions">
-          <button id="confirmRemoveAll" type="button" class="secondary-button destructive">Yes, remove all</button>
-          <button id="cancelRemoveAll" type="button" class="secondary-button">Cancel</button>
-        </div>
-      </div>
-      <p class="detail-note">Saving a destination does not contact Google Maps. If you open directions, confirm the route uses your chosen crossing. Maps waypoint handling and vehicle eligibility remain unverified.</p>
-    </section>
     <section><h3>Data &amp; diagnostics</h3><div id="diagnosticBody" class="diagnostics">No official snapshot loaded.</div></section>
     <section><h3>Camera viewer</h3><a href="./classic-board.html">Open existing camera viewer</a></section>
-    <section aria-labelledby="routeQaHeading">
-      <details id="routeQaDetails" class="route-qa">
-        <summary id="routeQaHeading">Routing validation · test lab</summary>
-        <p class="detail-note">This is a diagnostic, not a route recommendation. Google Maps may ignore the requested crossing waypoint. Never test while driving.</p>
-        <p class="detail-note">Use public sample city names, not Home/Work addresses. The normal link uses the same directions builder as Nexus; the test-origin link uses a fixed city on the opposite side of the border to allow a remote route preview.</p>
-        <label for="routeQaPlatform">Device being tested</label>
-        <select id="routeQaPlatform">
-          <option value="android">Android · Google Maps</option>
-          <option value="ios">iPhone · Google Maps</option>
-          <option value="browser">Mobile browser fallback</option>
-        </select>
-        <div id="routeQaGrid" class="route-qa-grid" aria-label="Six crossing and direction cases"></div>
-        <div class="destination-actions">
-          <button id="routeQaExport" type="button" class="secondary-button">Show results as JSON</button>
-          <button id="routeQaClear" type="button" class="secondary-button destructive">Clear local test results</button>
-        </div>
-        <label for="routeQaReport" id="routeQaReportLabel" hidden>Copy test report (no automatic upload)</label>
-        <textarea id="routeQaReport" class="route-qa-report" readonly rows="9" hidden></textarea>
-        <p class="detail-note">Results are saved only in this browser when local storage is available. Each device keeps separate results. The report includes your optional notes: do not enter personal addresses or other private information. Nothing is sent to Nexus or GitHub automatically.</p>
-        <p id="routeQaFeedback" class="detail-note" role="status" aria-live="polite"></p>
-      </details>
-    </section>
     <p class="detail-note">No account required. No location permission requested. Data is based on periodically published reports, not live lane confirmation.</p>
   </div>
 </dialog>
 
 <script src="./decision.js?v=rc149-schedule"></script>
-<script src="./destinations.js?v=m3a"></script>
-<script src="./routing.js?v=m3b"></script>
-<script src="./dashboard.js?v=m5-routeqa" defer></script>
+<script src="./dashboard.js?v=m6-data-only" defer></script>
 </body>
 </html>
