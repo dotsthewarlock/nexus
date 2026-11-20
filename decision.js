@@ -26,8 +26,8 @@
     return minutes < -CLOCK_SKEW_MIN ? Infinity : Math.max(0,minutes);
   }
 
-  // The DWT operator lists NEXUS lanes for Detroit -> Windsor. This is not
-  // an inspection wait, proof of physical open booths, or an additive total.
+  // Owner-selected interpretation: DWT NexusLaneCount reports open NEXUS
+  // lanes Detroit -> Windsor. This is not an inspection wait or additive total.
   // Every clock is independent: a fresh HTTP request cannot renew old data.
   function dwtNexusLane(data,id,direction,vehicle,lane,now=Date.now()) {
     const record=data?.supplemental?.dwt?.ca,src=data?.sources?.dwt;
@@ -54,7 +54,7 @@
     if(!fresh)return {...base,kind:'stale',
       reason:'Operator report or its retrieval/publication is old or unavailable.'};
     return {...base,kind:count===0?'reported_zero':'current',count,
-      reason:'Recent DWT operator-listed count; physical inspection lane status unverified.'};
+      reason:'Recent DWT operator-reported open NEXUS lane count; not inspection wait minutes.'};
   }
   function reading(raw, snapshot, now=Date.now()) {
     if (!raw) return {kind:'unavailable',minutes:null,age:Infinity};
