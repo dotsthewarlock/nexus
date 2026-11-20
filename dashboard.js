@@ -7,73 +7,129 @@ const SHORT_NAMES={ambassador:'Ambassador',tunnel:'Tunnel',gordie:'Gordie Howe'}
 const $=id=>document.getElementById(id);
 const key='nexus-m1-sort';
 const categories={passenger:[['regular','Regular'],['nexus','NEXUS'],['ready','Ready']],commercial:[['regular','Regular'],['fast','FAST']]};
-const store={data:null,sort:'fixed',vehicle:'passenger',lane:'regular',selected:null,direction:'ca',lastFetch:null,error:null,busy:false,noticesExpanded:false};
+const store={data:null,sort:'fixed',vehicle:'passenger',lane:'nexus',selected:null,direction:'ca',lastFetch:null,error:null,busy:false,noticesExpanded:false};
 try{const v=localStorage.getItem(key);if(['fixed','ca','us'].includes(v))store.sort=v}catch{}
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const stamp=s=>s&&Number.isFinite(Date.parse(s))?new Date(s).toLocaleString(undefined,{dateStyle:'medium',timeStyle:'short'}):'Unavailable';
 const age=s=>D.age(s,Date.now());
 const primary=dir=>dir==='ca'?'cbsa':'cbp';
-const rawKey=()=>store.lane==='regular'?(store.vehicle==='passenger'?'standard':'commercial'):store.lane;
+
+const rawKey=(lane=store.lane)=>lane==='regular'?(store.vehicle==='passenger'?'standard':'commercial'):lane;
 const source=dir=>store.data?.sources?.[primary(dir)];
-function classify(id,dir){
- const src=source(dir),port=store.data?.directions?.[dir]?.[id],raw=port?.[rawKey()];
+// Preserve the strictly source/category-bound classifier. The comparison model
+// chooses what to present without ever re-labeling an agency measurement.
+function classify(id,dir,lane=store.lane){
+ const src=source(dir),port=store.data?.directions?.[dir]?.[id],raw=port?.[rawKey(lane)];
  const srcAge=age(src?.retrieved_at),snapAge=age(store.data?.generated_at);
  const goodSource=src?.status==='ok'&&srcAge<=20&&snapAge<=20;
  const retained=src?.status==='error'&&src?.retained_previous===true;
  const unavailable=reason=>({kind:'unavailable',text:'--',minutes:null,raw,src,reason});
- // A recent agency-reported full-port closure overrides an otherwise valid
- // numeric booth reading, but is not proof of live physical gate operation.
  if(goodSource&&/^\s*(temporarily\s+)?closed\b/i.test(port?.port_status||''))
    return {kind:'closed',text:'Closed',minutes:null,raw,src,
     reason:'Recent official source reports this direction closed. Check the operator before travel.'};
- if(store.vehicle==='passenger'&&store.lane==='nexus'&&dir==='ca')
-   return {kind:'unpublished',text:'--',minutes:null,raw,src,reason:'CBSA does not publish separate Canada-bound NEXUS inspection waits. Published hours are not live lane operation.'};
+ if(store.vehicle==='passenger'&&lane==='nexus'&&dir==='ca')
+   return {kind:'unpublished',text:'--',minutes:null,raw,src,
+    reason:'CBSA does not publish separate Canada-bound NEXUS inspection waits. Published hours do not prove live lane operation.'};
  if(!raw)return unavailable('No category-specific official wait is published for this crossing and direction.');
- if(src?.status!=='ok'&&!retained)return unavailable('The official source is unavailable; no live wait can be verified.');
- if(raw.status==='not_applicable'){
-   return goodSource?{kind:'unsupported',text:'N/A',minutes:null,raw,src,reason:'This category is marked not applicable in the recent official report.'}:unavailable('Category support cannot be verified from a recent official report.');
- }
+ if(src?.status!=='ok'&&!retained)return unavailable('The official source is unavailable; no current wait can be verified.');
+ if(raw.status==='not_applicable')
+   return goodSource?{kind:'unsupported',text:'N/A',minutes:null,raw,src,
+     reason:'Agency field N/A; physical lane eligibility is not independently verified.'}
+     :unavailable('Category applicability cannot be checked from a current report.');
  const reported=D.reading(raw,store.data,Date.now());
- if(reported.kind==='closed'&&goodSource&&(!raw.observation_at||age(raw.observation_at)<=20))return {kind:'closed',text:'Closed',minutes:null,raw,src,reason:'Source-reported closure; verify before travel.'};
- if(raw.status==='closed')return unavailable('Earlier closure report; current lane operation is unverified.');
- if(!Number.isInteger(reported.minutes))return unavailable('No valid timestamped wait for this lane category.');
+ if(reported.kind==='closed'&&goodSource&&(!raw.observation_at||age(raw.observation_at)<=20))
+   return {kind:'closed',text:'Closed',minutes:null,raw,src,reason:'Recent source-reported category closure; verify before travel.'};
+ if(raw.status==='closed')return unavailable('Earlier closure report; present category operation unverified.');
+ if(!Number.isInteger(reported.minutes))return unavailable('No valid timestamped wait for this category.');
  if(!goodSource||retained||!['current','aging'].includes(reported.kind))
-   return {kind:'stale',text:reported.minutes+' min',minutes:reported.minutes,raw,src,reason:'Historical report, not a current wait.'};
- return {kind:'current',text:reported.minutes+' min',minutes:reported.minutes,raw,src,reason:'Recent official inspection report; not a full-trip ETA.'};
+   return {kind:'stale',text:reported.minutes+' min',minutes:reported.minutes,raw,src,
+    reason:'Historical report, not a current wait.'};
+ return {kind:'current',text:reported.minutes+' min',minutes:reported.minutes,raw,src,
+   reason:'Recent official inspection report; not a full-trip ETA.'};
+}
+function displayModel(id,dir){
+ if(store.vehicle==='passenger'&&store.lane==='nexus'){
+  if(dir==='us')return {paired:true,canadaGeneral:false,
+    parts:[{category:'nexus',v:classify(id,dir,'nexus')},{category:'regular',v:classify(id,dir,'regular')}]};
+  // A published CBSA passenger reading is *general*, never a NEXUS inspection wait.
+  const selected=classify(id,dir,'nexus'),portClosed=selected.kind==='closed';
+  return {paired:false,canadaGeneral:!portClosed,
+    parts:[{category:portClosed?'nexus':'regular',v:portClosed?selected:classify(id,dir,'regular')}]};
+ }
+ return {paired:false,canadaGeneral:false,parts:[{category:store.lane,v:classify(id,dir)}]};
 }
 function sortIds(){
  if(store.sort==='fixed')return [...IDS];
- const dir=store.sort;
+ const dir=store.sort,category=dir==='ca'&&store.vehicle==='passenger'&&store.lane==='nexus'?'regular':store.lane;
  return [...IDS].sort((a,b)=>{
-   const x=classify(a,dir),y=classify(b,dir);
+   const x=classify(a,dir,category),y=classify(b,dir,category);
    const good=z=>z.kind==='current';
    if(good(x)!==good(y))return good(x)?-1:1;
    if(good(x)&&x.minutes!==y.minutes)return x.minutes-y.minutes;
    return IDS.indexOf(a)-IDS.indexOf(b);
  });
 }
-function cell(id,dir){
- const v=classify(id,dir);
+const categoryLabel=c=>({regular:'Regular',nexus:'NEXUS',ready:'Ready',fast:'FAST'}[c]||c);
+const pairPiece=v=>v.kind==='current'?String(v.minutes):
+  v.kind==='unsupported'?'N/A':v.kind==='closed'?'--':'--';
+const countFor=v=>v.kind==='current'&&Number.isInteger(v.raw?.lanes_open)&&
+  v.raw.lanes_open>=0&&v.raw.lanes_open<=100?v.raw.lanes_open:null;
+const countLabel=n=>n===null?'--':String(n);
+function readingState(v){
  const sourceAge=v.raw?.observation_at&&Number.isFinite(age(v.raw.observation_at))?Math.round(age(v.raw.observation_at)):null;
- // The operator's count is independent of the unpublished CBSA NEXUS wait.
- // Do not show it for other crossings, vehicles, lanes, or an official port closure.
- const dwt=id==='tunnel'&&dir==='ca'&&v.kind==='unpublished'
-   ?D.dwtNexusLane?.(store.data,id,dir,store.vehicle,store.lane,Date.now()):null;
+ return v.kind==='current'?'recent report':
+  v.kind==='stale'?'old report'+(sourceAge!==null?' · '+sourceAge+'m':''):
+  v.kind==='closed'?'source-reported closed':
+  v.kind==='unsupported'?'agency N/A':
+  v.kind==='unpublished'?'wait not published':'unavailable';
+}
+function pairIsPortClosed(model){
+ return model.paired&&model.parts.every(p=>p.v.kind==='closed'&&p.v.reason.startsWith('Recent official source reports this direction closed'));
+}
+function cell(id,dir){
+ const m=displayModel(id,dir),v=m.parts[0].v;
+ const dwt=id==='tunnel'&&dir==='ca'&&store.vehicle==='passenger'&&store.lane==='nexus'&&v.kind!=='closed'
+   ?D.dwtNexusLane?.(store.data,id,dir,'passenger','nexus',Date.now()):null;
  const operatorCurrent=dwt?.kind==='current'||dwt?.kind==='reported_zero';
- const laneCount=operatorCurrent
-   ?'<span class="lanes">'+dwt.count+' '+(dwt.count===1?'lane':'lanes')+' · DWT</span>'
-   :v.kind==='current'&&dir==='us'&&Number.isInteger(v.raw?.lanes_open)&&v.raw.lanes_open>=0
-    ?'<span class="lanes">'+v.raw.lanes_open+' '+(v.raw.lanes_open===1?'lane':'lanes')+'</span>':'';
- const sub=v.kind==='stale'?'Old report'+(sourceAge!==null?' · '+sourceAge+'m':''):
-   v.kind==='closed'?'Source-reported closure':v.kind==='unsupported'?'Not applicable':
-   v.kind==='unpublished'?(operatorCurrent?'Wait not published':'Not published'):v.kind==='unavailable'?'Unavailable':null;
  const operatorLabel=operatorCurrent?', DWT reports '+dwt.count+' NEXUS '+(dwt.count===1?'lane':'lanes')+' open':'';
- const category=store.vehicle+' '+(store.lane==='regular'?'Regular':store.lane.toUpperCase());
- const label=NAMES[id]+', to '+(dir==='ca'?'Canada':'USA')+', '+category+', '+(dir==='ca'?'CBSA':'CBP')+' inspection report: '+v.text+', '+(sub||'recent report')+operatorLabel+'. Open details.';
- const visual=Number.isInteger(v.minutes)&&['current','stale'].includes(v.kind)
-   ?'<span class="wait-number">'+escape(v.minutes)+'</span><span class="wait-unit"> min</span>'
-   :escape(v.text);
- return '<div class="wait-wrap" role="cell"><button class="wait-cell" type="button" data-crossing="'+id+'" data-direction="'+dir+'" aria-label="'+escape(label)+'"><span class="wait-value" data-kind="'+v.kind+'">'+visual+'</span>'+laneCount+(sub?'<span class="cell-note">'+escape(sub)+'</span>':'')+'</button></div>';
+ let visual='',laneCount='',sub='',kind=v.kind,spoken='';
+ const wrap=!!document.documentElement?.dataset?.largeText||m.parts.some(p=>p.v.kind==='current'&&p.v.minutes>=100);
+ if(pairIsPortClosed(m)){
+  kind='closed';visual='Closed';sub='Source-reported port closure';
+  spoken='CBP reports this direction closed. ';
+ }else if(m.paired){
+  kind='pair';
+  const [nx,reg]=m.parts.map(p=>p.v);
+  const n=countFor(nx),r=countFor(reg);
+  if(wrap){
+   visual='<span class="pair-stacked">'+m.parts.map(p=>'<span class="pair-stacked-row"><span class="pair-category">'+categoryLabel(p.category)+'</span><span class="pair-amount">'+escape(pairPiece(p.v))+(p.v.kind==='current'?'<span class="wait-unit"> min</span>':'')+'</span></span>').join('')+'</span>';
+  }else{
+   visual='<span class="pair-inline"><span class="pair-amount">'+escape(pairPiece(nx))+'</span><span class="pair-separator"> / </span><span class="pair-amount">'+escape(pairPiece(reg))+'</span><span class="wait-unit"> min</span></span>';
+  }
+  const exceptions=m.parts.filter(p=>p.v.kind!=='current').map(p=>categoryLabel(p.category)+' '+readingState(p.v));
+  sub=exceptions.join(' · ');
+  laneCount=n!==null||r!==null?'<span class="lanes">'+countLabel(n)+' / '+countLabel(r)+' lanes</span>':'';
+  spoken=m.parts.map(p=>categoryLabel(p.category)+' '+(p.v.kind==='current'?p.v.minutes+' minutes':readingState(p.v))+
+    ', CBP observed '+stamp(p.v.raw?.observation_at)+
+    ', '+(countFor(p.v)===null?'lane count unreported':countFor(p.v)+' lanes reported')).join('; ')+'. ';
+ }else{
+  const sourceAge=v.raw?.observation_at&&Number.isFinite(age(v.raw.observation_at))?Math.round(age(v.raw.observation_at)):null;
+  laneCount=operatorCurrent?'<span class="lanes">'+dwt.count+' '+(dwt.count===1?'lane':'lanes')+' · DWT</span>'
+    :v.kind==='current'&&dir==='us'&&Number.isInteger(v.raw?.lanes_open)&&v.raw.lanes_open>=0
+     ?'<span class="lanes">'+v.raw.lanes_open+' '+(v.raw.lanes_open===1?'lane':'lanes')+'</span>':'';
+  sub=v.kind==='stale'?'Old report'+(sourceAge!==null?' · '+sourceAge+'m':''):
+    v.kind==='closed'?'Source-reported closure':v.kind==='unsupported'?'Not applicable':
+    v.kind==='unpublished'?(operatorCurrent?'Wait not published':'Not published'):v.kind==='unavailable'?'Unavailable':'';
+  visual=Number.isInteger(v.minutes)&&['current','stale'].includes(v.kind)
+    ?'<span class="wait-number">'+escape(v.minutes)+'</span><span class="wait-unit"> min</span>'
+    :escape(v.text);
+  const declared=m.canadaGeneral?'CBSA general passenger':categoryLabel(m.parts[0].category);
+  spoken=declared+' '+v.text+', '+readingState(v)+', '+(dir==='ca'?'CBSA':'CBP')+
+    ' observed '+stamp(v.raw?.observation_at)+'. ';
+  if(m.canadaGeneral)spoken+='No separate Canada-bound NEXUS inspection wait is published. ';
+ }
+ const label=NAMES[id]+', to '+(dir==='ca'?'Canada':'USA')+', '+spoken+operatorLabel+'. Open details.';
+ return '<div class="wait-wrap" role="cell"><button class="wait-cell" type="button" data-crossing="'+id+'" data-direction="'+dir+'" aria-label="'+escape(label)+'"><span class="wait-value" data-kind="'+kind+'">'+visual+'</span>'+laneCount+(sub?'<span class="cell-note">'+escape(sub)+'</span>':'')+'</button></div>';
 }
 /* Selected D2-07: show all material agency notices without a permanent Alerts tab.
  * This uses recent source retrieval + snapshot timestamps, not an invented
@@ -130,12 +186,19 @@ function renderNotices(){
 function render(){
  $('caHeading').innerHTML='<span class="country-flag" aria-hidden="true">🇨🇦</span><span>To Canada</span>'+(store.sort==='ca'?' <span class="sort-arrow" aria-hidden="true">↓</span>':'');
  $('usHeading').innerHTML='<span class="country-flag" aria-hidden="true">🇺🇸</span><span>To USA</span>'+(store.sort==='us'?' <span class="sort-arrow" aria-hidden="true">↓</span>':'');
- $('sortToggle').setAttribute('aria-label','Sort crossings; current order: '+({fixed:'crossing order',ca:'lowest Canada wait',us:'lowest USA wait'}[store.sort]));
+ const sortNames={fixed:'crossing order',ca:'lowest Canada wait',us:'lowest USA wait'};
+ $('sortToggle').setAttribute('aria-label','Sort crossings; current order: '+sortNames[store.sort]);
+ $('sortToggle').textContent='Sorting: '+({fixed:'Crossing order',ca:'Lowest Canada wait',us:'Lowest USA wait'}[store.sort])+' ▾';
+ $('pairLegend').hidden=!(store.vehicle==='passenger'&&store.lane==='nexus');
+ $('sortHint').textContent='Whole crossing rows move together. '+(store.sort==='fixed'?'Fixed crossing order.':store.sort==='ca'?
+   'Canada ranking uses CBSA general passenger waits in NEXUS mode.':
+   'USA ranking uses the selected '+categoryLabel(store.lane)+' category, not the faster Regular comparison.')+
+   ' Only fresh comparable inspection waits rank numerically; never full-trip ETA.';
  document.querySelectorAll('[data-sort]').forEach(b=>b.setAttribute('aria-current',String(b.dataset.sort===store.sort)));
  $('crossingRows').innerHTML=sortIds().map(id=>'<div class="crossing-row" role="row"><span class="crossing-name" role="rowheader" aria-label="'+escape(NAMES[id])+'">'+escape(SHORT_NAMES[id])+'</span>'+cell(id,'ca')+cell(id,'us')+'</div>').join('');
  const s=store.data?.sources||{},snap=age(store.data?.generated_at);
  const sourceRecent=!!store.data&&snap<=20&&['cbp','cbsa'].every(k=>s[k]?.status==='ok'&&age(s[k].retrieved_at)<=20);
- const readings=IDS.flatMap(id=>['ca','us'].map(dir=>classify(id,dir)));
+ const readings=IDS.flatMap(id=>['ca','us'].flatMap(dir=>displayModel(id,dir).parts.map(p=>p.v)));
  const historicalCount=readings.filter(v=>v.kind==='stale').length;
  const missingCount=readings.filter(v=>v.kind==='unavailable').length;
  const exceptions=readings.some(v=>['stale','closed','unavailable'].includes(v.kind));
@@ -165,14 +228,18 @@ function renderDiagnostics(){
 }
 
 function renderDetail(){
- const id=store.selected,dir=store.direction,v=classify(id,dir);
+ const id=store.selected,dir=store.direction,m=displayModel(id,dir),v=m.parts[0].v;
  $('detailTitle').textContent=NAMES[id];
  $('detailCa').setAttribute('aria-pressed',String(dir==='ca'));
  $('detailUs').setAttribute('aria-pressed',String(dir==='us'));
- $('detailCategory').textContent=(store.vehicle==='passenger'?'Passenger':'Commercial')+' · '+categories[store.vehicle].find(x=>x[0]===store.lane)[1]+' · Into '+(dir==='ca'?'Canada':'USA');
- $('detailWait').textContent=v.text;
- $('detailWait').dataset.kind=v.kind;
- $('detailNote').textContent=v.reason;
+ $('detailCategory').textContent=(store.vehicle==='passenger'?'Passenger':'Commercial')+' · '+(m.paired?
+    'CBP NEXUS first / Regular second':m.canadaGeneral?'CBSA general passenger (no separate NEXUS wait)':
+    categories[store.vehicle].find(x=>x[0]===store.lane)[1])+' · Into '+(dir==='ca'?'Canada':'USA');
+ $('detailWait').textContent=pairIsPortClosed(m)?'Closed':m.paired?
+   m.parts.map(p=>pairPiece(p.v)).join(' / ')+' min':v.text;
+ $('detailWait').dataset.kind=m.paired?'pair':v.kind;
+ $('detailNote').textContent=(m.canadaGeneral?'This is the CBSA general passenger inspection wait, not a dedicated NEXUS wait. ':'')+
+    m.parts.map(p=>categoryLabel(p.category)+': '+p.v.reason).join(' · ');
  const p=store.data?.directions?.[dir]?.[id];
  const freshNotice=v.src?.status==='ok'&&age(v.src.retrieved_at)<=20&&age(store.data?.generated_at)<=20;
  const alerts=[];
@@ -180,7 +247,14 @@ function renderDetail(){
  if(freshNotice&&D.noticeKind(p?.notice)==='operational')alerts.push('Official advisory: '+p.notice);
  $('detailAlert').hidden=!alerts.length;
  $('detailAlert').textContent=alerts.join(' · ');
- $('detailProvenance').innerHTML='<p>Official source: '+escape(dir==='ca'?'CBSA':'CBP')+'</p><p>Source status: '+escape(v.src?.status||'unavailable')+'</p><p>Observation: '+escape(stamp(v.raw?.observation_at))+'</p><p>Retrieved: '+escape(stamp(v.src?.retrieved_at))+'</p><p>Snapshot published: '+escape(stamp(store.data?.generated_at))+'</p>';
+ $('detailProvenance').innerHTML='<p>Official source: '+escape(dir==='ca'?'CBSA':'CBP')+'</p>'+
+   m.parts.map(p=>'<p><strong>'+escape(categoryLabel(p.category))+'</strong>: '+escape(readingState(p.v))+
+     ' · observed '+escape(stamp(p.v.raw?.observation_at))+
+     ' · source status '+escape(p.v.src?.status||'unavailable')+
+     ' · source retrieved '+escape(stamp(p.v.src?.retrieved_at))+
+     (countFor(p.v)!==null?' · '+countFor(p.v)+' category-specific lanes reported':'')+'</p>').join('')+
+   '<p>Snapshot published: '+escape(stamp(store.data?.generated_at))+'</p>'+
+   (m.paired?'<p>NEXUS and Regular counts are separate CBP category reports. Physical additivity is unverified.</p>':'');
  const sched=dir==='ca'&&store.vehicle==='passenger'&&store.lane==='nexus'&&D.nextNexusSchedule?D.nextNexusSchedule(store.data,id,'ca',Date.now()):null;
  $('detailSchedule').hidden=!sched;
  if(sched){
@@ -250,6 +324,7 @@ function syncLargeText(){
 
 function init(){
  syncLargeText();
+ window.addEventListener('resize',()=>{syncLargeText();render()});
  window.addEventListener('resize',syncLargeText);
  updateLanes();
  try{const t=localStorage.getItem('nexus-theme');if(t==='dark'||t==='light')document.documentElement.dataset.theme=t;}catch{}
