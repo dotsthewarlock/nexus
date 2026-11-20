@@ -59,8 +59,9 @@ assert.equal(qa.classify('ambassador','us').kind,'stale');
 assert.match(qa.cell('ambassador','us'),/Old report/);
 s=reset();s.directions.us.ambassador.standard.observation_at=ago(125);
 assert.equal(qa.classify('ambassador','us').text,'--','expired observation is not current');
-s=reset();s.directions.us.ambassador.standard.observation_at='2026-11-20T01:30:00';
-assert.equal(qa.classify('ambassador','us').text,'--','timezone-free timestamp not a current wait');
+s=reset();s.directions.us.ambassador.standard.observation_at=ago(2).slice(0,-1);
+assert.equal(qa.classify('ambassador','us').text,'--',
+  'a recent timezone-less timestamp must not be interpreted in browser-local time');
 s=reset();s.sources.cbp.retrieved_at=ago(31);
 assert.equal(qa.classify('ambassador','us').kind,'stale',
   'recent observation does not overcome old retrieval');
