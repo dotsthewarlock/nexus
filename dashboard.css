@@ -111,7 +111,8 @@
 .wait-value[data-kind="pair"]{font-size:clamp(1.06rem,4.45vw,1.4rem);letter-spacing:-.03em}
 .pair-inline{display:inline-flex;align-items:baseline;justify-content:center;white-space:nowrap;font-variant-numeric:tabular-nums;gap:0}
 .pair-amount{font-size:inherit;font-weight:inherit;letter-spacing:inherit;font-variant-numeric:tabular-nums}
-.pair-separator{font-size:.74em;font-weight:550;padding:0 1px;color:var(--muted)}
+.pair-separator{font-size:.74em;font-weight:550;padding:0 4px;color:var(--muted)}
+.pair-inline .wait-unit{margin-left:4px}
 .pair-stacked{display:flex;flex-direction:column;gap:3px;align-items:stretch;width:100%;min-width:0}
 .pair-stacked-row{display:flex;align-items:baseline;justify-content:center;flex-wrap:wrap;column-gap:3px;row-gap:0;line-height:1.12}
 .pair-category{font-size:.54em;font-weight:660;letter-spacing:0;color:var(--muted);white-space:nowrap}
@@ -123,7 +124,7 @@
 .settings-body .sort-menu button{min-height:44px;white-space:normal}
 @media(max-width:360px){
  .pair-inline{letter-spacing:-.035em}
- .pair-separator{padding:0 1px}
+ .pair-separator{padding:0 3px}
  .wait-value[data-kind="pair"]{font-size:clamp(1rem,5.2vw,1.27rem)}
 }
 :root[data-large-text="true"] .controls{grid-template-columns:minmax(0,1fr);row-gap:7px}
