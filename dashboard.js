@@ -93,7 +93,7 @@ function cell(id,dir){
  const operatorCurrent=dwt?.kind==='current'||dwt?.kind==='reported_zero';
  const operatorLabel=operatorCurrent?', DWT reports '+dwt.count+' NEXUS '+(dwt.count===1?'lane':'lanes')+' open':'';
  let visual='',laneCount='',sub='',kind=v.kind,spoken='';
- const wrap=!!document.documentElement?.dataset?.largeText||m.parts.some(p=>p.v.kind==='current'&&p.v.minutes>=100);
+ const wrap=document.documentElement?.dataset?.largeText==='true'||m.parts.some(p=>p.v.kind==='current'&&p.v.minutes>=100);
  if(pairIsPortClosed(m)){
   kind='closed';visual='Closed';sub='Source-reported port closure';
   spoken='CBP reports this direction closed. ';
