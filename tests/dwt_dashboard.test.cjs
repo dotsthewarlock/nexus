@@ -116,7 +116,7 @@ assert.match(element('detailDwtReport').textContent,/unavailable/);
 s.supplemental.dwt.ca.observation_at=liveStamp(1);
 s.supplemental.dwt.ca.lane_counts.nexus=0;ui.renderDetail();
 assert.match(element('detailDwtReport').textContent,/lists 0 NEXUS lanes/);
-ui.store.vehicle='commercial';ui.renderDetail();
+ui.store.vehicle='commercial';ui.store.lane='regular';ui.renderDetail();
 assert.equal(element('detailDwt').hidden,true);
 ui.store.vehicle='passenger';ui.store.lane='regular';ui.renderDetail();
 assert.equal(element('detailDwt').hidden,true);
