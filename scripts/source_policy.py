@@ -10,7 +10,10 @@ from datetime import datetime, timezone
 MIN_CHECK_INTERVAL_MINUTES = {
     'cbp': 9,
     'cbsa': 9,
-    'dwt': 30,
+    # Match the dashboard's 20-minute DWT retrieval gate; the old 30-minute
+    # cache made otherwise-fresh operator counts disappear between runs.
+    # This increases DWT requests only when a publisher run actually occurs.
+    'dwt': 9,
     'ontario511': 10,
     'ontario511_alerts': 10,
     'ontario511_road_conditions': 30,
