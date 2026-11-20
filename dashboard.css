@@ -27,51 +27,7 @@
 :root[data-large-text="true"] .wait-cell{min-height:62px}
 
 
-/* M3a: Local destinations are kept inside Settings and the existing detail sheet. */
 [hidden]{display:none!important}
-.primary-button,.destination-form input,.destination-form select,.destination-picker input,.destination-picker button,.saved-destination button{min-height:44px}
-.primary-button{border:1px solid var(--accent);background:var(--accent);color:var(--surface);padding:10px 14px;border-radius:9px;font-size:.9rem;font-weight:700}
-.primary-button:disabled{cursor:not-allowed;opacity:.55}
-.destination-action{margin:16px 0 2px;padding:15px 0;border-top:1px solid var(--line)}
-.destination-action h3,.destination-picker h3{font-size:1rem;margin:0 0 8px}
-.destination-summary{font-size:.9rem;line-height:1.5;margin:0 0 11px;overflow-wrap:anywhere}
-.destination-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}
-.destination-actions button{flex:0 0 auto}
-.destination-picker{padding:8px 0 0}
-.destination-picker label,.destination-form label{font-size:.84rem;font-weight:680;display:block;margin:12px 0 5px}
-.destination-picker input,.destination-form input,.destination-form select{display:block;width:100%;min-width:0;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 12px;border-radius:9px;font-size:1rem}
-.destination-picker form .primary-button{margin-top:11px}
-.picker-saved{display:grid;gap:8px;margin-bottom:14px}
-.picker-saved button{display:flex;flex-direction:column;gap:3px;align-items:flex-start;width:100%;text-align:left;border:1px solid var(--line);padding:11px 13px;background:var(--bg);border-radius:9px}
-.picker-saved small{font-size:.8rem;color:var(--muted);overflow-wrap:anywhere}
-.saved-destination{border:1px solid var(--line);padding:12px;border-radius:10px;margin:8px 0;background:var(--bg)}
-.saved-destination strong{font-size:.93rem}
-.saved-destination p{overflow-wrap:anywhere;margin:4px 0 6px;font-size:.82rem}
-.saved-destination .destination-actions{margin:8px 0 0}
-.saved-destination button{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--surface);font-size:.8rem}
-.saved-destination .is-default{font-size:.78rem;color:var(--good);font-weight:650}
-.settings-destinations .destination-form{padding:12px 0}
-.settings-destinations .destination-form label:first-of-type{margin-top:0}
-.destructive{color:var(--bad)!important}
-#destinationMessage:not(:empty){padding:8px 0}
-#removeAllConfirm{padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--bg)}
-#removeAllConfirm p{margin:0 0 8px}
-@media(max-width:360px){.destination-actions{gap:7px}.destination-actions button{font-size:.83rem}.destination-picker{padding-top:4px}}
-
-/* Keep form actions inside their container with 200% text or narrow screens. */
-.destination-actions button,.picker-saved button,.settings-destinations button{
- max-width:100%;white-space:normal;overflow-wrap:anywhere
-}
-.destination-action .secondary-button,.destination-picker .secondary-button,
-.settings-destinations .secondary-button{min-height:44px}
-@media(max-width:360px){
- .destination-actions button{flex:1 1 135px}
- .saved-destination .destination-actions button{flex:1 1 120px}
-}
-
-/* M3b: native Maps link, visible crossing-verification advisory. */
-#openDirections{display:inline-flex;align-items:center;justify-content:center;min-height:44px;text-decoration:none}
-.route-warning{font-size:.84rem;color:var(--warn);margin:10px 0;line-height:1.5;overflow-wrap:anywhere}
 
 /* M4a: one high-priority notice visible, remaining material notices on demand. */
 .notice-head{display:flex;align-items:stretch;flex-wrap:wrap;gap:0}
@@ -82,18 +38,3 @@
 .notices-list[hidden]{display:none}
 .notice-list-button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--ink);font-size:.84rem;text-align:left;min-height:44px;overflow-wrap:anywhere}
 .notice-list-button:last-child{border-bottom:0}
-
-/* M3 route QA: opt-in diagnostics inside Settings; never above comparison table. */
-.route-qa>summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;align-items:center;outline-offset:3px}
-.route-qa-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:9px;margin:14px 0}
-.route-qa-case{padding:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;min-width:0}
-.route-qa-case h4{font-size:.92rem;line-height:1.3;margin:0 0 8px}
-.route-qa-fixture{font-size:.76rem;margin:0 0 8px;color:var(--muted);overflow-wrap:anywhere}
-.route-qa-links{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 12px}
-.route-qa-links a{display:inline-flex;align-items:center;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;color:var(--accent);font-size:.8rem;text-decoration:none}
-.route-qa-case label,.route-qa>label{display:block;font-size:.8rem;font-weight:650;margin:9px 0 5px}
-.route-qa-case select,.route-qa-case textarea,#routeQaPlatform,.route-qa-report{width:100%;min-width:0;max-width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
-.route-qa-case select,#routeQaPlatform{min-height:44px}
-.route-qa-case textarea{resize:vertical;font-size:.84rem}
-.route-qa-report{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.76rem;overflow-wrap:anywhere}
-@media(max-width:360px){.route-qa-links{flex-direction:column}.route-qa-links a{width:100%}}
