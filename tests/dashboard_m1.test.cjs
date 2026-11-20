@@ -11,8 +11,11 @@ for(const label of ['To Canada','To USA','Passenger','Commercial','Nexus <span c
 assert.match(html,/class="mode-pill pill-vehicle"/);
 assert.match(html,/class="mode-pill pill-lane"/);
 assert.match(css,/\.wait-unit/);
-assert.match(html,/dashboard\.js\?v=m3-foundation1/);
-assert.match(html,/dashboard\.css\?v=m3-foundation1/);
+assert.match(html,/id="pairLegend"/);
+assert.match(html,/id="sortToggle"/);
+assert.ok(html.indexOf('id="sortToggle"')>html.indexOf('id="settingsDialog"'), 'sorting belongs in Settings');
+assert.match(html,/dashboard\.js\?v=m3-paired1/);
+assert.match(html,/dashboard\.css\?v=m3-paired1/);
 assert.match(js,/const IDS=\['ambassador','tunnel','gordie'\]/);
 assert.match(js,/D\.reading\(raw,store\.data,Date\.now\(\)\)/);
 assert.match(js,/good\(x\)!==good\(y\)/);
@@ -60,6 +63,8 @@ const payload=()=>({
  }
 });
 api.store.data=payload();
+assert.equal(api.store.lane,'nexus','approved fresh install defaults to NEXUS');
+api.store.lane='regular';
 assert.equal(api.classify('ambassador','us').text,'0 min','valid zero must remain 0 min');
 assert.equal(api.classify('tunnel','ca').kind,'current');
 assert.equal(api.classify('ambassador','ca').minutes,20);
