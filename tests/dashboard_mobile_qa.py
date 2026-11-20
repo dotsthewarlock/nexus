@@ -124,6 +124,9 @@ def test_interactions(page):
     assert us.locator(".pair-amount").all_inner_texts() == ["7", "0"], (
         "USA must pair CBP NEXUS 7 with CBP Regular verified zero")
     assert us.locator(".pair-separator").inner_text().strip() == "/"
+    separator_padding = us.locator(".pair-separator").evaluate(
+        "(el)=>parseFloat(getComputedStyle(el).paddingLeft)")
+    assert separator_padding >= 3, "Slash requires visible spacing; 7/0 is ambiguous"
     assert "min" in us.locator(".wait-unit").inner_text()
     assert "1 / 3 lanes" in us.inner_text(), "Each CBP lane count keeps its category"
     assert page.locator("#pairLegend").is_visible()
