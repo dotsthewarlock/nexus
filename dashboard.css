@@ -97,3 +97,8 @@
 }
 :root[data-large-text="true"] .wait-wrap + .wait-wrap{border-left:1px solid var(--m3-outline-variant)}
 :root[data-large-text="true"] .table-header>div:not(:first-child){white-space:normal;text-align:center}
+
+/* Accessible zoom: allow the longer selected title to reflow without widening the mobile viewport. */
+:root[data-large-text="true"] .topbar h1{white-space:normal;min-width:0;font-size:1rem;line-height:1.15}
+:root[data-large-text="true"] .brand-tail{display:block;font-size:.72em;line-height:1.2}
+:root[data-large-text="true"] .top-actions{flex:none}
