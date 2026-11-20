@@ -55,12 +55,20 @@ function sortIds(){
 function cell(id,dir){
  const v=classify(id,dir);
  const sourceAge=v.raw?.observation_at&&Number.isFinite(age(v.raw.observation_at))?Math.round(age(v.raw.observation_at)):null;
- const laneCount=v.kind==='current'&&dir==='us'&&Number.isInteger(v.raw?.lanes_open)&&v.raw.lanes_open>=0
-   ?'<span class="lanes">'+v.raw.lanes_open+' '+(v.raw.lanes_open===1?'lane':'lanes')+'</span>':'';
+ // The operator's count is independent of the unpublished CBSA NEXUS wait.
+ // Do not show it for other crossings, vehicles, lanes, or an official port closure.
+ const dwt=id==='tunnel'&&dir==='ca'&&v.kind==='unpublished'
+   ?D.dwtNexusLane?.(store.data,id,dir,store.vehicle,store.lane,Date.now()):null;
+ const operatorCurrent=dwt?.kind==='current'||dwt?.kind==='reported_zero';
+ const laneCount=operatorCurrent
+   ?'<span class="lanes">'+dwt.count+' '+(dwt.count===1?'lane':'lanes')+' · DWT</span>'
+   :v.kind==='current'&&dir==='us'&&Number.isInteger(v.raw?.lanes_open)&&v.raw.lanes_open>=0
+    ?'<span class="lanes">'+v.raw.lanes_open+' '+(v.raw.lanes_open===1?'lane':'lanes')+'</span>':'';
  const sub=v.kind==='stale'?'Old report'+(sourceAge!==null?' · '+sourceAge+'m':''):
    v.kind==='closed'?'Source-reported closure':v.kind==='unsupported'?'Not applicable':
-   v.kind==='unpublished'?'Not published':v.kind==='unavailable'?'Unavailable':null;
- return '<div class="wait-wrap" role="cell"><button class="wait-cell" type="button" data-crossing="'+id+'" data-direction="'+dir+'" aria-label="'+escape(NAMES[id]+', into '+(dir==='ca'?'Canada':'USA')+', '+v.text+', '+(sub||'recent report'))+'"><span class="wait-value" data-kind="'+v.kind+'">'+escape(v.text)+'</span>'+laneCount+(sub?'<span class="cell-note">'+escape(sub)+'</span>':'')+'</button></div>';
+   v.kind==='unpublished'?(operatorCurrent?'Wait not published':'Not published'):v.kind==='unavailable'?'Unavailable':null;
+ const operatorLabel=operatorCurrent?', DWT reports '+dwt.count+' NEXUS '+(dwt.count===1?'lane':'lanes')+' open':'';
+ return '<div class="wait-wrap" role="cell"><button class="wait-cell" type="button" data-crossing="'+id+'" data-direction="'+dir+'" aria-label="'+escape(NAMES[id]+', into '+(dir==='ca'?'Canada':'USA')+', '+v.text+', '+(sub||'recent report')+operatorLabel)+'"><span class="wait-value" data-kind="'+v.kind+'">'+escape(v.text)+'</span>'+laneCount+(sub?'<span class="cell-note">'+escape(sub)+'</span>':'')+'</button></div>';
 }
 /* Selected D2-07: show all material agency notices without a permanent Alerts tab.
  * This uses recent source retrieval + snapshot timestamps, not an invented
@@ -177,6 +185,21 @@ function renderDetail(){
    :'CBSA published Canada-bound NEXUS hours: '+(sched.kind==='within'?'within a possible service window':'outside published service windows')+
      (sched.next?' · next '+event+' '+sched.next+'.':'.');
   $('detailSchedule').textContent=description+' Published hours are not proof of live lane operation; exceptions may apply.';
+ }
+ const operator=D.dwtNexusLane?.(store.data,id,dir,store.vehicle,store.lane,Date.now());
+ const operatorSection=$('detailDwt');
+ operatorSection.hidden=!(id==='tunnel'&&dir==='ca'&&store.vehicle==='passenger'&&store.lane==='nexus');
+ if(!operatorSection.hidden){
+  const current=operator?.kind==='current'||operator?.kind==='reported_zero';
+  const lead=current
+   ?'DWT reports '+operator.count+' NEXUS '+(operator.count===1?'lane':'lanes')+
+    ' open (operator-reported). This count is not a NEXUS inspection wait.'
+   :'Current DWT NEXUS lane count unavailable. '+(operator?.reason||'No valid report.');
+  $('detailDwtReport').textContent=lead+
+   ' DWT observed: '+stamp(operator?.observationAt)+
+   ' · DWT retrieved: '+stamp(operator?.retrievedAt)+
+   ' · Nexus snapshot published: '+stamp(operator?.snapshotAt)+
+   '. CBSA general passenger waits are separate; no Canada-bound NEXUS inspection wait is published by the current CBSA source.';
  }
  $('cameraViewer').href='./classic-board.html';
 }

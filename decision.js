@@ -25,6 +25,37 @@
     // Small positive clock differences are tolerated; implausible future data isn't.
     return minutes < -CLOCK_SKEW_MIN ? Infinity : Math.max(0,minutes);
   }
+
+  // Owner-selected interpretation: DWT NexusLaneCount reports open NEXUS
+  // lanes Detroit -> Windsor. This is not an inspection wait or additive total.
+  // Every clock is independent: a fresh HTTP request cannot renew old data.
+  function dwtNexusLane(data,id,direction,vehicle,lane,now=Date.now()) {
+    const record=data?.supplemental?.dwt?.ca,src=data?.sources?.dwt;
+    const base={kind:'unavailable',count:null,source:'DWT',
+      observationAt:record?.observation_at??null,
+      retrievedAt:src?.retrieved_at??null,snapshotAt:data?.generated_at??null,
+      reason:'No verified recent operator lane report.'};
+    if(id!=='tunnel'||direction!=='ca'||vehicle!=='passenger'||lane!=='nexus')
+      return {...base,reason:'DWT Canada-bound NEXUS count does not apply to this selection.'};
+    if(!record||!src)return base;
+    const count=record.lane_counts?.nexus;
+    if(!Number.isInteger(count)||count<0||count>20)
+      return {...base,kind:'invalid',reason:'Operator lane count missing or invalid.'};
+    // Require an explicit timezone to avoid browser-local DST interpretation.
+    const dated=s=>typeof s==='string'&&
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/i.test(s)&&
+      Number.isFinite(Date.parse(s));
+    if(![record.observation_at,src.retrieved_at,data?.generated_at].every(dated))
+      return {...base,kind:'invalid',reason:'Missing or ambiguous observation, retrieval or publication timestamp.'};
+    const fresh=src.status==='ok'&&!src.retained_previous&&
+      age(record.observation_at,now)<=MAX_OPERATOR_AGE&&
+      age(src.retrieved_at,now)<=MAX_OPERATOR_AGE&&
+      age(data.generated_at,now)<=SNAPSHOT_RECENT_AGE;
+    if(!fresh)return {...base,kind:'stale',
+      reason:'Operator report or its retrieval/publication is old or unavailable.'};
+    return {...base,kind:count===0?'reported_zero':'current',count,
+      reason:'Recent DWT operator-reported open NEXUS lane count; not inspection wait minutes.'};
+  }
   function reading(raw, snapshot, now=Date.now()) {
     if (!raw) return {kind:'unavailable',minutes:null,age:Infinity};
     const obsAge=age(raw.observation_at,now),snapAge=age(snapshot?.generated_at,now);
@@ -89,7 +120,10 @@
     const primary=nexus && direction==='us' && usable(nx)?nx:standard;
     const primaryType=nexus && direction==='us' && usable(nx)?'nexus':'regular';
     const dwt=id==='tunnel'?data?.supplemental?.dwt?.[direction]:null;
-    const operatorFresh=!!dwt && age(dwt.observation_at,now)<=MAX_OPERATOR_AGE &&
+    const dwtSource=data?.sources?.dwt;
+    const operatorFresh=!!dwt && dwtSource?.status==='ok' && !dwtSource.retained_previous &&
+      age(dwt.observation_at,now)<=MAX_OPERATOR_AGE &&
+      age(dwtSource.retrieved_at,now)<=MAX_OPERATOR_AGE &&
       age(data?.generated_at,now)<=SNAPSHOT_RECENT_AGE;
     return {id,name:NAMES[id],port,standard,nexus:nx,ready,commercial,fast,pedestrian,primary,primaryType,portClosed,
       sourceRecent,sourceFailed:source?.status==='error',noticeKind:noticeKind(port.notice),dwt:operatorFresh?dwt:null,dwtStale:!!dwt&&!operatorFresh,
@@ -341,6 +375,6 @@
     return null;
   }
   return {IDS,NAMES,age,reading,usable,recommendationReady,noticeKind,crossing,evaluate,publishedNexusWindow,
-    countrySide,nextNexusSchedule,scheduledNexusLaneCount,MAX_OPERATOR_AGE,READING_CURRENT_AGE,READING_AGING_AGE,READING_STALE_AGE,READING_EXPIRE_AGE,SNAPSHOT_RECENT_AGE,
+    countrySide,nextNexusSchedule,scheduledNexusLaneCount,dwtNexusLane,MAX_OPERATOR_AGE,READING_CURRENT_AGE,READING_AGING_AGE,READING_STALE_AGE,READING_EXPIRE_AGE,SNAPSHOT_RECENT_AGE,
     RECOMMEND_MAX_AGE,RECOMMEND_MAX_OBSERVATION_GAP};
 });
