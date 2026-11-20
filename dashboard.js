@@ -178,6 +178,21 @@ function renderDetail(){
      (sched.next?' · next '+event+' '+sched.next+'.':'.');
   $('detailSchedule').textContent=description+' Published hours are not proof of live lane operation; exceptions may apply.';
  }
+ const operator=D.dwtNexusLane?.(store.data,id,dir,store.vehicle,store.lane,Date.now());
+ const operatorSection=$('detailDwt');
+ operatorSection.hidden=!(id==='tunnel'&&dir==='ca'&&store.vehicle==='passenger'&&store.lane==='nexus');
+ if(!operatorSection.hidden){
+  const current=operator?.kind==='current'||operator?.kind==='reported_zero';
+  const lead=current
+   ?'DWT operator lists '+operator.count+' NEXUS '+(operator.count===1?'lane':'lanes')+
+    '. This is not confirmation of open customs booths or a NEXUS inspection wait.'
+   :'Current DWT NEXUS lane count unavailable. '+(operator?.reason||'No valid report.');
+  $('detailDwtReport').textContent=lead+
+   ' DWT observed: '+stamp(operator?.observationAt)+
+   ' · DWT retrieved: '+stamp(operator?.retrievedAt)+
+   ' · Nexus snapshot published: '+stamp(operator?.snapshotAt)+
+   '. CBSA general passenger waits are separate; no Canada-bound NEXUS inspection wait is published by the current CBSA source.';
+ }
  $('cameraViewer').href='./classic-board.html';
 }
 function openDetail(id,dir='ca'){

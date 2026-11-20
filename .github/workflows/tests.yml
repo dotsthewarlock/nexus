@@ -27,6 +27,8 @@ jobs:
         run: node tests/navigation_deferred.test.cjs
       - name: M2c proposed independent scheduler offline safety tests
         run: node tests/watchdog_m2c.test.cjs
+      - name: DWT operator NEXUS lane provenance and stale data tests
+        run: node tests/dwt_dashboard.test.cjs
       - name: Approved M1 dual-direction dashboard checks
         run: node tests/dashboard_m1.test.cjs
       - name: M4a material notices and closure-priority regression checks
