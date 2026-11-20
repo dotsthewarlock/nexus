@@ -96,6 +96,7 @@ check(evalUs(future).home.primary.kind,'unavailable','future snapshot rejected')
 check(D.age(iso(t+30*1000),t),0,'30s clock skew tolerated');
 check(D.age(iso(t+3*60000),t),Infinity,'excess future timestamp invalid');
 let dwt=snapshot();dwt.supplemental.dwt.us={observation_at:ago(5),lane_counts:{nexus:1,car:2},travel_time_category:'< 20'};
+dwt.sources.dwt={status:'ok',retrieved_at:ago(5)};
 check(D.crossing(dwt,'us','tunnel',true,t).dwt.lane_counts.nexus,1,'fresh operator counts');
 dwt.supplemental.dwt.us.observation_at=ago(27);
 check(D.crossing(dwt,'us','tunnel',true,t).dwt,null,'old operator values not displayed');
