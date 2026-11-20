@@ -23,12 +23,8 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Decision engine tests
         run: node tests/decision.test.cjs
-      - name: M3a destination storage and sheet workflow tests
-        run: node tests/destinations_m3a.test.cjs
-      - name: M3b preview routing contract across six crossing directions
-        run: node tests/routing_m3b.test.cjs
-      - name: Route validation panel and local evidence tests
-        run: node tests/routing_qa_m5.test.cjs
+      - name: Current scope excludes navigation and preserves core border dashboard
+        run: node tests/navigation_deferred.test.cjs
       - name: Approved M1 dual-direction dashboard checks
         run: node tests/dashboard_m1.test.cjs
       - name: M4a material notices and closure-priority regression checks
