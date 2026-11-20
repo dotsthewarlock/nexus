@@ -45,6 +45,22 @@ class SourcePolicyTests(TestCase):
         self.assertTrue(next_snapshot['sources']['cbp']['cache_reused'])
         self.assertEqual(next_snapshot['directions']['us'], previous['directions']['us'])
 
+    def test_dwt_cache_interval_matches_20_minute_ui_gate(self):
+        self.assertEqual(source_policy.MIN_CHECK_INTERVAL_MINUTES['dwt'], 9)
+        for minutes, expected in ((2, True), (8, True), (10, False), (19, False), (30, False)):
+            with self.subTest(age_minutes=minutes):
+                previous, stamp = self.previous(minutes=minutes)
+                result = collector.empty_snapshot()
+                reused = source_policy.reuse_cached_source(
+                    result, previous, 'dwt', 'supplemental', 'dwt')
+                self.assertEqual(reused, expected)
+                if expected:
+                    self.assertEqual(result['sources']['dwt']['retrieved_at'], stamp)
+                    self.assertEqual(result['sources']['dwt']['cache_policy_minutes'], 9)
+                    self.assertTrue(result['sources']['dwt']['cache_reused'])
+                else:
+                    self.assertNotIn('dwt', result['sources'])
+
     def test_valid_empty_alert_list_may_be_cached(self):
         previous, _ = self.previous()
         result = collector.empty_snapshot()
