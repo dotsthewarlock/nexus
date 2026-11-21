@@ -20,7 +20,7 @@ function node(id){
   return nodes.get(id);
 }
 const ctx={window:{NexusDecision:D},
-  document:{getElementById:node,querySelectorAll(){return []}},
+  document:{documentElement:{dataset:{largeText:'false'}},getElementById:node,querySelectorAll(){return []}},
   localStorage:{getItem(){return null}},Date,Intl,Math,Number,console};
 vm.runInNewContext(injected,ctx,{filename:'dashboard.js'});
 const qa=ctx.window.__sourceQA;
