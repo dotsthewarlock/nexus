@@ -14,7 +14,7 @@ assert.match(css,/\.wait-unit/);
 assert.match(html,/id="pairLegend"/);
 assert.match(html,/id="sortToggle"/);
 assert.ok(html.indexOf('id="sortToggle"')>html.indexOf('id="settingsDialog"'), 'sorting belongs in Settings');
-assert.match(html,/dashboard\.js\?v=m3-paired1/);
+assert.match(html,/dashboard\.js\?v=m3-stale2/);
 assert.match(html,/dashboard\.css\?v=m3-paired1/);
 assert.match(js,/const IDS=\['ambassador','tunnel','gordie'\]/);
 assert.match(js,/D\.reading\(raw,store\.data,Date\.now\(\)\)/);
