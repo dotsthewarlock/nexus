@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f7f9fb">
   <meta name="description" content="Nexus Windsor–Detroit border inspection waits, both directions and three crossings.">
   <title>Nexus - Commuter · Border inspection waits</title>
-  <link rel="stylesheet" href="./dashboard.css?v=m3-paired1">
+  <link rel="stylesheet" href="./dashboard.css?v=m3-stale2">
 </head>
 <body>
 <main class="app-shell" id="main">
@@ -42,6 +42,7 @@
   </section>
 
   <p class="pair-legend" id="pairLegend" hidden>USA: <strong>NEXUS first / Regular second</strong>, independently reported. Canada: CBSA general passenger wait.</p>
+  <p class="sort-paused" id="sortStatus" role="status" hidden></p>
   <div class="source-summary" aria-live="polite" aria-atomic="true">
     <span class="status-dot" id="statusDot" aria-hidden="true"></span>
     <button id="sourceDetails" class="status-link" type="button" aria-label="View official source freshness details"><span id="summary">Checking reported observations…</span></button>
@@ -103,6 +104,6 @@
 </dialog>
 
 <script src="./decision.js?v=rc149-dwt1"></script>
-<script src="./dashboard.js?v=m3-paired1" defer></script>
+<script src="./dashboard.js?v=m3-stale2" defer></script>
 </body>
 </html>
