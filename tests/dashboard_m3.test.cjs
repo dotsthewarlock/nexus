@@ -92,7 +92,7 @@ assert.equal(qa.store.lane,'regular','inapplicable NEXUS selection resets to com
 
 // G2: missing NEXUS leaves the Regular half valid and explicitly not interchangeable.
 s=reset();delete s.directions.us.ambassador.nexus;us=qa.cell('ambassador','us');
-assert.match(us,/pair-amount">--<\/span>.*pair-amount">14<\/span>/);
+assert.match(us,/pair-amount[^>]*>--<\/span>.*pair-amount[^>]*>14<\/span>/);
 assert.match(us,/NEXUS unavailable/);
 assert.match(us,/-- \/ 4 lanes/);
 assert.equal(qa.classify('ambassador','us','nexus').kind,'unavailable');
@@ -100,7 +100,9 @@ assert.equal(qa.classify('ambassador','us','regular').kind,'current');
 s=reset();s.directions.us.ambassador.nexus.observation_at=at(43);
 us=qa.cell('ambassador','us');
 assert.match(us,/NEXUS old report/);
-assert.match(us,/pair-amount">--<\/span>.*pair-amount">14<\/span>/);
+assert.match(us,/pair-amount[^>]*data-age-state="old">5<\/span>.*pair-amount[^>]*>14<\/span>/,
+ 'old official NEXUS value is visible with explicit historical styling');
+assert.match(us,/NEXUS 5 minutes, historical report/,'accessible history is not called current');
 assert.doesNotMatch(us,/2 \/ 4 lanes/,'old NEXUS count must not appear as current');
 s=reset();s.directions.us.ambassador.standard.observation_at=at(50);
 assert.match(qa.cell('ambassador','us'),/Regular old report/);
@@ -113,7 +115,7 @@ assert.match(qa.cell('ambassador','us'),/NEXUS unavailable/);
 s=reset();s.sources.cbp.retrieved_at=at(36);
 assert.notEqual(qa.classify('ambassador','us','nexus').kind,'current');
 assert.notEqual(qa.classify('ambassador','us','regular').kind,'current');
-assert.match(qa.cell('ambassador','us'),/NEXUS old report/);
+assert.match(qa.cell('ambassador','us'),/Both historical · source not current/);
 s=reset();s.sources.cbp.status='error';s.sources.cbp.retained_previous=true;
 assert.notEqual(qa.classify('ambassador','us','nexus').kind,'current');
 assert.doesNotMatch(qa.cell('ambassador','us'),/2 \/ 4 lanes/,'retained source is not recent lanes');
@@ -121,7 +123,7 @@ s=reset();s.directions.us.ambassador.nexus.status='closed';
 s.directions.us.ambassador.nexus.minutes=null;
 us=qa.cell('ambassador','us');
 assert.match(us,/NEXUS source-reported closed/,'scoped NEXUS closure is not full port closure');
-assert.match(us,/pair-amount">--<\/span>.*pair-amount">14<\/span>/);
+assert.match(us,/pair-amount[^>]*>--<\/span>.*pair-amount[^>]*>14<\/span>/);
 s=reset();s.directions.us.ambassador.port_status='Closed';
 assert.match(qa.cell('ambassador','us'),/Source-reported port closure/);
 assert.doesNotMatch(qa.cell('ambassador','us'),/pair-inline/);
@@ -130,6 +132,26 @@ assert.doesNotMatch(qa.cell('tunnel','ca'),/lanes · DWT/);
 s=reset();s.supplemental.dwt.ca.lane_counts.nexus=0;
 assert.match(qa.cell('tunnel','ca'),/0 lanes · DWT/);
 assert.doesNotMatch(qa.cell('tunnel','ca'),/Source-reported port closure/);
+
+// Realistic stale-only feed: sorting cannot rank and must visibly say why.
+s=reset();qa.store.sort='ca';
+for(const id of ['ambassador','tunnel','gordie'])s.directions.ca[id].standard.observation_at=at(51);
+qa.render();
+assert.equal(qa.sortIds().join(','),'ambassador,tunnel,gordie');
+assert.match(node('sortStatus').textContent,/Sorting paused/);
+assert.equal(node('sortStatus').hidden,false);
+assert.doesNotMatch(node('caHeading').innerHTML,/sort-arrow/);
+assert.match(node('sortToggle').textContent,/paused/);
+qa.store.sort='us';
+for(const id of ['ambassador','tunnel','gordie']){
+ s.directions.us[id].nexus.observation_at=at(51);
+ s.directions.us[id].standard.observation_at=at(51);
+}
+qa.render();
+assert.match(node('sortStatus').textContent,/Sorting paused/);
+assert.match(qa.cell('tunnel','us'),/Both old reports/);
+assert.match(qa.cell('tunnel','us'),/data-age-state="old"/);
+assert.equal(qa.sortIds().join(','),'ambassador,tunnel,gordie');
 
 // G3: sort by selected NEXUS only; Canada uses CBSA general. Rows move intact.
 s=reset();qa.store.sort='us';

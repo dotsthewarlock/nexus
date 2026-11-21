@@ -130,6 +130,7 @@ def test_interactions(page):
     assert "min" in us.locator(".wait-unit").inner_text()
     assert "1 / 3 lanes" in us.inner_text(), "Each CBP lane count keeps its category"
     assert page.locator("#pairLegend").is_visible()
+    assert page.locator("#sortStatus").is_hidden()
     assert "NEXUS first / Regular second" in page.locator("#pairLegend").inner_text()
     spoken = us.get_attribute("aria-label") or ""
     assert "NEXUS 7 minutes" in spoken and "Regular 0 minutes" in spoken
