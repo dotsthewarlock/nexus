@@ -5,7 +5,7 @@ const vm=require('node:vm');
 const D=require('../decision.js');
 const html=fs.readFileSync('index.html','utf8'),css=fs.readFileSync('dashboard.css','utf8'),js=fs.readFileSync('dashboard.js','utf8');
 new vm.Script(js);
-for(const id of ['crossingRows','caHeading','usHeading','sortToggle','sortMenu','vehicleSelect','laneSelect','themeToggle','settingsDialog','detailDialog','detailCa','detailUs','detailProvenance','detailAlert','diagnosticBody','notices','sourceDetails'])
+for(const id of ['crossingRows','caHeading','usHeading','sortToggle','sortMenu','sortStatus','vehicleSelect','laneSelect','themeToggle','settingsDialog','detailDialog','detailCa','detailUs','detailProvenance','detailAlert','diagnosticBody','notices','sourceDetails'])
  assert.ok(html.includes('id="'+id+'"'),'missing dashboard control '+id);
 for(const label of ['To Canada','To USA','Passenger','Commercial','Nexus <span class="brand-tail">- Commuter'])assert.ok(html.includes(label));
 assert.match(html,/class="mode-pill pill-vehicle"/);
