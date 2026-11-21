@@ -115,7 +115,7 @@ assert.match(qa.cell('ambassador','us'),/NEXUS unavailable/);
 s=reset();s.sources.cbp.retrieved_at=at(36);
 assert.notEqual(qa.classify('ambassador','us','nexus').kind,'current');
 assert.notEqual(qa.classify('ambassador','us','regular').kind,'current');
-assert.match(qa.cell('ambassador','us'),/NEXUS old report/);
+assert.match(qa.cell('ambassador','us'),/Both historical · source not current/);
 s=reset();s.sources.cbp.status='error';s.sources.cbp.retained_previous=true;
 assert.notEqual(qa.classify('ambassador','us','nexus').kind,'current');
 assert.doesNotMatch(qa.cell('ambassador','us'),/2 \/ 4 lanes/,'retained source is not recent lanes');
