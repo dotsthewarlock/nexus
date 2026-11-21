@@ -125,7 +125,9 @@ function cell(id,dir){
    Number.isFinite(age(nx.raw?.observation_at))&&Number.isFinite(age(reg.raw?.observation_at))&&
    Math.abs(age(nx.raw.observation_at)-age(reg.raw.observation_at))<1;
   const exceptions=m.parts.filter(p=>p.v.kind!=='current').map(p=>categoryLabel(p.category)+' '+readingState(p.v));
-  sub=oldBoth?'Both old reports · '+Math.round(age(nx.raw.observation_at))+'m':exceptions.join(' · ');
+  sub=oldBoth?(source(dir)?.status==='ok'&&age(source(dir)?.retrieved_at)<=20?
+    'Both old reports · '+Math.round(age(nx.raw.observation_at))+'m':
+    'Both historical · source not current'):exceptions.join(' · ');
   laneCount=n!==null||r!==null?'<span class="lanes">'+countLabel(n)+' / '+countLabel(r)+' lanes</span>':'';
   spoken=m.parts.map(p=>categoryLabel(p.category)+' '+spokenValue(p.v)+
     ', CBP observed '+stamp(p.v.raw?.observation_at)+
