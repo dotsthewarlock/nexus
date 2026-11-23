@@ -69,9 +69,24 @@ function sortIds(){
    return IDS.indexOf(a)-IDS.indexOf(b);
  });
 }
+function sortStatus(){
+ if(store.sort==='fixed')return {paused:false,eligible:0,description:''};
+ const dir=store.sort,category=dir==='ca'&&store.vehicle==='passenger'&&store.lane==='nexus'?'regular':store.lane;
+ const eligible=IDS.filter(id=>classify(id,dir,category).kind==='current').length;
+ const description=(dir==='ca'?'Canada ':'USA ')+
+   (dir==='ca'&&store.vehicle==='passenger'&&store.lane==='nexus'?'general passenger':
+     (store.vehicle==='commercial'?'commercial ':'')+({regular:'Regular',nexus:'NEXUS',ready:'Ready',fast:'FAST'}[category]||category));
+ return {paused:eligible===0,eligible,description};
+}
 const categoryLabel=c=>({regular:'Regular',nexus:'NEXUS',ready:'Ready',fast:'FAST'}[c]||c);
-const pairPiece=v=>v.kind==='current'?String(v.minutes):
-  v.kind==='unsupported'?'N/A':v.kind==='closed'?'--':'--';
+// Historical numerics may be shown only with an explicit old-report label.
+ // Never use historical or unverified values to sort, rank or report lane counts.
+const pairPiece=v=>['current','stale'].includes(v.kind)&&Number.isInteger(v.minutes)
+  ?String(v.minutes):v.kind==='unsupported'?'N/A':'--';
+const partAttr=v=>v.kind==='stale'?' data-age-state="old"':'';
+const spokenValue=v=>v.kind==='current'?v.minutes+' minutes, recent official report':
+ v.kind==='stale'?v.minutes+' minutes, historical report; not current; '+readingState(v):
+ readingState(v);
 const countFor=v=>v.kind==='current'&&Number.isInteger(v.raw?.lanes_open)&&
   v.raw.lanes_open>=0&&v.raw.lanes_open<=100?v.raw.lanes_open:null;
 const countLabel=n=>n===null?'--':String(n);
@@ -102,14 +117,19 @@ function cell(id,dir){
   const [nx,reg]=m.parts.map(p=>p.v);
   const n=countFor(nx),r=countFor(reg);
   if(wrap){
-   visual='<span class="pair-stacked">'+m.parts.map(p=>'<span class="pair-stacked-row"><span class="pair-category">'+categoryLabel(p.category)+'</span><span class="pair-amount">'+escape(pairPiece(p.v))+(p.v.kind==='current'?'<span class="wait-unit"> min</span>':'')+'</span></span>').join('')+'</span>';
+   visual='<span class="pair-stacked">'+m.parts.map(p=>'<span class="pair-stacked-row"><span class="pair-category">'+categoryLabel(p.category)+'</span><span class="pair-amount"'+partAttr(p.v)+'>'+escape(pairPiece(p.v))+(Number.isInteger(p.v.minutes)&&['current','stale'].includes(p.v.kind)?'<span class="wait-unit"> min</span>':'')+'</span></span>').join('')+'</span>';
   }else{
-   visual='<span class="pair-inline"><span class="pair-amount">'+escape(pairPiece(nx))+'</span><span class="pair-separator"> / </span><span class="pair-amount">'+escape(pairPiece(reg))+'</span><span class="wait-unit"> min</span></span>';
+   visual='<span class="pair-inline"><span class="pair-amount"'+partAttr(nx)+'>'+escape(pairPiece(nx))+'</span><span class="pair-separator"> / </span><span class="pair-amount"'+partAttr(reg)+'>'+escape(pairPiece(reg))+'</span><span class="wait-unit"> min</span></span>';
   }
+  const oldBoth=nx.kind==='stale'&&reg.kind==='stale'&&
+   Number.isFinite(age(nx.raw?.observation_at))&&Number.isFinite(age(reg.raw?.observation_at))&&
+   Math.abs(age(nx.raw.observation_at)-age(reg.raw.observation_at))<1;
   const exceptions=m.parts.filter(p=>p.v.kind!=='current').map(p=>categoryLabel(p.category)+' '+readingState(p.v));
-  sub=exceptions.join(' · ');
+  sub=oldBoth?(source(dir)?.status==='ok'&&age(source(dir)?.retrieved_at)<=20?
+    'Both old reports · '+Math.round(age(nx.raw.observation_at))+'m':
+    'Both historical · source not current'):exceptions.join(' · ');
   laneCount=n!==null||r!==null?'<span class="lanes">'+countLabel(n)+' / '+countLabel(r)+' lanes</span>':'';
-  spoken=m.parts.map(p=>categoryLabel(p.category)+' '+(p.v.kind==='current'?p.v.minutes+' minutes':readingState(p.v))+
+  spoken=m.parts.map(p=>categoryLabel(p.category)+' '+spokenValue(p.v)+
     ', CBP observed '+stamp(p.v.raw?.observation_at)+
     ', '+(countFor(p.v)===null?'lane count unreported':countFor(p.v)+' lanes reported')).join('; ')+'. ';
  }else{
@@ -184,16 +204,21 @@ function renderNotices(){
   :'';
 }
 function render(){
- $('caHeading').innerHTML='<span class="country-flag" aria-hidden="true">🇨🇦</span><span>To Canada</span>'+(store.sort==='ca'?' <span class="sort-arrow" aria-hidden="true">↓</span>':'');
- $('usHeading').innerHTML='<span class="country-flag" aria-hidden="true">🇺🇸</span><span>To USA</span>'+(store.sort==='us'?' <span class="sort-arrow" aria-hidden="true">↓</span>':'');
+ const sort=sortStatus();
+ $('caHeading').innerHTML='<span class="country-flag" aria-hidden="true">🇨🇦</span><span>To Canada</span>'+(store.sort==='ca'&&!sort.paused?' <span class="sort-arrow" aria-hidden="true">↓</span>':'');
+ $('usHeading').innerHTML='<span class="country-flag" aria-hidden="true">🇺🇸</span><span>To USA</span>'+(store.sort==='us'&&!sort.paused?' <span class="sort-arrow" aria-hidden="true">↓</span>':'');
  const sortNames={fixed:'crossing order',ca:'lowest Canada wait',us:'lowest USA wait'};
- $('sortToggle').setAttribute('aria-label','Sort crossings; current order: '+sortNames[store.sort]);
- $('sortToggle').textContent='Sorting: '+({fixed:'Crossing order',ca:'Lowest Canada wait',us:'Lowest USA wait'}[store.sort])+' ▾';
+ $('sortToggle').setAttribute('aria-label','Sort crossings; selected order: '+sortNames[store.sort]+(sort.paused?'; paused because no current qualifying waits':''));
+ $('sortToggle').textContent='Sorting: '+({fixed:'Crossing order',ca:'Lowest Canada wait',us:'Lowest USA wait'}[store.sort])+(sort.paused?' (paused)':'')+' ▾';
+ $('sortStatus').hidden=!sort.paused;
+ $('sortStatus').textContent=sort.paused?'Sorting paused — no current '+sort.description+' waits. Old reports are not ranked.':'';
  $('pairLegend').hidden=!(store.vehicle==='passenger'&&store.lane==='nexus');
- $('sortHint').textContent='Whole crossing rows move together. '+(store.sort==='fixed'?'Fixed crossing order.':store.sort==='ca'?
+ $('sortHint').textContent='Whole crossing rows move together. '+(sort.paused?
+   'Sorting is paused because there are no fresh eligible '+sort.description+' waits; current display stays in crossing order.':
+   store.sort==='fixed'?'Fixed crossing order.':store.sort==='ca'?
    'Canada ranking uses CBSA general passenger waits in NEXUS mode.':
    'USA ranking uses the selected '+categoryLabel(store.lane)+' category, not the faster Regular comparison.')+
-   ' Only fresh comparable inspection waits rank numerically; never full-trip ETA.';
+   ' Historical reports are not ranked; this is not a full-trip ETA.';
  document.querySelectorAll('[data-sort]').forEach(b=>b.setAttribute('aria-current',String(b.dataset.sort===store.sort)));
  $('crossingRows').innerHTML=sortIds().map(id=>'<div class="crossing-row" role="row"><span class="crossing-name" role="rowheader" aria-label="'+escape(NAMES[id])+'">'+escape(SHORT_NAMES[id])+'</span>'+cell(id,'ca')+cell(id,'us')+'</div>').join('');
  const s=store.data?.sources||{},snap=age(store.data?.generated_at);
@@ -237,7 +262,7 @@ function renderDetail(){
     categories[store.vehicle].find(x=>x[0]===store.lane)[1])+' · Into '+(dir==='ca'?'Canada':'USA');
  $('detailWait').textContent=pairIsPortClosed(m)?'Closed':m.paired?
    m.parts.map(p=>pairPiece(p.v)).join(' / ')+' min':v.text;
- $('detailWait').dataset.kind=m.paired?'pair':v.kind;
+ $('detailWait').dataset.kind=m.paired&&m.parts.some(p=>p.v.kind==='stale')?'stale':m.paired?'pair':v.kind;
  $('detailNote').textContent=(m.canadaGeneral?'This is the CBSA general passenger inspection wait, not a dedicated NEXUS wait. ':'')+
     m.parts.map(p=>categoryLabel(p.category)+': '+p.v.reason).join(' · ');
  const p=store.data?.directions?.[dir]?.[id];

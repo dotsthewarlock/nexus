@@ -132,3 +132,8 @@
 :root[data-large-text="true"] .pair-stacked-row{flex-wrap:wrap}
 :root[data-large-text="true"] .wait-value[data-kind="pair"]{font-size:1.25rem}
 :root[data-large-text="true"] .pair-category{font-size:.53em}
+
+/* Historical readings are visible but never presented as live, and never sorted. */
+.pair-amount[data-age-state="old"]{color:var(--warning, #9a5b00);font-weight:650}
+.sort-paused{font-size:.75rem;line-height:1.35;margin:7px 4px 0;color:var(--muted)}
+.detail-wait[data-kind="stale"]{color:var(--warning, #9a5b00)}
