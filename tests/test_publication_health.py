@@ -1,5 +1,8 @@
 """Offline tests for best-effort public Pages verification and collection-gap reporting."""
 import json
+import os
+import subprocess
+import textwrap
 from datetime import datetime, timezone
 from pathlib import Path
 import tempfile
@@ -114,6 +117,63 @@ class PublicationGapTests(unittest.TestCase):
             'configured_interval_minutes': 15}}), 45)
         self.assertEqual(report_health.gap_warning_threshold({'collection': {
             'configured_interval_minutes': -20}}), 30)
+
+
+
+class PagesArtifactVisibilityTests(unittest.TestCase):
+    """Exercise the actual workflow shell with simulated API responses."""
+
+    def run_wait(self, outcomes, artifact_id='123'):
+        workflow = (Path(__file__).resolve().parents[1] /
+                    '.github/workflows/publish.yml').read_text(encoding='utf-8')
+        step = workflow.split('      - name: Wait for Pages artifact metadata\n', 1)[1]
+        block = step.split('        run: |\n', 1)[1].split('      - name:', 1)[0]
+        script = textwrap.dedent(block)
+        mock = r"""
+timeout() { shift; "$@"; }
+gh() {
+    IFS=, read -ra responses <<< "$OUTCOMES"
+    local result="${responses[$((attempt-1))]:-missing}"
+    if [ "$result" = error ]; then return 1; fi
+    printf '%s\n' "$result"
+}
+sleep() { printf 'mock sleep %s\n' "$1"; }
+"""
+        env = dict(os.environ, OUTCOMES=','.join(outcomes), ARTIFACT_ID=artifact_id,
+                   GITHUB_REPOSITORY='example/nexus', RUN_ID='42')
+        return subprocess.run(['bash', '-e', '-o', 'pipefail', '-c', mock + script],
+                              env=env, capture_output=True, text=True, timeout=5)
+
+    def test_exact_upload_ready(self):
+        result = self.run_wait(['123'])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('mock sleep 15', result.stdout)
+        self.assertNotIn('mock sleep 5', result.stdout)
+
+    def test_retry_missing_wrong_id_and_api_error(self):
+        result = self.run_wait(['missing', '456', 'error', '123'])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.count('mock sleep 5'), 3)
+        self.assertIn('mock sleep 15', result.stdout)
+
+    def test_ambiguity_fails_without_deployment(self):
+        result = self.run_wait(['ambiguous'])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('refusing ambiguous deployment', result.stdout)
+        self.assertNotIn('mock sleep', result.stdout)
+
+    def test_missing_artifact_stops_after_bounded_attempts(self):
+        result = self.run_wait(['missing'])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout.count('Waiting for Pages artifact'), 12)
+        self.assertEqual(result.stdout.count('mock sleep 5'), 11)
+        self.assertNotIn('mock sleep 15', result.stdout)
+
+    def test_invalid_upload_id_fails_before_polling(self):
+        result = self.run_wait(['123'], artifact_id='')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Missing or invalid Pages upload artifact ID', result.stdout)
+        self.assertNotIn('Waiting for Pages artifact', result.stdout)
 
 
 if __name__ == '__main__':
