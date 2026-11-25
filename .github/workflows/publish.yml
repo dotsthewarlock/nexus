@@ -87,22 +87,29 @@ jobs:
           touch site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
+        id: pages_artifact
         with:
           path: site
       - name: Wait for Pages artifact metadata
-        # Upload success can precede visibility in the Actions artifacts API.
-        # Bound the wait; never deploy an absent or ambiguous artifact.
+        # Verify the exact upload; allow the internal artifact service a propagation margin.
+        timeout-minutes: 3
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_ID: ${{ github.run_id }}
+          ARTIFACT_ID: ${{ steps.pages_artifact.outputs.artifact_id }}
         run: |
+          if [[ ! "$ARTIFACT_ID" =~ ^[0-9]+$ ]]; then
+            echo "::error::Missing or invalid Pages upload artifact ID."
+            exit 1
+          fi
           for attempt in $(seq 1 12); do
-            if count=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?name=github-pages&per_page=100" --jq '[.artifacts[] | select(.name == "github-pages" and .expired == false)] | length'); then
-              if [ "$count" = "1" ]; then
-                echo "Pages artifact is visible."
+            if result=$(timeout 8s gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?name=github-pages&per_page=100" --jq '[.artifacts[] | select(.name == "github-pages" and .expired == false)] | if length == 1 then (.[0].id | tostring) elif length > 1 then "ambiguous" else "missing" end'); then
+              if [ "$result" = "$ARTIFACT_ID" ]; then
+                echo "Exact Pages artifact is visible; allowing propagation."
+                sleep 15
                 exit 0
               fi
-              if [ "$count" -gt 1 ]; then
+              if [ "$result" = "ambiguous" ]; then
                 echo "::error::Multiple Pages artifacts found; refusing ambiguous deployment."
                 exit 1
               fi
@@ -110,7 +117,7 @@ jobs:
             echo "Waiting for Pages artifact metadata (attempt $attempt/12)."
             if [ "$attempt" -lt 12 ]; then sleep 5; fi
           done
-          echo "::error::Pages artifact not visible after bounded wait."
+          echo "::error::Exact Pages artifact not visible after bounded wait."
           exit 1
       - name: Deploy Pages
         id: deployment
