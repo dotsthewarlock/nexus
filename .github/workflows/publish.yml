@@ -125,4 +125,4 @@ jobs:
       - name: Verify public Pages files after deployment
         # Informational during M2 evaluation: transient CDN propagation must not
         # falsely classify the collector or the deployment as failed.
-        run: python scripts/verify_publication.py --snapshot-file data/live.json --site-file index.html --run-id "${{ github.run_id }}"
+        run: python scripts/verify_publication.py --snapshot-file site/data/live.json --site-file site/index.html --asset-root site --run-id "${{ github.run_id }}"

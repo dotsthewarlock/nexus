@@ -10,10 +10,12 @@ import os
 from pathlib import Path
 import sys
 import time
-from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 MAX_RESPONSE_BYTES = 1_500_000
+DASHBOARD_ASSETS = ('dashboard.css', 'dashboard.js', 'decision.js',
+                    'classic-board.html', 'board.css', 'board.js')
 
 
 def cache_busted_url(url, run_id):
@@ -62,17 +64,28 @@ def check_html(expected, served):
 
 
 def verify(expected_snapshot, expected_html, snapshot_url, html_url, run_id,
-           attempts=5, pause_seconds=5, fetch=fetch_bytes, sleep=time.sleep):
+           attempts=5, pause_seconds=5, fetch=fetch_bytes, sleep=time.sleep,
+           assets=()):
     if attempts < 1:
         raise ValueError('At least one verification attempt is required')
     snapshot_target = cache_busted_url(snapshot_url, run_id)
     html_target = cache_busted_url(html_url, run_id)
+    asset_targets = []
+    for name, expected in assets:
+        if name not in DASHBOARD_ASSETS:
+            raise ValueError('Unsupported dashboard asset')
+        asset_targets.append((name, expected, cache_busted_url(urljoin(html_url, name), run_id)))
     last_reason = 'Unconfirmed'
     for attempt in range(1, attempts + 1):
         try:
             check_snapshot(expected_snapshot, fetch(snapshot_target))
             check_html(expected_html, fetch(html_target))
-            return True, attempt, 'Both published files match the staged build'
+            for name, expected, target in asset_targets:
+                if fetch(target) != expected:
+                    raise ValueError(f'Published {name} differs from staged asset')
+            reason = ('Both published files and all requested dashboard assets match the staged build'
+                      if asset_targets else 'Both published files match the staged build')
+            return True, attempt, reason
         except (OSError, ValueError, TimeoutError) as exc:
             # Do not print raw exception text, which might include URLs or data.
             last_reason = 'Public fetch failed' if isinstance(exc, OSError) else str(exc)
@@ -85,6 +98,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--snapshot-file', default='data/live.json')
     parser.add_argument('--site-file', default='index.html')
+    parser.add_argument('--asset-root', type=Path,
+                        help='Verify main and Classic dashboard assets from this staged directory')
     parser.add_argument('--snapshot-url', default='https://dotsthewarlock.github.io/nexus/data/live.json')
     parser.add_argument('--site-url', default='https://dotsthewarlock.github.io/nexus/')
     parser.add_argument('--run-id', default=os.environ.get('GITHUB_RUN_ID', 'manual'))
@@ -95,13 +110,15 @@ def main(argv=None):
     args = parser.parse_args(argv)
     expected_json = json.loads(Path(args.snapshot_file).read_text(encoding='utf-8'))
     expected_html = Path(args.site_file).read_bytes()
+    assets = [(name, (args.asset_root / name).read_bytes()) for name in DASHBOARD_ASSETS] if args.asset_root else []
     ok, count, reason = verify(expected_json, expected_html,
                                args.snapshot_url, args.site_url, args.run_id,
-                               attempts=args.attempts, pause_seconds=args.pause_seconds)
+                               attempts=args.attempts, pause_seconds=args.pause_seconds, assets=assets)
     report = ('### Public GitHub Pages publication check\n\n'
               + ('MATCH' if ok else 'NOT CONFIRMED')
               + f' after {count} attempt(s). {reason}.\n\n'
-              + 'Checks both the sanitized JSON contract and dashboard HTML against '
+              + ('Checks the sanitized JSON, dashboard HTML and main/Classic assets against ' if assets
+                 else 'Checks both the sanitized JSON contract and dashboard HTML against ')
               + 'the files staged in this same run. A check cannot establish '
               + 'freshness of the underlying agency observations.\n')
     print(report)
