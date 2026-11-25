@@ -131,6 +131,10 @@ s=reset();s.supplemental.dwt.ca.observation_at=at(992);
 assert.doesNotMatch(qa.cell('tunnel','ca'),/NEXUS lanes/);
 s=reset();s.supplemental.dwt.ca.lane_counts.nexus=0;
 assert.match(qa.cell('tunnel','ca'),/0 NEXUS lanes/);
+s.supplemental.dwt.ca.lane_counts.nexus=1;
+assert.match(qa.cell('tunnel','ca'),/1 NEXUS lane<\/span>/);
+assert.doesNotMatch(qa.cell('tunnel','ca'),/1 \/ \d+ lanes/,'unverified Cars count must never become Regular');
+s.supplemental.dwt.ca.lane_counts.nexus=0;
 assert.doesNotMatch(qa.cell('tunnel','ca'),/Source-reported port closure/);
 
 // Realistic stale-only feed: sorting cannot rank and must visibly say why.

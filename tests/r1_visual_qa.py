@@ -23,6 +23,11 @@ def capture(browser, root, tag, width, theme, payload, large=False):
         if not large:
             board=page.locator(".comparison").bounding_box()
             assert board["y"] + board["height"] <= 844
+            assert page.locator(".crossing-name").evaluate_all("""names => names.every(n => {
+                const range=document.createRange();range.selectNodeContents(n);
+                const box=n.getBoundingClientRect();
+                return [...range.getClientRects()].every(r=>r.left>=box.left-1&&r.right<=box.right-3);
+            })"""), "Crossing name crosses its column or has no gap"
             assert page.locator(".wait-cell").evaluate_all("""cells => cells.every(c => {
                 const b=c.getBoundingClientRect();
                 return [...c.querySelectorAll('.pair-amount,.wait-number,.wait-unit')].every(n=>{
@@ -43,6 +48,10 @@ with sync_playwright() as p:
             for width in (320,360,390,430):
                 capture(browser,current,"after",width,theme,data)
         from copy import deepcopy
+        two_digit=deepcopy(data)
+        two_digit["directions"]["us"]["ambassador"]["nexus"]["minutes"]=99
+        two_digit["directions"]["us"]["ambassador"]["standard"]["minutes"]=99
+        capture(browser,current,"after-two-digit",320,"light",two_digit)
         mixed=deepcopy(data)
         mixed["directions"]["us"]["ambassador"]["nexus"]["minutes"]=120
         mixed["directions"]["us"]["ambassador"]["standard"]["minutes"]=135
