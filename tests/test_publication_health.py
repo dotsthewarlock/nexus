@@ -78,6 +78,53 @@ class PublicationVerificationTests(unittest.TestCase):
         self.assertEqual(sleeps, [0.1])
         self.assertIn('Both published files match', msg)
 
+    def test_all_dashboard_assets_match_and_use_cache_busted_public_urls(self):
+        expected = snapshot()
+        assets = [(name, name.encode()) for name in verify_publication.DASHBOARD_ASSETS]
+        calls = []
+        def fetch(url):
+            calls.append(url)
+            if '/live.json?' in url:
+                return json.dumps(expected).encode()
+            if '/nexus/?' in url:
+                return b'HTML'
+            return url.split('?')[0].rsplit('/', 1)[1].encode()
+        ok, attempts, msg = verify_publication.verify(
+            expected, b'HTML', 'https://example.com/nexus/live.json',
+            'https://example.com/nexus/', '42', attempts=1, fetch=fetch, assets=assets)
+        self.assertTrue(ok)
+        self.assertEqual(attempts, 1)
+        self.assertIn('all requested dashboard assets', msg)
+        self.assertEqual(len(calls), 2 + len(assets))
+        self.assertTrue(all('verify_run=42' in url for url in calls))
+
+    def test_asset_mismatch_retries_and_never_reports_match(self):
+        expected = snapshot()
+        calls = []
+        def fetch(url):
+            calls.append(url)
+            if 'live.json' in url:
+                return json.dumps(expected).encode()
+            if 'dashboard.js' in url:
+                return b'old JS'
+            return b'HTML'
+        sleeps = []
+        ok, attempts, msg = verify_publication.verify(
+            expected, b'HTML', 'https://example.com/nexus/live.json',
+            'https://example.com/nexus/', '42', attempts=2, fetch=fetch,
+            sleep=sleeps.append, assets=[('dashboard.js', b'new JS')])
+        self.assertFalse(ok)
+        self.assertEqual(attempts, 2)
+        self.assertIn('dashboard.js differs', msg)
+        self.assertEqual(len(sleeps), 1)
+        self.assertEqual(sum('dashboard.js' in u for u in calls), 2)
+
+    def test_rejects_arbitrary_asset_paths(self):
+        with self.assertRaisesRegex(ValueError, 'Unsupported dashboard asset'):
+            verify_publication.verify(
+                snapshot(), b'HTML', 'https://example.com/live.json',
+                'https://example.com/', '42', assets=[('../private', b'')])
+
     def test_failed_public_check_is_warning_only_unless_strict(self):
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / 'live.json'
