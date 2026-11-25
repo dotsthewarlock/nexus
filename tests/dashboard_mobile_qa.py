@@ -90,10 +90,10 @@ def check_geometry(page, width, large=False):
     assert page.locator(".crossing-row [role=rowheader]").count() == 3
     assert page.locator(".crossing-row [role=cell]").count() == 6
     assert page.locator(".crossing-row").first.locator(".wait-cell").count() == 2
-    for selector in ("#vehicleSelect", "#laneSelect",
+    for selector in ("#themeToggle", "#settingsOpen", "#refresh", "#vehicleSelect", "#laneSelect",
                      ".wait-cell[data-crossing=tunnel][data-direction=ca]"):
         box = rect(page, selector)
-        assert box["height"] >= 43.5, f"Touch target too small: {selector}, {box}"
+        assert box["height"] >= 47.5, f"Touch target too small: {selector}, {box}"
         assert box["x"] >= -1 and box["x"] + box["width"] <= width + 1, (
             f"Target extends beyond viewport: {selector}, {box}")
     if large:
@@ -118,8 +118,9 @@ def test_interactions(page):
     us = page.locator('.wait-cell[data-crossing="tunnel"][data-direction="us"]')
     assert page.locator("#vehicleSelect").input_value() == "passenger"
     assert page.locator("#laneSelect").input_value() == "nexus"
+    assert page.locator("#vehicleSelect").evaluate("(el)=>getComputedStyle(el).backgroundColor") == page.locator("#laneSelect").evaluate("(el)=>getComputedStyle(el).backgroundColor")
     assert "6 min" in ca.inner_text(), "CBSA general passenger reading remains visible once"
-    assert "2 lanes" in ca.inner_text() and "DWT" in ca.inner_text(), (
+    assert "2 NEXUS lanes" in ca.inner_text() and "DWT" not in ca.inner_text(), (
         "Current DWT supplemental count is independent of the CBSA general wait")
     assert us.locator(".pair-amount").all_inner_texts() == ["7", "0"], (
         "USA must pair CBP NEXUS 7 with CBP Regular verified zero")
@@ -129,9 +130,10 @@ def test_interactions(page):
     assert separator_padding >= 3, "Slash requires visible spacing; 7/0 is ambiguous"
     assert "min" in us.locator(".wait-unit").inner_text()
     assert "1 / 3 lanes" in us.inner_text(), "Each CBP lane count keeps its category"
-    assert page.locator("#pairLegend").is_visible()
+    assert page.locator("#pairLegend").count() == 0
     assert page.locator("#sortStatus").is_hidden()
-    assert "NEXUS first / Regular second" in page.locator("#pairLegend").inner_text()
+    assert "NEXUS / Regular" in page.locator("#usHeading").inner_text()
+    assert "General passenger" in page.locator("#caHeading").inner_text()
     spoken = us.get_attribute("aria-label") or ""
     assert "NEXUS 7 minutes" in spoken and "Regular 0 minutes" in spoken
     assert "CBP observed" in spoken
@@ -162,7 +164,7 @@ def test_interactions(page):
     # G1: Regular is strict when chosen, and removes the paired legend.
     page.locator("#laneSelect").select_option("regular")
     assert "0 min" in us.inner_text() and "/" not in us.inner_text()
-    assert page.locator("#pairLegend").is_hidden()
+    assert "NEXUS / Regular" not in page.locator("#usHeading").inner_text()
 
     # G3: sort is available only in Settings, moves entire crossing rows,
     # and retains clear country direction labels.
@@ -170,7 +172,7 @@ def test_interactions(page):
     page.locator("#settingsOpen").click()
     assert page.locator("#settingsDialog").evaluate("(el)=>el.open")
     assert page.locator("#settingsTitle").evaluate("(el)=>document.activeElement===el")
-    assert rect(page, "#settingsClose")["height"] >= 43.5
+    assert rect(page, "#settingsClose")["height"] >= 47.5
     page.locator("#sortToggle").click()
     page.locator('#sortMenu [data-sort="us"]').click()
     assert "Lowest USA wait" in page.locator("#sortToggle").inner_text()
@@ -195,7 +197,7 @@ def test_long_pair(page):
     us = page.locator('.wait-cell[data-crossing="ambassador"][data-direction="us"]')
     assert us.locator(".pair-stacked-row").count() == 2
     assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth + 1")
-    assert us.bounding_box()["width"] >= 44
+    assert us.bounding_box()["width"] >= 48
     assert "NEXUS" in us.inner_text() and "Regular" in us.inner_text()
 
 

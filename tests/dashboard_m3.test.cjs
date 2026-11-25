@@ -59,13 +59,13 @@ assert.doesNotMatch(us,/6 lanes/,'no invented physical sum');
 assert.match(ca,/wait-number">12<\/span>/,'Canada shows only CBSA general passenger reading');
 assert.match(ca,/CBSA general passenger/,'Canada wait is not presented as NEXUS wait');
 assert.doesNotMatch(ca,/pair-inline|pair-stacked/,'Canada does not invent a paired NEXUS wait');
-assert.match(qa.cell('tunnel','ca'),/2 lanes · DWT/,
+assert.match(qa.cell('tunnel','ca'),/2 NEXUS lanes/,
  'fresh DWT supplemental lane count is separately attributed');
-assert.doesNotMatch(qa.cell('ambassador','ca'),/lanes · DWT/);
-assert.doesNotMatch(qa.cell('gordie','ca'),/lanes · DWT/);
+assert.doesNotMatch(qa.cell('ambassador','ca'),/NEXUS lanes/);
+assert.doesNotMatch(qa.cell('gordie','ca'),/NEXUS lanes/);
 assert.doesNotMatch(us,/DWT/,'DWT cannot override CBP USA');
 qa.render();
-assert.equal(node('pairLegend').hidden,false,'one legend appears in passenger NEXUS mode');
+assert.match(node('caHeading').innerHTML,/General passenger/);assert.match(node('usHeading').innerHTML,/NEXUS \/ Regular/);
 assert.equal((node('crossingRows').innerHTML.match(/class="wait-cell"/g)||[]).length,6);
 assert.match(node('summary').textContent,/CBSA checked.*CBP checked/);
 qa.store.selected='ambassador';qa.store.direction='us';qa.renderDetail();
@@ -77,7 +77,7 @@ assert.match(node('detailProvenance').innerHTML,/Physical additivity is unverifi
 qa.store.lane='regular';us=qa.cell('ambassador','us');
 assert.match(us,/wait-number">14<\/span>/);
 assert.doesNotMatch(us,/pair-inline|pair-stacked/);
-qa.render();assert.equal(node('pairLegend').hidden,true);
+qa.render();assert.match(node('usHeading').innerHTML,/Regular/);assert.doesNotMatch(node('usHeading').innerHTML,/NEXUS \/ Regular/);
 qa.store.lane='ready';
 assert.equal(qa.classify('ambassador','us').kind,'unsupported');
 assert.equal(qa.classify('tunnel','us').kind,'unavailable');
@@ -85,7 +85,7 @@ assert.doesNotMatch(qa.cell('tunnel','us'),/wait-number">10<\/span>/);
 qa.store.vehicle='commercial';qa.store.lane='fast';
 assert.equal(qa.classify('ambassador','us').kind,'unavailable');
 assert.doesNotMatch(qa.cell('ambassador','us'),/5 \/ 14/);
-assert.doesNotMatch(qa.cell('tunnel','ca'),/lanes · DWT/);
+assert.doesNotMatch(qa.cell('tunnel','ca'),/NEXUS lanes/);
 qa.updateLanes();assert.equal(qa.store.lane,'fast');
 qa.store.lane='nexus';qa.updateLanes();
 assert.equal(qa.store.lane,'regular','inapplicable NEXUS selection resets to commercial Regular');
@@ -128,9 +128,9 @@ s=reset();s.directions.us.ambassador.port_status='Closed';
 assert.match(qa.cell('ambassador','us'),/Source-reported port closure/);
 assert.doesNotMatch(qa.cell('ambassador','us'),/pair-inline/);
 s=reset();s.supplemental.dwt.ca.observation_at=at(992);
-assert.doesNotMatch(qa.cell('tunnel','ca'),/lanes · DWT/);
+assert.doesNotMatch(qa.cell('tunnel','ca'),/NEXUS lanes/);
 s=reset();s.supplemental.dwt.ca.lane_counts.nexus=0;
-assert.match(qa.cell('tunnel','ca'),/0 lanes · DWT/);
+assert.match(qa.cell('tunnel','ca'),/0 NEXUS lanes/);
 assert.doesNotMatch(qa.cell('tunnel','ca'),/Source-reported port closure/);
 
 // Realistic stale-only feed: sorting cannot rank and must visibly say why.

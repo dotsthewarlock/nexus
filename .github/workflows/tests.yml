@@ -43,6 +43,11 @@ jobs:
           fi
       - name: Primary mobile browser QA at 320/360/390/430 and 200% text
         run: python tests/dashboard_mobile_qa.py
+      - name: R1 matched baseline and candidate visual QA
+        run: |
+          git fetch --no-tags --depth=1 origin 2898177440e6df2ca2a76fd5540cd2057b13e70b
+          git worktree add --detach "$RUNNER_TEMP/nexus-r1-baseline" 2898177440e6df2ca2a76fd5540cd2057b13e70b
+          python tests/r1_visual_qa.py "$RUNNER_TEMP/nexus-r1-baseline"
       - name: Preserve browser QA screenshots for review
         if: always()
         uses: actions/upload-artifact@v4
