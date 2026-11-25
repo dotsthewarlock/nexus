@@ -89,6 +89,29 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
+      - name: Wait for Pages artifact metadata
+        # Upload success can precede visibility in the Actions artifacts API.
+        # Bound the wait; never deploy an absent or ambiguous artifact.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          for attempt in $(seq 1 12); do
+            if count=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?name=github-pages&per_page=100" --jq '[.artifacts[] | select(.name == "github-pages" and .expired == false)] | length'); then
+              if [ "$count" = "1" ]; then
+                echo "Pages artifact is visible."
+                exit 0
+              fi
+              if [ "$count" -gt 1 ]; then
+                echo "::error::Multiple Pages artifacts found; refusing ambiguous deployment."
+                exit 1
+              fi
+            fi
+            echo "Waiting for Pages artifact metadata (attempt $attempt/12)."
+            if [ "$attempt" -lt 12 ]; then sleep 5; fi
+          done
+          echo "::error::Pages artifact not visible after bounded wait."
+          exit 1
       - name: Deploy Pages
         id: deployment
         uses: actions/deploy-pages@v4
