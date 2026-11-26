@@ -98,6 +98,10 @@ def cell(data, direction, crossing, category, now):
     if not isinstance(port, dict):
         return "No port record"
 
+    expected_source = 'CBSA' if direction == 'ca' else 'CBP'
+    if port.get('source') not in (None, expected_source):
+        return 'Invalid source identity'
+
     if known_port_closed(port):
         return "Port closure reported; currency unverified"
 
@@ -105,6 +109,8 @@ def cell(data, direction, crossing, category, now):
     if not isinstance(reading, dict):
         return "Wait not reported"
 
+    if reading.get('source') not in (None, expected_source):
+        return 'Invalid source identity'
     status = reading.get("status")
     observed = age_minutes(reading.get("observation_at"), now)
 

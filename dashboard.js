@@ -65,7 +65,7 @@ function pairIsPortClosed(model){
 }
 function cell(id,dir){
  const m=displayModel(id,dir),v=m.parts[0].v;
- const dwt=id==='tunnel'&&dir==='ca'&&store.vehicle==='passenger'&&store.lane==='nexus'&&!v.closureScope
+ const dwt=id==='tunnel'&&dir==='ca'&&store.vehicle==='passenger'&&store.lane==='nexus'&&v.closureScope!=='port'
    ?D.dwtNexusLane?.(store.data,id,dir,'passenger','nexus',now()):null;
  const operatorCurrent=dwt?.kind==='current'||dwt?.kind==='reported_zero';
  const operatorLabel=operatorCurrent?', operator reports '+dwt.count+' NEXUS '+(dwt.count===1?'lane':'lanes')+' open':'';
@@ -91,7 +91,7 @@ function cell(id,dir){
    Number.isFinite(age(nx.raw?.observation_at))&&Number.isFinite(age(reg.raw?.observation_at))&&
    Math.abs(age(nx.raw.observation_at)-age(reg.raw.observation_at))<1;
   const exceptions=m.parts.filter(p=>p.v.kind!=='current').map(p=>categoryLabel(p.category)+' '+readingState(p.v));
-  sub=oldBoth?(source(dir)?.status==='ok'&&age(source(dir)?.retrieved_at)<=20?
+  sub=oldBoth?(D.sourceClocks(store.data,dir,now()).current?
     'Both old reports · '+Math.round(age(nx.raw.observation_at))+'m':
     'Both historical · source not current'):exceptions.join(' · ');
   laneCount=n!==null&&r!==null?'<span class="lanes">'+n+' / '+r+' lanes</span>':
@@ -265,7 +265,7 @@ function renderDetailFrame(){
      (sched.next?' · next '+event+' '+sched.next+'.':'.');
   $('detailSchedule').textContent=description+' Published hours are not proof of live lane operation; exceptions may apply.';
  }
- const operator=v.closureScope?null:D.dwtNexusLane?.(store.data,id,dir,store.vehicle,store.lane,now());
+ const operator=v.closureScope==='port'?null:D.dwtNexusLane?.(store.data,id,dir,store.vehicle,store.lane,now());
  const operatorSection=$('detailDwt');
  operatorSection.hidden=!(id==='tunnel'&&dir==='ca'&&store.vehicle==='passenger'&&store.lane==='nexus');
  if(!operatorSection.hidden){
@@ -274,7 +274,10 @@ function renderDetailFrame(){
    ?'DWT reports '+operator.count+' NEXUS '+(operator.count===1?'lane':'lanes')+
     ' open (operator-reported). This count is not a NEXUS inspection wait.'
    :'Current DWT NEXUS lane count unavailable. '+(operator?.reason||'No valid report.');
-  $('detailDwtReport').textContent=lead+
+  const operatorCategory=store.data?.supplemental?.dwt?.ca?.travel_time_category;
+  const categorical=typeof operatorCategory==='string'&&operatorCategory.trim()&&store.data?.supplemental?.dwt?.ca?.source==='DWT'?
+    ' Operator travel-time category (source wording, currency/measurement not established): '+operatorCategory.trim().slice(0,50)+'.':'';
+  $('detailDwtReport').textContent=lead+categorical+
    ' DWT observed: '+stamp(operator?.observationAt)+
    ' · DWT retrieved: '+stamp(operator?.retrievedAt)+
    ' · Nexus snapshot published: '+stamp(operator?.snapshotAt)+

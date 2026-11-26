@@ -24,6 +24,8 @@ for(const bad of [null,'2026-11-25T12:00:00','bad',stamp(-3)]){
 let s=fixture();s.sources.cbp.status='error';s.sources.cbp.retained_previous=true;
 assert.equal(classify(s).kind,'stale');delete s.sources.cbp.last_success_at;assert.equal(classify(s).minutes,null);
 s=fixture();s.sources.cbp.retained_previous=true;assert.equal(classify(s).kind,'stale');
+s=fixture();s.directions.us.ambassador.source='CBSA';assert.equal(classify(s).state,'invalid');
+s=fixture();raw(s).source='DWT';assert.equal(classify(s).state,'invalid');
 s=fixture();raw(s).lanes_open=101;assert.equal(classify(s).count,null);
 raw(s).lanes_open=0;assert.equal(classify(s).count,0);
 raw(s).status='closed';assert.equal(classify(s).kind,'closed');delete raw(s).observation_at;

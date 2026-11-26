@@ -49,6 +49,7 @@
     if(id!=='tunnel'||direction!=='ca'||vehicle!=='passenger'||lane!=='nexus')
       return {...base,reason:'DWT Canada-bound NEXUS count does not apply to this selection.'};
     if(!record||!src)return base;
+    if(record.source!=null&&record.source!=='DWT')return {...base,kind:'invalid',reason:'Operator source identity does not match DWT.'};
     const count=record.lane_counts?.nexus;
     if(!Number.isInteger(count)||count<0||count>20)
       return {...base,kind:'invalid',reason:'Operator lane count missing or invalid.'};
@@ -417,6 +418,8 @@
     const out=(state,reason,extra={})=>({...base,state,reason,...extra});
     if(!['ca','us'].includes(dir)||!VALID_CATEGORIES[vehicle]?.includes(category))
       return out('invalid','Invalid vehicle/category/direction.');
+    if((port?.source!=null&&port.source!==base.source)||(raw?.source!=null&&raw.source!==base.source))
+      return out('invalid','Official report source does not match the selected direction.');
     if(/^\s*(temporarily\s+)?closed\b/i.test(port?.port_status||''))
       return out('port_closure_unverified','Official source reports this direction closed; status currency unverified. Verify before travel.',
         {kind:'closure_unverified',text:'Closure unverified',closureScope:'port'});
@@ -431,7 +434,7 @@
         {kind:'closure_unverified',text:'Closure unverified',closureScope:'category'});
     }
     if(!raw)return out('missing','No category-specific official wait is published for this crossing and direction.');
-    if(!c.historical)return out(c.src?.status==='ok'?'expired':'source_unavailable',
+    if(!c.historical)return out(c.src?.status==='ok'&&[c.retrievalAge,c.successAge,c.publicationAge].every(Number.isFinite)?'expired':'source_unavailable',
       'The official source or its successful retrieval/publication is unavailable or expired.');
     if(raw.status==='not_applicable')
       return c.current&&(!raw.observation_at||observationAge<=20)

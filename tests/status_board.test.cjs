@@ -235,7 +235,7 @@ const caBoard=node('crossingRows').innerHTML;
 assert.equal((caBoard.match(/Within scheduled hours/g)||[]).length>=3,true,
   'all three crossings have published schedule context');
 assert.ok(caBoard.includes('1 lane scheduled'),'Ambassador count must be explicitly scheduled');
-assert.ok(caBoard.includes('2 NEXUS lanes listed (operator)'),'Tunnel count must be operator-attributed');
+assert.ok(caBoard.includes('2 NEXUS lanes reported open (DWT)'),'Tunnel count must be operator-attributed');
 assert.equal(api.entry(null,'nexus','gordie').lanes,'Lanes not verified',
   'Gordie Howe NEXUS count unavailable, not assumed zero');
 assert.match(api.entry(null,'nexus','tunnel').status,/wait not published/,
@@ -244,7 +244,9 @@ assert.match(api.entry(null,'nexus','tunnel').status,/wait not published/,
 data.sources.dwt.retrieved_at=stamp(25);api.setData(data);
 assert.equal(api.entry(null,'nexus','tunnel').lanes,'Lanes not verified',
   'stale operator counts are not displayed');
+data.sources.dwt.retrieved_at=stamp(1);
 data.sources.cbsa_hours.retrieved_at=stamp(3000);api.setData(data);
+assert.equal(api.entry(null,'nexus','tunnel').lanes,'2 NEXUS lanes reported open (DWT)','current operator count independent of missing timetable');
 assert.equal(api.entry(null,'nexus','ambassador').display,'Hours unverified');
 assert.equal(api.entry(null,'nexus','tunnel').display,'Hours unverified');
 assert.equal(api.entry(null,'nexus','gordie').display,'Hours unverified');

@@ -20,6 +20,8 @@ let s=fresh();
 assert.equal(check(s).kind,'current');
 assert.equal(check(s).count,2);
 assert.equal(check(s).source,'DWT');
+s.supplemental.dwt.ca.source='CBSA';assert.equal(check(s).kind,'invalid');
+s.supplemental.dwt.ca.source='DWT';
 assert.equal(check(s,'tunnel','us').count,null,'DWT USA count must never replace CBP');
 assert.equal(check(s,'ambassador').count,null);
 assert.equal(check(s,'gordie').count,null);

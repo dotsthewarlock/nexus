@@ -159,6 +159,9 @@ class SourceCoverageTests(unittest.TestCase):
         raw = data["directions"]["us"]["ambassador"]["standard"]
         raw["observation_at"] = iso(20)
         self.assertIn("Recent", C.cell(data, "us", "ambassador", "standard", NOW))
+        raw['source'] = 'DWT'
+        self.assertEqual(C.cell(data, 'us', 'ambassador', 'standard', NOW), 'Invalid source identity')
+        del raw['source']
         raw["lanes_open"] = 101
         self.assertIn("count unavailable", C.cell(data, "us", "ambassador", "standard", NOW))
         raw["observation_at"] = iso(120)

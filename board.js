@@ -89,22 +89,19 @@
       lanes:'Lanes not verified',historical:false,kind:'unavailable',status:unsupported};
     if(!id||!data||!D.nextNexusSchedule)return unknown;
     const evaluation=now(),schedule=D.nextNexusSchedule(data,id,'ca',evaluation);
-    if(schedule.kind==='unknown')return unknown;
+    const listed=operatorNexusLaneCount(id,evaluation);
+    const operatorLanes=listed!==null?listed+' NEXUS '+(listed===1?'lane':'lanes')+' reported open (DWT)':null;
+    if(schedule.kind==='unknown')return {...unknown,lanes:operatorLanes??unknown.lanes};
     const within=schedule.kind==='within';
     const when=scheduleMoment(schedule.next,within);
     const display=within
       ?(when?'Scheduled until '+when:'Within scheduled hours')
       :(when?'Opens '+when:'Outside scheduled hours');
-    let lanes='Lanes not verified';
-    if(within){
+    let lanes=operatorLanes??'Lanes not verified';
+    if(within&&!operatorLanes){
       const scheduled=D.scheduledNexusLaneCount?.(data,id,'ca',evaluation);
       if(Number.isInteger(scheduled)&&scheduled>0)
         lanes=scheduled+' '+(scheduled===1?'lane':'lanes')+' scheduled';
-      else {
-        const listed=operatorNexusLaneCount(id,evaluation);
-        if(listed!==null)
-          lanes=listed+' NEXUS '+(listed===1?'lane':'lanes')+' listed (operator)';
-      }
     }
     return {display,unit:'',variant:'schedule',lanes,historical:false,kind:'schedule',
       status:'Published hours only · '+unsupported,source:'CBSA schedule',
@@ -287,7 +284,7 @@
       if(nexus.variant==='closed'){
         title='NEXUS reported closed by CBP';
         note='Next opening time not published in available US-bound data.';
-      }else if(['number','no-delay'].includes(nexus.variant)){
+      }else if(nexus.variant==='number'&&!nexus.historical){
         title='NEXUS inspection report available';
         note='Next scheduled closing time not published in available US-bound data.';
       }else if(port.nexus?.status==='closed'){
