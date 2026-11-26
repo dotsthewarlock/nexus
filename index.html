@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#F5F7F9">
   <meta name="description" content="Nexus Windsor–Detroit border inspection waits, both directions and three crossings.">
   <title>Nexus Commuter Windsor-Detroit · Border inspection waits</title>
-  <link rel="stylesheet" href="./dashboard.css?v=r1-v07-1">
+  <link rel="stylesheet" href="./dashboard.css?v=r2-v08-1">
 </head>
 <body>
 <main class="app-shell" id="main">
@@ -27,6 +27,7 @@
     <label class="sr-only" for="laneSelect">Lane category</label>
     <select id="laneSelect" class="mode-pill pill-lane" aria-label="Lane category"><option value="regular">Regular</option></select>
   </div>
+  <p id="preferenceStatus" class="preference-status" role="status" aria-live="polite"></p>
 
   <section aria-label="Official border inspection wait comparison">
     <div class="comparison" role="table" aria-label="Three crossings, Canada and USA direction">
@@ -75,6 +76,7 @@
       <summary>Source and freshness</summary>
       <div id="detailProvenance" class="detail-provenance"></div>
     </details>
+    <button id="favoriteToggle" class="secondary-button" type="button" aria-pressed="false">Set favorite</button>
     <a id="cameraViewer" class="secondary-link" href="./classic-board.html">Open existing camera viewer</a>
     </div>
   </div>
@@ -102,7 +104,7 @@
   </div>
 </dialog>
 
-<script src="./decision.js?v=rc149-dwt1"></script>
-<script src="./dashboard.js?v=r1-v07-1" defer></script>
+<script src="./decision.js?v=r2-v08-1"></script>
+<script src="./dashboard.js?v=r2-v08-1" defer></script>
 </body>
 </html>
