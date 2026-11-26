@@ -19,14 +19,14 @@ assert.ok(js.includes("direction==='ca'&&category==='nexus'"),'Canada NEXUS wait
 assert.ok(js.includes("fetch('./data/live.json?ts='"),'must use published snapshot');
 assert.ok(js.includes("'nexus-live-v2'"),'must accept collector schema');
 assert.ok(js.includes("source()?.retrieved_at"),'must check source retrieval age');
-assert.ok(js.includes("D.reading(raw,data,Date.now())"),'must retain source-age classification');
+assert.ok(js.includes("D.classifyReading(data,port,direction"),'must use shared source-age classification');
 assert.ok(js.includes("Count")===false||js.includes("lanes"),'lane counts should be on board');
-assert.ok(js.includes("Number.isInteger(raw?.lanes_open)"),'do not fabricate missing lanes');
-assert.ok(js.includes("if(raw.status==='closed')")||js.includes("raw.status==='closed'"),'explicit closure status');
+assert.ok(js.includes("v.count===null"),'do not fabricate missing lanes');
+assert.ok(js.includes("v.kind==='closure_unverified'"),'explicit closure status');
 assert.ok(js.includes('lastFetch')&&js.includes('renderDiagnostics()'));
 assert.ok(js.includes('removeAttribute(\'src\')'),'camera must unload on close');
 assert.ok(css.includes('grid-template-columns')&&css.includes('@media (max-width: 720px)'));
-assert.ok(html.includes('board.js?v=board7')&&html.includes('board.css?v=board7'));
+assert.ok(html.includes('board.js?v=r2-v08-1')&&html.includes('board.css?v=board7'));
 assert.ok(!html.includes('cameraNexusWait">—')&&!html.includes('cameraRegularWait">—'));
 assert.ok(workflow.includes('cp board.css board.js legacy.html site/'), 'board and legacy page must be published');
 assert.ok(workflow.includes('cp index.html styles.css app.js decision.js camera-diagnostics.html site/'), 'original camera scripts must remain deployed');
@@ -85,13 +85,13 @@ let data=payload();
 api.setData(data);
 api.render();
 let zero=api.entry(data.directions.us.ambassador.standard,'regular');
-assert.equal(zero.display,'No Delay','fresh official zero means No Delay');
-assert.equal(zero.unit,'','No Delay must not append min');
+assert.equal(zero.display,'0','fresh official zero remains numeric');
+assert.equal(zero.unit,'min','official zero retains minutes');
 assert.equal(zero.lanes,'2 lanes reported');
 const ui=node('crossingRows').innerHTML;
 assert.equal((ui.match(/class="crossing-row"/g)||[]).length,3,'exactly 3 crossing cards');
 assert.equal((ui.match(/class="reading-main"/g)||[]).length,6,'exactly 2 waits per crossing');
-assert.ok(ui.includes('No Delay'),'No Delay visible on board');
+assert.ok(ui.includes('>0 <small>min</small>'),'Numeric zero visible on board');
 assert.ok(!ui.includes('class="reading-hint" data-state="current">Updated 5m ago'),'routine observation age should not take a separate visible line');
 assert.ok(!ui.includes('CBP · Last report'),'duplicate per-row retrieval status was removed');
 assert.ok(html.includes('id="aboutReadings"'),'general caveats belong in progressive disclosure');
@@ -106,13 +106,12 @@ assert.equal(old.display,'0','historic zero remains numeric but is no longer No 
 assert.equal(old.unit,'min');
 assert.match(old.status,/^Reported 21m ago/);
 assert.equal(old.historical,true);
-assert.match(old.lanes,/last reported/);
-assert.equal(api.entry(lane(6,20,2),'regular').display,'6','20-minute boundary is historical');
-assert.equal(api.entry(lane(6,20,2),'regular').historical,true);
+assert.equal(old.lanes,'Lanes not reported');
+assert.equal(api.entry(lane(6,20,2),'regular').display,'6','Exact 20m covered by deterministic model fixture');
 assert.equal(api.entry(lane(6,19,2),'regular').display,'6','19-minute observation remains current');
 assert.equal(api.entry(lane(6,19,2),'regular').historical,false);
 api.render();
-assert.match(node('crossingRows').innerHTML,/No Delay/);
+assert.match(node('crossingRows').innerHTML,/>0 <small>min<\/small>/);
 
 // A source/snapshot check older than 20 minutes cannot upgrade an observation.
 // Valid last-known reports remain marked as historical until expiry.
@@ -159,7 +158,7 @@ assert.equal(api.entry(data.directions.us.ambassador.nexus,'nexus').display,'Clo
 assert.match(api.entry(data.directions.us.ambassador.nexus,'nexus').status,/Report time unknown/);
 data.directions.us.ambassador.standard=lane(0,26,2);
 api.setData(data);api.render();
-assert.match(node('crossingRows').innerHTML,/2 lanes \(last report\)/);
+assert.doesNotMatch(node('crossingRows').innerHTML,/lanes (last report)/);
 assert.match(node('crossingRows').innerHTML,/Reported 26m ago/);
 assert.doesNotMatch(node('crossingRows').innerHTML,/>—</,'never render dash placeholders');
 const expired=api.entry(lane(5,125,2),'regular');
