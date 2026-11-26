@@ -50,6 +50,12 @@ jobs:
           git fetch --no-tags --depth=1 origin 2898177440e6df2ca2a76fd5540cd2057b13e70b
           git worktree add --detach "$RUNNER_TEMP/nexus-r1-baseline" 2898177440e6df2ca2a76fd5540cd2057b13e70b
           python tests/r1_visual_qa.py "$RUNNER_TEMP/nexus-r1-baseline"
+      - name: R2 differential and persistence QA against accepted R1
+        run: |
+          git fetch --no-tags --depth=1 origin 164adc33b1f60a55ecb9e0876397ae0d3747b32d
+          git worktree add --detach "$RUNNER_TEMP/nexus-r2-baseline" 164adc33b1f60a55ecb9e0876397ae0d3747b32d
+          node tests/r2_cross_surface.test.cjs "$RUNNER_TEMP/nexus-r2-baseline"
+          python tests/r2_visual_qa.py "$RUNNER_TEMP/nexus-r2-baseline"
       - name: Preserve browser QA screenshots for review
         if: always()
         uses: actions/upload-artifact@v4

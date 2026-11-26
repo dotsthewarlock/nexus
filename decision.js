@@ -23,6 +23,13 @@
     // timestamp strings without a zone would corrupt freshness at DST changes.
     const value = typeof stamp === 'string' ? stamp.trim() : '';
     const dated = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
+    // Date.parse can silently normalize an impossible day (e.g. February 30).
+    if(dated){
+      const [year,month,day]=value.slice(0,10).split('-').map(Number);
+      const calendar=new Date(0);calendar.setUTCFullYear(year,month-1,day);
+      if(calendar.getUTCFullYear()!==year||calendar.getUTCMonth()!==month-1||calendar.getUTCDate()!==day||
+         Number(value.slice(11,13))>23)return Infinity;
+    }
     const parsed = dated ? Date.parse(value) : NaN;
     if (!Number.isFinite(parsed)) return Infinity;
     const minutes=(now-parsed)/60000;
@@ -469,7 +476,7 @@
       theme:['light','dark'].includes(theme)?theme:null,favorite:FIXED_IDS.includes(favorite)?favorite:null,invalid};
   }
   function savePreference(storage,key,value){
-    try{storage?.setItem(key,String(value??''));return true}catch{return false}
+    try{if(!storage||typeof storage.setItem!=='function')return false;storage.setItem(key,String(value??''));return true}catch{return false}
   }
 
   return {classify,classifyReading,presentation,orderedCrossings,readPreferences,savePreference,sourceClocks,IDS,NAMES,age,reading,usable,recommendationReady,noticeKind,crossing,evaluate,publishedNexusWindow,

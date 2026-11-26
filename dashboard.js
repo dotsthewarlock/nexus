@@ -8,9 +8,10 @@ const $=id=>document.getElementById(id);
 const key='nexus-m1-sort';
 const categories={passenger:[['regular','Regular'],['nexus','NEXUS'],['ready','Ready']],commercial:[['regular','Regular'],['fast','FAST']]};
 const store={data:null,sort:'fixed',vehicle:'passenger',lane:'nexus',selected:null,direction:'ca',lastFetch:null,error:null,busy:false,noticesExpanded:false};
-const preferences=D.readPreferences(typeof localStorage==='undefined'?null:localStorage);
+const storage=()=>{try{return localStorage}catch{return null}};
+const preferences=D.readPreferences(storage());
 Object.assign(store,preferences);
-const persist=(k,v)=>D.savePreference(typeof localStorage==='undefined'?null:localStorage,k,v);
+const persist=(k,v)=>D.savePreference(storage(),k,v);
 let frameNow=null;
 const now=()=>frameNow??Date.now();
 function withFrame(fn){const previous=frameNow;frameNow=previous??Date.now();try{return fn()}finally{frameNow=previous}}
@@ -19,7 +20,6 @@ const stamp=s=>s&&Number.isFinite(Date.parse(s))?new Date(s).toLocaleString(unde
 const age=s=>D.age(s,now());
 const primary=dir=>dir==='ca'?'cbsa':'cbp';
 
-const rawKey=(lane=store.lane)=>lane==='regular'?(store.vehicle==='passenger'?'standard':'commercial'):lane;
 const source=dir=>store.data?.sources?.[primary(dir)];
 // Preserve the strictly source/category-bound classifier. The comparison model
 // chooses what to present without ever re-labeling an agency measurement.
@@ -51,7 +51,6 @@ const spokenValue=v=>v.kind==='current'?v.minutes+' minutes, recent official rep
  v.kind==='stale'?v.minutes+' minutes, historical report; not current; '+readingState(v):
  readingState(v);
 const countFor=v=>v.count??null;
-const countLabel=n=>n===null?'--':String(n);
 function readingState(v){
  const sourceAge=v.raw?.observation_at&&Number.isFinite(age(v.raw.observation_at))?Math.round(age(v.raw.observation_at)):null;
  return v.kind==='current'?'recent report':

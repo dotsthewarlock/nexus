@@ -26,8 +26,8 @@
   const now=()=>frameNow??Date.now();
   function withFrame(fn){const previous=frameNow;frameNow=previous??Date.now();try{return fn()}finally{frameNow=previous}}
   function source(){return data?.sources?.[direction==='us'?'cbp':'cbsa'];}
-  function sourceAge(){return D.age(source()?.retrieved_at,Date.now())}
-  function snapshotAge(){return D.age(data?.generated_at,Date.now())}
+  function sourceAge(){return D.age(source()?.retrieved_at,now())}
+  function snapshotAge(){return D.age(data?.generated_at,now())}
   // Use the agency observation time to decide whether a wait may appear as current.
   // Retrieval or publication time cannot refresh an old agency observation.
   const CURRENT_LIMIT_MINUTES=20;
@@ -62,14 +62,6 @@
       ? {timeZone:ZONE,month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}
       : {timeZone:ZONE,hour:'numeric',minute:'2-digit'};
     return new Intl.DateTimeFormat('en-CA',options).format(t)+' ET';
-  }
-  function freshness(raw){
-    if(!data)return {kind:'unavailable',age:Infinity};
-    const r=D.reading(raw,data,Date.now());
-    if(source()?.status!=='ok')return {kind:'unavailable',age:D.age(raw?.observation_at)};
-    if(sourceAge()>=CURRENT_LIMIT_MINUTES||snapshotAge()>=CURRENT_LIMIT_MINUTES)
-      return {kind:'stale',age:r.age};
-    return r;
   }
   // Compact presentation of CBSA's published *possible* service window.
   // It does not say the lane is physically open or that a NEXUS wait exists.

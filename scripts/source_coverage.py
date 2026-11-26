@@ -33,7 +33,7 @@ OBSERVATION_RECENT_MINUTES = 20
 
 
 def age_minutes(stamp, now):
-    if not isinstance(stamp, str) or not stamp.strip():
+    if not isinstance(stamp, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})", stamp.strip(), flags=re.IGNORECASE):
         return None
     try:
         dt = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
@@ -77,13 +77,21 @@ def cell(data, direction, crossing, category, now):
     directions = directions if isinstance(directions, dict) else {}
     source_name = "cbp" if direction == "us" else "cbsa"
     src = sources.get(source_name)
-    if not isinstance(src, dict) or src.get("status") != "ok":
+    if not isinstance(src, dict):
         return "Source unavailable"
 
+    retained = src.get("retained_previous") is True
     src_age = age_minutes(src.get("retrieved_at"), now)
+    success = src.get("last_success_at")
+    if success is None and not retained and src.get("status") == "ok":
+        success = src.get("retrieved_at")
+    success_age = age_minutes(success, now)
     snap_age = age_minutes(data.get("generated_at"), now)
-    recent_source = (src_age is not None and src_age <= SOURCE_RECENT_MINUTES and
-                     snap_age is not None and snap_age <= SOURCE_RECENT_MINUTES)
+    clocks = (src_age, success_age, snap_age)
+    valid = (src.get("status") == "ok" or
+             (src.get("status") == "error" and retained)) and all(a is not None for a in clocks)
+    recent_source = valid and src.get("status") == "ok" and not retained and max(clocks) <= 20
+    historical = valid and max(clocks) < 120
 
     ports = directions.get(direction)
     port = ports.get(crossing) if isinstance(ports, dict) else None
@@ -91,7 +99,7 @@ def cell(data, direction, crossing, category, now):
         return "No port record"
 
     if known_port_closed(port):
-        return "Port closure reported" if recent_source else "Old port status"
+        return "Port closure reported; currency unverified"
 
     reading = port.get(category)
     if not isinstance(reading, dict):
@@ -100,17 +108,21 @@ def cell(data, direction, crossing, category, now):
     status = reading.get("status")
     observed = age_minutes(reading.get("observation_at"), now)
 
-    if not recent_source:
-        return "Source/snapshot old"
+    if status == "closed":
+        if recent_source and observed is not None and observed <= OBSERVATION_RECENT_MINUTES:
+            return "Lane closure reported"
+        return "Closure reported; currency unverified"
+
+    if not historical:
+        return "Source unavailable" if not valid else "Source/snapshot expired"
 
     if status == "not_applicable":
-        # CBP field explicitly says N/A; avoid inferring vehicle eligibility.
-        return "Agency field N/A"
+        return ("Agency field N/A" if recent_source and
+                (not reading.get("observation_at") or (observed is not None and observed <= 20))
+                else "Earlier agency N/A; applicability unverified")
 
-    if status == "closed":
-        if observed is None or observed <= OBSERVATION_RECENT_MINUTES:
-            return "Lane closure reported"
-        return "Older closure report"
+    if not recent_source:
+        return "Historical retained observation" if retained and observed is not None and observed < 120 else "Source/snapshot old"
 
     if status != "reported":
         return "Wait unavailable"
@@ -120,6 +132,8 @@ def cell(data, direction, crossing, category, now):
         return "Invalid wait field"
     if observed is None:
         return "Wait has no timestamp"
+    if observed >= 120:
+        return "Observation expired"
     if observed > OBSERVATION_RECENT_MINUTES:
         return "Older observation (" + str(round(observed)) + "m)"
 
@@ -127,7 +141,7 @@ def cell(data, direction, crossing, category, now):
     # Neither CBSA commercial/traveller flow nor operator schedule counts
     # may be substituted for a specific current booth count.
     count = reading.get("lanes_open") if direction == "us" else None
-    if type(count) is int and count >= 0:
+    if type(count) is int and 0 <= count <= 100:
         return "Recent (" + str(round(observed)) + "m); " + str(count) + " lanes reported"
     return "Recent (" + str(round(observed)) + "m); count unavailable"
 
@@ -156,7 +170,7 @@ def markdown(data, now):
     lines.extend([
         "",
         "**Interpretation:** Recent = agency observation ≤20 min old, source retrieval and "
-        "snapshot ≤20 min old. Thresholds are provisional Nexus policy, **not** agency "
+        "last successful retrieval and snapshot ≤20 min old. Historical expiry ≥120m; thresholds are Nexus policy, **not** agency "
         "publication guarantees. Older observation is not a current wait.",
         "",
         "**Not published** = separate Canada-bound category-specific inspection waits "
