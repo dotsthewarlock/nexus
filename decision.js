@@ -23,6 +23,13 @@
     // timestamp strings without a zone would corrupt freshness at DST changes.
     const value = typeof stamp === 'string' ? stamp.trim() : '';
     const dated = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
+    // Date.parse can silently normalize an impossible day (e.g. February 30).
+    if(dated){
+      const [year,month,day]=value.slice(0,10).split('-').map(Number);
+      const calendar=new Date(0);calendar.setUTCFullYear(year,month-1,day);
+      if(calendar.getUTCFullYear()!==year||calendar.getUTCMonth()!==month-1||calendar.getUTCDate()!==day||
+         Number(value.slice(11,13))>23)return Infinity;
+    }
     const parsed = dated ? Date.parse(value) : NaN;
     if (!Number.isFinite(parsed)) return Infinity;
     const minutes=(now-parsed)/60000;
@@ -42,6 +49,7 @@
     if(id!=='tunnel'||direction!=='ca'||vehicle!=='passenger'||lane!=='nexus')
       return {...base,reason:'DWT Canada-bound NEXUS count does not apply to this selection.'};
     if(!record||!src)return base;
+    if(record.source!=null&&record.source!=='DWT')return {...base,kind:'invalid',reason:'Operator source identity does not match DWT.'};
     const count=record.lane_counts?.nexus;
     if(!Number.isInteger(count)||count<0||count>20)
       return {...base,kind:'invalid',reason:'Operator lane count missing or invalid.'};
@@ -54,6 +62,7 @@
     const fresh=src.status==='ok'&&!src.retained_previous&&
       age(record.observation_at,now)<=MAX_OPERATOR_AGE&&
       age(src.retrieved_at,now)<=MAX_OPERATOR_AGE&&
+      age(src.last_success_at??src.retrieved_at,now)<=MAX_OPERATOR_AGE&&
       age(data.generated_at,now)<=SNAPSHOT_RECENT_AGE;
     if(!fresh)return {...base,kind:'stale',
       reason:'Operator report or its retrieval/publication is old or unavailable.'};
@@ -378,7 +387,103 @@
     if(lat>=42.345&&lat<=42.39&&lon>=-83.10&&lon<=-82.91)return 'us';
     return null;
   }
-  return {IDS,NAMES,age,reading,usable,recommendationReady,noticeKind,crossing,evaluate,publishedNexusWindow,
+
+  // R2 presentation contract (v0.8). No collection, schema or route policy changes.
+  // The normalized schema supplies no independently dated port status. It is a
+  // safety caution, not a confirmed current closure. Do not borrow a lane timestamp.
+  const VALID_CATEGORIES={passenger:['regular','nexus','ready'],commercial:['regular','fast']};
+  const laneField=(vehicle,category)=>category==='regular'?(vehicle==='passenger'?'standard':'commercial'):category;
+  const countValid=n=>Number.isInteger(n)&&n>=0&&n<=100;
+  function sourceClocks(data,dir,now){
+    const src=data?.sources?.[dir==='ca'?'cbsa':'cbp'];
+    const retained=src?.retained_previous===true;
+    const retrievalAge=age(src?.retrieved_at,now);
+    const successStamp=src?.last_success_at??(!retained&&src?.status==='ok'?src.retrieved_at:null);
+    const successAge=age(successStamp,now),publicationAge=age(data?.generated_at,now);
+    const valid=(src?.status==='ok'||(src?.status==='error'&&retained))&&
+      [retrievalAge,successAge,publicationAge].every(Number.isFinite);
+    const current=valid&&src.status==='ok'&&!retained&&
+      Math.max(retrievalAge,successAge,publicationAge)<=20;
+    const historical=valid&&Math.max(retrievalAge,successAge,publicationAge)<120;
+    return {src,retained,retrievalAge,successAge,publicationAge,successStamp,current,historical};
+  }
+  function classifyReading(data,port,dir,vehicle,category,now=Date.now()){
+    const field=laneField(vehicle,category),raw=port?.[field],c=sourceClocks(data,dir,now);
+    const observationAge=age(raw?.observation_at,now);
+    const base={kind:'unavailable',state:'missing',text:'--',minutes:null,count:null,sortEligible:false,
+      source:dir==='ca'?'CBSA':'CBP',direction:dir,vehicle,category,field,raw,src:c.src,
+      observationAt:raw?.observation_at??null,retrievedAt:c.src?.retrieved_at??null,
+      lastSuccessAt:c.successStamp??null,publishedAt:data?.generated_at??null,
+      ages:{observation:observationAge,retrieval:c.retrievalAge,lastSuccess:c.successAge,publication:c.publicationAge}};
+    const out=(state,reason,extra={})=>({...base,state,reason,...extra});
+    if(!['ca','us'].includes(dir)||!VALID_CATEGORIES[vehicle]?.includes(category))
+      return out('invalid','Invalid vehicle/category/direction.');
+    if((port?.source!=null&&port.source!==base.source)||(raw?.source!=null&&raw.source!==base.source))
+      return out('invalid','Official report source does not match the selected direction.');
+    if(/^\s*(temporarily\s+)?closed\b/i.test(port?.port_status||''))
+      return out('port_closure_unverified','Official source reports this direction closed; status currency unverified. Verify before travel.',
+        {kind:'closure_unverified',text:'Closure unverified',closureScope:'port'});
+    if(dir==='ca'&&['nexus','ready','fast'].includes(category))
+      return out('unpublished','CBSA does not publish a separate Canada-bound wait for this category.',
+        {kind:category==='nexus'?'unpublished':'unavailable'});
+    if(raw?.status==='closed'){
+      if(c.current&&observationAge<=20)
+        return out('category_closure','Recent source-reported category closure; verify before travel.',
+          {kind:'closed',text:'Closed',closureScope:'category'});
+      return out('category_closure_unverified','Earlier or undated source-reported category closure; current operation unverified.',
+        {kind:'closure_unverified',text:'Closure unverified',closureScope:'category'});
+    }
+    if(!raw)return out('missing','No category-specific official wait is published for this crossing and direction.');
+    if(!c.historical)return out(c.src?.status==='ok'&&[c.retrievalAge,c.successAge,c.publicationAge].every(Number.isFinite)?'expired':'source_unavailable',
+      'The official source or its successful retrieval/publication is unavailable or expired.');
+    if(raw.status==='not_applicable')
+      return c.current&&(!raw.observation_at||observationAge<=20)
+        ?out('agency_na','Agency field N/A; physical lane eligibility is not independently verified.',{kind:'unsupported',text:'N/A'})
+        :out('agency_na_historical','Earlier agency N/A; current applicability unverified.');
+    if(raw.status!=='reported'||!Number.isInteger(raw.minutes)||raw.minutes<0||raw.minutes>720||!Number.isFinite(observationAge))
+      return out('invalid','No valid timestamped wait for this category.');
+    if(observationAge>=120)return out('expired','Historical inspection wait has expired.');
+    if(!c.current||observationAge>20)
+      return out('historical','Historical report, not a current wait.',{kind:'stale',minutes:raw.minutes,text:raw.minutes+' min'});
+    return out('current','Recent official inspection report; not a full-trip ETA.',
+      {kind:'current',minutes:raw.minutes,text:raw.minutes+' min',sortEligible:true,
+        count:dir==='us'&&countValid(raw.lanes_open)?raw.lanes_open:null});
+  }
+  function classify(snapshot,id,dir,vehicle,category,now=Date.now()){
+    return {...classifyReading(snapshot,snapshot?.directions?.[dir]?.[id],dir,vehicle,category,now),crossing:id};
+  }
+  function presentation(snapshot,id,dir,vehicle,category,now=Date.now()){
+    const part=c=>({category:c,v:classify(snapshot,id,dir,vehicle,c,now)});
+    if(vehicle==='passenger'&&category==='nexus'){
+      if(dir==='us')return {paired:true,canadaGeneral:false,parts:[part('nexus'),part('regular')]};
+      return {paired:false,canadaGeneral:true,parts:[part('regular')]};
+    }
+    return {paired:false,canadaGeneral:false,parts:[part(category)]};
+  }
+  const FIXED_IDS=['ambassador','tunnel','gordie'];
+  function orderedCrossings(snapshot,sort,vehicle,category,favorite,now=Date.now()){
+    if(sort==='fixed')return FIXED_IDS.includes(favorite)?[favorite,...FIXED_IDS.filter(x=>x!==favorite)]:[...FIXED_IDS];
+    const cat=sort==='ca'&&vehicle==='passenger'&&category==='nexus'?'regular':category;
+    const rows=FIXED_IDS.map((id,index)=>({id,index,v:classify(snapshot,id,sort,vehicle,cat,now)}));
+    return rows.sort((a,b)=>Number(b.v.sortEligible)-Number(a.v.sortEligible)||
+      (a.v.sortEligible&&b.v.sortEligible?a.v.minutes-b.v.minutes:0)||a.index-b.index).map(x=>x.id);
+  }
+  function readPreferences(storage){
+    const read=k=>{try{return storage?.getItem(k)??null}catch{return null}};
+    const vehicleRaw=read('nexus-vehicle'),laneRaw=read('nexus-lane');
+    const vehicle=vehicleRaw==='commercial'?'commercial':'passenger';
+    const invalid=vehicleRaw!==null&&!['passenger','commercial'].includes(vehicleRaw)||
+      laneRaw!==null&&!VALID_CATEGORIES[vehicle].includes(laneRaw);
+    const lane=invalid?'regular':laneRaw??(vehicle==='passenger'?'nexus':'regular');
+    const sort=read('nexus-m1-sort'),theme=read('nexus-theme'),favorite=read('nexus-favorite');
+    return {vehicle,lane,sort:['fixed','ca','us'].includes(sort)?sort:'fixed',
+      theme:['light','dark'].includes(theme)?theme:null,favorite:FIXED_IDS.includes(favorite)?favorite:null,invalid};
+  }
+  function savePreference(storage,key,value){
+    try{if(!storage||typeof storage.setItem!=='function')return false;storage.setItem(key,String(value??''));return true}catch{return false}
+  }
+
+  return {classify,classifyReading,presentation,orderedCrossings,readPreferences,savePreference,sourceClocks,IDS,NAMES,age,reading,usable,recommendationReady,noticeKind,crossing,evaluate,publishedNexusWindow,
     countrySide,nextNexusSchedule,scheduledNexusLaneCount,dwtNexusLane,MAX_OPERATOR_AGE,READING_CURRENT_AGE,READING_AGING_AGE,READING_STALE_AGE,READING_EXPIRE_AGE,SNAPSHOT_RECENT_AGE,
     RECOMMEND_MAX_AGE,RECOMMEND_MAX_OBSERVATION_GAP};
 });

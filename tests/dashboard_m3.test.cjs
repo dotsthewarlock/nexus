@@ -94,7 +94,7 @@ assert.equal(qa.store.lane,'regular','inapplicable NEXUS selection resets to com
 s=reset();delete s.directions.us.ambassador.nexus;us=qa.cell('ambassador','us');
 assert.match(us,/pair-amount[^>]*>--<\/span>.*pair-amount[^>]*>14<\/span>/);
 assert.match(us,/NEXUS unavailable/);
-assert.match(us,/-- \/ 4 lanes/);
+assert.match(us,/4 Regular lanes/);
 assert.equal(qa.classify('ambassador','us','nexus').kind,'unavailable');
 assert.equal(qa.classify('ambassador','us','regular').kind,'current');
 s=reset();s.directions.us.ambassador.nexus.observation_at=at(43);
@@ -106,7 +106,7 @@ assert.match(us,/NEXUS 5 minutes, historical report/,'accessible history is not 
 assert.doesNotMatch(us,/2 \/ 4 lanes/,'old NEXUS count must not appear as current');
 s=reset();s.directions.us.ambassador.standard.observation_at=at(50);
 assert.match(qa.cell('ambassador','us'),/Regular old report/);
-assert.match(qa.cell('ambassador','us'),/2 \/ -- lanes/);
+assert.match(qa.cell('ambassador','us'),/2 NEXUS lanes/);
 s=reset();s.directions.us.ambassador.nexus.minutes=0;
 assert.match(qa.cell('ambassador','us'),/pair-amount">0<\/span>.*pair-amount">14<\/span>/,
  'official NEXUS zero remains valid zero');

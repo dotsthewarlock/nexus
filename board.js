@@ -22,9 +22,12 @@
   const ago=n=>!Number.isFinite(n)?'time unknown':n<2?'just now':n<60?Math.floor(n)+'m ago':Math.floor(n/60)+'h '+Math.floor(n%60)+'m ago';
   let direction='us',data=null,loadError='',lastFetch='',busy=false,lastTry=0,camera=null;
   try{direction=localStorage.getItem('nexus-board-direction')==='ca'?'ca':'us'}catch{}
+  let frameNow=null;
+  const now=()=>frameNow??Date.now();
+  function withFrame(fn){const previous=frameNow;frameNow=previous??Date.now();try{return fn()}finally{frameNow=previous}}
   function source(){return data?.sources?.[direction==='us'?'cbp':'cbsa'];}
-  function sourceAge(){return D.age(source()?.retrieved_at,Date.now())}
-  function snapshotAge(){return D.age(data?.generated_at,Date.now())}
+  function sourceAge(){return D.age(source()?.retrieved_at,now())}
+  function snapshotAge(){return D.age(data?.generated_at,now())}
   // Use the agency observation time to decide whether a wait may appear as current.
   // Retrieval or publication time cannot refresh an old agency observation.
   const CURRENT_LIMIT_MINUTES=20;
@@ -60,14 +63,6 @@
       : {timeZone:ZONE,hour:'numeric',minute:'2-digit'};
     return new Intl.DateTimeFormat('en-CA',options).format(t)+' ET';
   }
-  function freshness(raw){
-    if(!data)return {kind:'unavailable',age:Infinity};
-    const r=D.reading(raw,data,Date.now());
-    if(source()?.status!=='ok')return {kind:'unavailable',age:D.age(raw?.observation_at)};
-    if(sourceAge()>=CURRENT_LIMIT_MINUTES||snapshotAge()>=CURRENT_LIMIT_MINUTES)
-      return {kind:'stale',age:r.age};
-    return r;
-  }
   // Compact presentation of CBSA's published *possible* service window.
   // It does not say the lane is physically open or that a NEXUS wait exists.
   function scheduleMoment(next,closing){
@@ -85,107 +80,51 @@
     return dayText+time;
   }
   function operatorNexusLaneCount(id,now){
-    if(id!=='tunnel')return null;
-    const operator=data?.supplemental?.dwt?.ca;
-    const src=data?.sources?.dwt;
-    const count=operator?.lane_counts?.nexus;
-    if(!Number.isInteger(count)||count<0||src?.status!=='ok')return null;
-    if(D.age(operator?.observation_at,now)>=CURRENT_LIMIT_MINUTES||
-        D.age(src?.retrieved_at,now)>=CURRENT_LIMIT_MINUTES||
-        snapshotAge()>=CURRENT_LIMIT_MINUTES)return null;
-    return count;
+    const v=D.dwtNexusLane(data,id,'ca','passenger','nexus',now);
+    return v.count;
   }
   function canadaNexusEntry(id){
     const unsupported='NEXUS wait not published';
     const unknown={display:'Hours unverified',unit:'',variant:'not-published',
       lanes:'Lanes not verified',historical:false,kind:'unavailable',status:unsupported};
     if(!id||!data||!D.nextNexusSchedule)return unknown;
-    const now=Date.now(),schedule=D.nextNexusSchedule(data,id,'ca',now);
-    if(schedule.kind==='unknown')return unknown;
+    const evaluation=now(),schedule=D.nextNexusSchedule(data,id,'ca',evaluation);
+    const listed=operatorNexusLaneCount(id,evaluation);
+    const operatorLanes=listed!==null?listed+' NEXUS '+(listed===1?'lane':'lanes')+' reported open (DWT)':null;
+    if(schedule.kind==='unknown')return {...unknown,lanes:operatorLanes??unknown.lanes};
     const within=schedule.kind==='within';
     const when=scheduleMoment(schedule.next,within);
     const display=within
       ?(when?'Scheduled until '+when:'Within scheduled hours')
       :(when?'Opens '+when:'Outside scheduled hours');
-    let lanes='Lanes not verified';
-    if(within){
-      const scheduled=D.scheduledNexusLaneCount?.(data,id,'ca',now);
+    let lanes=operatorLanes??'Lanes not verified';
+    if(within&&!operatorLanes){
+      const scheduled=D.scheduledNexusLaneCount?.(data,id,'ca',evaluation);
       if(Number.isInteger(scheduled)&&scheduled>0)
         lanes=scheduled+' '+(scheduled===1?'lane':'lanes')+' scheduled';
-      else {
-        const listed=operatorNexusLaneCount(id,now);
-        if(listed!==null)
-          lanes=listed+' NEXUS '+(listed===1?'lane':'lanes')+' listed (operator)';
-      }
     }
     return {display,unit:'',variant:'schedule',lanes,historical:false,kind:'schedule',
       status:'Published hours only · '+unsupported,source:'CBSA schedule',
       scheduleKind:schedule.kind};
   }
   function entry(raw,category,id){
-    // Agency observation time, a successful source check, and snapshot
-    // publication are different clocks. None can substitute for another.
     const missingLanes='Lanes not reported';
-    if(!data)return {display:'Checking…',unit:'',variant:'checking',
-      lanes:missingLanes,historical:false,kind:'unavailable',status:'Checking official reports'};
-    // Canada-bound NEXUS inspection waits/counts are not published by CBSA.
+    if(!data)return {display:'Checking…',unit:'',variant:'checking',lanes:missingLanes,historical:false,kind:'unavailable',status:'Checking official reports'};
+    const port={...(data?.directions?.[direction]?.[id]||{}),[category==='regular'?'standard':category]:raw};
+    const v=D.classifyReading(data,port,direction,'passenger',category,now());
+    const ageText=Number.isFinite(v.ages.observation)?ago(v.ages.observation):'time unknown';
+    const lanes=v.count===null?missingLanes:v.count+' '+(v.count===1?'lane':'lanes')+' reported';
+    const result=(display,unit,variant,kind,status,historical=false,counts=missingLanes)=>({display,unit,variant,kind,status,historical,lanes:counts});
+    if(v.kind==='closure_unverified')return result('Closure unverified','','unverified','warning',v.reason+' · '+(Number.isFinite(v.ages.observation)?'Last lane report '+ageText:'Report time unknown'),true);
+    if(v.kind==='closed')return result('Closed','','closed','warning',v.reason);
+    // Preserve Classic schedule context separately, never substitute it for a wait.
     if(direction==='ca'&&category==='nexus')return canadaNexusEntry(id);
-    if(!raw)return {display:'Not reported',unit:'',variant:'not-reported',
-      lanes:missingLanes,historical:false,kind:'unavailable',status:'No official reading'};
-    const now=Date.now(),s=source(),obsAge=D.age(raw.observation_at,now);
-    const checkAge=D.age(lastOfficialCheck(s),now),snapAge=snapshotAge(),r=freshness(raw);
-    const verified=s?.status==='ok';
-    const retained=s?.status==='error'&&s?.retained_previous===true;
-    const dated=Number.isFinite(obsAge);
-    const withinHistory=(verified||retained)&&dated&&
-      obsAge<D.READING_EXPIRE_AGE&&checkAge<D.READING_EXPIRE_AGE&&snapAge<D.READING_EXPIRE_AGE;
-    const current=verified&&obsAge<CURRENT_LIMIT_MINUTES&&
-      checkAge<CURRENT_LIMIT_MINUTES&&snapAge<CURRENT_LIMIT_MINUTES&&
-      (D.usable(r)||r.kind==='closed'||r.kind==='not_applicable');
-    const count=withinHistory&&Number.isInteger(raw.lanes_open)&&raw.lanes_open>=0
-      ?raw.lanes_open:null;
-    const lanes=count===null?missingLanes
-      :count+' '+(count===1?'lane':'lanes')+(current?' reported':' last reported');
-    const valid=raw.status==='reported'&&Number.isInteger(raw.minutes)&&
-      raw.minutes>=0&&raw.minutes<=720;
-    if(current&&valid)return {display:raw.minutes===0?'No Delay':String(raw.minutes),
-      unit:raw.minutes===0?'':'min',variant:raw.minutes===0?'no-delay':'number',
-      lanes,historical:false,kind:r.kind,status:'Observed '+ago(obsAge)};
-    if(current&&raw.status==='closed')return {display:'Closed',unit:'',variant:'closed',
-      lanes,historical:false,kind:'warning',status:'Official report · '+ago(obsAge)};
-    if(raw.status==='closed'&&(verified||retained))return {
-      display:'Closure unverified',unit:'',variant:'unverified',
-      lanes:withinHistory?lanes:missingLanes,historical:true,kind:'warning',
-      status:dated?'Last reported '+ago(obsAge):'Report time unknown'
-    };
-    if(current&&raw.status==='not_applicable')return {
-      display:'Not applicable',unit:'',variant:'not-published',lanes:missingLanes,
-      historical:false,kind:'unavailable',status:'Not applicable to this lane'
-    };
-    // Historical numerical reports remain visible for context only.
-    // A historical 0 is *not* presented as a fresh "No Delay".
-    if(withinHistory&&valid)return {
-      display:String(raw.minutes),unit:'min',variant:'number',lanes,
-      historical:true,kind:'historical',status:'Reported '+ago(obsAge)
-    };
-    if(raw.status==='not_applicable')return {
-      display:'Not applicable',unit:'',variant:'not-published',lanes:missingLanes,
-      historical:false,kind:'unavailable',status:'Not applicable to this lane'
-    };
-    if(valid&&dated&&(verified||retained))return {
-      display:'Unavailable',unit:'',variant:'expired',lanes:missingLanes,
-      historical:true,kind:'old',status:'Last report '+ago(obsAge)
-    };
-    if(s?.status==='error'&&!retained)return {
-      display:'Unavailable',unit:'',variant:'unavailable',lanes:missingLanes,
-      historical:false,kind:'unavailable',status:'Source check failed'
-    };
-    if(valid&&!dated)return {
-      display:'Unavailable',unit:'',variant:'unavailable',lanes:missingLanes,
-      historical:false,kind:'unavailable',status:'Report time unknown'
-    };
-    return {display:'Unavailable',unit:'',variant:'unavailable',lanes:missingLanes,
-      historical:false,kind:'unavailable',status:'No verified wait'};
+    if(v.kind==='current')return result(String(v.minutes),'min','number','current','Observed '+ageText,false,lanes);
+    if(v.kind==='stale')return result(String(v.minutes),'min','number','historical','Reported '+ageText,true);
+    if(v.kind==='unsupported')return result('Not applicable','','not-published','unavailable',v.reason);
+    if(v.state==='missing')return result('Not reported','','not-reported','unavailable',v.reason);
+    return result('Unavailable','',v.state==='expired'?'expired':'unavailable','unavailable',
+      v.state==='expired'?'Last report '+ageText:!Number.isFinite(v.ages.observation)?'Report time unknown':v.reason);
   }
   // Normal measurements stay compact. Historical measurements are explicitly aged.
   function metric(m,id,cat){
@@ -211,7 +150,8 @@
       '" title="'+(id==='gordie'?'Camera not yet officially available':'Open camera')+
       '" '+(id==='gordie'?'disabled':'')+'>'+icon+'</button></div>';
   }
-  function render(){
+  function render(){return withFrame(renderFrame)}
+  function renderFrame(){
     $('intoUs').setAttribute('aria-pressed',String(direction==='us'));
     $('intoCa').setAttribute('aria-pressed',String(direction==='ca'));
     const s=source(),snap=snapshotAge(),name=direction==='us'?'CBP':'CBSA';
@@ -247,7 +187,7 @@
       return '<article class="crossing-row" aria-label="'+esc(LABELS[id][0])+'">'+
         '<div class="crossing-identity"><div class="crossing-name">'+esc(LABELS[id][0])+'</div>'+reportWarning+'</div>'+
         '<div class="metrics">'+metric(entry(port.nexus,'nexus',id),id,'NEXUS')+
-        metric(entry(port.standard,'regular'),id,'Regular')+'</div>'+
+        metric(entry(port.standard,'regular',id),id,'Regular')+'</div>'+
         cameraMarkup(id)+'</article>';
     }).join('');
     $('crossingRows').querySelectorAll('button[data-camera]:not(:disabled)')
@@ -325,7 +265,8 @@
   const BRIDGE_DEFAULT_FRAMING={left:0.20,up:0.50};
   const bridgeZoom={scale:1,x:0,y:0,pointer:null};
   let backdropPressed=false, focusBeforeCamera=null;
-  function renderCameraInfo(){
+  function renderCameraInfo(){return withFrame(renderCameraInfoFrame)}
+  function renderCameraInfoFrame(){
     if(!camera)return;
     const port=data?.directions?.[direction]?.[camera.id]||{};
     const nexus=entry(port.nexus,'nexus',camera.id),standard=entry(port.standard,'regular');
@@ -343,7 +284,7 @@
       if(nexus.variant==='closed'){
         title='NEXUS reported closed by CBP';
         note='Next opening time not published in available US-bound data.';
-      }else if(['number','no-delay'].includes(nexus.variant)){
+      }else if(nexus.variant==='number'&&!nexus.historical){
         title='NEXUS inspection report available';
         note='Next scheduled closing time not published in available US-bound data.';
       }else if(port.nexus?.status==='closed'){
@@ -351,7 +292,7 @@
         note='The old closure cannot be verified as current; reopening time unknown.';
       }
     }else{
-      const schedule=D.nextNexusSchedule(data,camera.id,'ca',Date.now());
+      const schedule=D.nextNexusSchedule(data,camera.id,'ca',now());
       if(schedule.kind==='within'){
         title='Within published NEXUS hours';
         note=schedule.next?'Scheduled NEXUS availability ends '+schedule.next+'.':'No confirmed next closing time.';
@@ -364,13 +305,9 @@
       }
       note+=' Schedule does not confirm live lane availability.';
       if(camera.id==='tunnel'){
-        const op=data?.supplemental?.dwt?.ca, count=op?.lane_counts?.nexus;
-        const opAge=D.age(op?.observation_at);
-        if(Number.isInteger(count)&&Number.isFinite(opAge)&&
-          opAge<CURRENT_LIMIT_MINUTES&&data?.sources?.dwt?.status==='ok'&&
-          D.age(data.sources.dwt.retrieved_at)<CURRENT_LIMIT_MINUTES){
-          note+=' Tunnel operator lists '+count+' NEXUS '+(count===1?'lane':'lanes')+
-            ' ('+ago(opAge)+'; not confirmation of open lanes).';
+        const op=D.dwtNexusLane(data,camera.id,'ca','passenger','nexus',now());
+        if(op.count!==null&&!/^\s*(temporarily\s+)?closed\b/i.test(port.port_status||'')){
+          note+=' DWT reports '+op.count+' NEXUS '+(op.count===1?'lane':'lanes')+' open; not a NEXUS wait.';
         }
       }
     }

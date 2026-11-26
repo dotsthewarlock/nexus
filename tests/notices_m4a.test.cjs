@@ -10,8 +10,8 @@ new vm.Script(source);
 for(const id of ['notices','noticeOpen','noticeText','noticesMore','noticesList','detailSchedule'])
  assert.ok(html.includes('id="'+id+'"'),'Missing M4a UI id '+id);
 assert.match(html,/noticesMore"[^>]*aria-expanded="false"[^>]*aria-controls="noticesList"/);
-assert.match(html,/dashboard\.js\?v=r1-v07-1/);
-assert.match(html,/dashboard\.css\?v=r1-v07-1/);
+assert.match(html,/dashboard\.js\?v=r2-v08-1/);
+assert.match(html,/dashboard\.css\?v=r2-v08-1/);
 assert.match(css,/\.notice-list-button/);
 assert.match(css,/\.notice-more/);
 // The new code must not create an unapproved automatic two-hour NEXUS alert.
@@ -57,8 +57,8 @@ assert.equal(notices[1].dir,'us');
 assert.equal(notices[2].id,'tunnel');
 assert.equal(notices[2].dir,'us');
 assert.equal(notices[2].type,'advisory');
-assert.equal(qa.classify('ambassador','ca').text,'Closed','recent source-reported full-port closure overrides zero');
-assert.equal(qa.classify('gordie','us').kind,'closed');
+assert.equal(qa.classify('ambassador','ca').text,'Closure unverified','undated source-reported port closure withholds conflicting zero');
+assert.equal(qa.classify('gordie','us').kind,'closure_unverified');
 
 qa.renderNotices();
 assert.equal(node('notices').hidden,false);

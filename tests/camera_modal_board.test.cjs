@@ -14,7 +14,7 @@ for(const id of [
  'cameraZoomSurface','cameraZoomControls','cameraZoomHint'
 ]) assert.ok(html.includes('id="'+id+'"'),'missing modal UI '+id);
 for(const scale of [1,2,3,4]) assert.ok(html.includes('data-scale="'+scale+'"'));
-assert.ok(html.includes('board.js?v=board7')&&html.includes('board.css?v=board7'));
+assert.ok(html.includes('board.js?v=r2-v08-1')&&html.includes('board.css?v=board7'));
 assert.ok(css.includes('touch-action: none')&&css.includes('.camera-metrics'));
 assert.ok(html.includes('id="cameraDetails"'),'source and schedule details must collapse');
 assert.ok(html.includes('id="cameraSourceDetails"'));
@@ -26,7 +26,7 @@ assert.ok(js.includes('BRIDGE_DEFAULT_ZOOM=4'));
 assert.ok(js.includes('BRIDGE_DEFAULT_FRAMING={left:0.20,up:0.50}'));
 assert.ok(js.includes("if(id==='gordie'||!CAMERAS[id])return"));
 assert.ok(js.includes("frame.src='about:blank'"));
-assert.ok(js.includes("D.nextNexusSchedule(data,camera.id,'ca',Date.now())"));
+assert.ok(js.includes("D.nextNexusSchedule(data,camera.id,'ca',now())"));
 
 // CBSA scheduling is a published possible service window, not live lane availability.
 const base=new Date('2026-11-19T17:00:00Z').getTime(); // Thu noon EST.
@@ -119,7 +119,7 @@ api.setData({
 api.openCamera('ambassador');
 assert.equal(el('cameraDialog').open,true);
 assert.equal(el('cameraNexusWait').textContent,'6 min');
-assert.equal(el('cameraRegularWait').textContent,'No Delay');
+assert.equal(el('cameraRegularWait').textContent,'0 min');
 assert.equal(el('cameraRegularLanes').textContent,'2 lanes reported');
 assert.match(el('cameraSourceDetails').textContent,/Source retrieved/,'source timestamps remain accessible');
 assert.equal(el('cameraDetails').open,false,'schedule details should default to collapsed');

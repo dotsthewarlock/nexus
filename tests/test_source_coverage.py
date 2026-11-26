@@ -122,17 +122,17 @@ class SourceCoverageTests(unittest.TestCase):
         data = sample()
         data["directions"]["us"]["ambassador"]["port_status"] = "Closed"
         self.assertEqual(C.cell(data, "us", "ambassador", "standard", NOW),
-                         "Port closure reported")
+                         "Port closure reported; currency unverified")
         data["directions"]["us"]["ambassador"]["port_status"] = "Closed due to operations"
         self.assertEqual(C.cell(data, "us", "ambassador", "standard", NOW),
-                         "Port closure reported")
+                         "Port closure reported; currency unverified")
         data["sources"]["cbp"]["retrieved_at"] = iso(65)
         self.assertEqual(C.cell(data, "us", "ambassador", "standard", NOW),
-                         "Old port status")
+                         "Port closure reported; currency unverified")
         data = sample()
         data["directions"]["us"]["tunnel"]["fast"]["observation_at"] = iso(67)
         self.assertEqual(C.cell(data, "us", "tunnel", "fast", NOW),
-                         "Older closure report")
+                         "Closure reported; currency unverified")
 
     def test_malformed_fields_and_future_timestamps(self):
         data = sample()
@@ -153,6 +153,26 @@ class SourceCoverageTests(unittest.TestCase):
             C.cell(data, "ca", "bluewater", "standard", NOW)
         with self.assertRaises(ValueError):
             C.cell(data, "us", "tunnel", "unknown", NOW)
+
+    def test_selected_history_and_count_bounds(self):
+        data = sample()
+        raw = data["directions"]["us"]["ambassador"]["standard"]
+        raw["observation_at"] = iso(20)
+        self.assertIn("Recent", C.cell(data, "us", "ambassador", "standard", NOW))
+        raw['source'] = 'DWT'
+        self.assertEqual(C.cell(data, 'us', 'ambassador', 'standard', NOW), 'Invalid source identity')
+        del raw['source']
+        raw["lanes_open"] = 101
+        self.assertIn("count unavailable", C.cell(data, "us", "ambassador", "standard", NOW))
+        raw["observation_at"] = iso(120)
+        self.assertEqual(C.cell(data, "us", "ambassador", "standard", NOW), "Observation expired")
+        raw["observation_at"] = iso(5)
+        data["sources"]["cbp"]["last_success_at"] = iso(120)
+        self.assertEqual(C.cell(data, "us", "ambassador", "standard", NOW), "Source/snapshot expired")
+        data["sources"]["cbp"].update(status="error", retained_previous=True, last_success_at=iso(5))
+        self.assertEqual(C.cell(data, "us", "ambassador", "standard", NOW), "Historical retained observation")
+        raw.update(status="closed", observation_at=None)
+        self.assertEqual(C.cell(data, "us", "ambassador", "standard", NOW), "Closure reported; currency unverified")
 
     def test_no_secrets_or_untrusted_notice_text_in_report(self):
         data = sample()
