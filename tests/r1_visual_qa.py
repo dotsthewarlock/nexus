@@ -9,6 +9,44 @@ current = qa.ROOT
 out = qa.OUT
 data = qa.snapshot()
 
+def audit_accessibility(page, selector):
+    """Check actual computed foreground/background and visible targets, not just token pairs."""
+    result=page.locator(selector).evaluate("""root => {
+        const colors=s=>{const m=s.match(/[\\d.]+/g);return m?m.map(Number):[]};
+        const lum=c=>c.slice(0,3).map(x=>{x/=255;return x<=.04045?x/12.92:((x+.055)/1.055)**2.4})
+            .reduce((a,x,i)=>a+x*[.2126,.7152,.0722][i],0);
+        const ratio=(a,b)=>(Math.max(lum(a),lum(b))+.05)/(Math.min(lum(a),lum(b))+.05);
+        const background=el=>{
+            for(let n=el;n;n=n.parentElement){
+                const c=colors(getComputedStyle(n).backgroundColor);
+                if(c.length>=3&&(c.length===3||c[3]===1))return c;
+            }
+            return [255,255,255];
+        };
+        const visible=el=>el.getClientRects().length&&getComputedStyle(el).visibility!=='hidden'
+            &&!el.closest('[hidden],dialog:not([open])');
+        const contrast=[],targets=[];let min=Infinity,checked=0;
+        for(const el of [root,...root.querySelectorAll('*')]){
+            if(!visible(el)||el.matches('option,svg *,script,style'))continue;
+            const st=getComputedStyle(el);
+            const directText=[...el.childNodes].some(n=>n.nodeType===3&&n.textContent.trim());
+            if(directText||el.matches('select')){
+                const value=ratio(colors(st.color),background(el));
+                checked++;min=Math.min(min,value);
+                if(value<4.5-.001)contrast.push({tag:el.tagName,id:el.id,cls:el.className,text:el.textContent.trim().slice(0,50),ratio:value});
+            }
+            if(el.matches('button,select,a[href],summary')){
+                const r=el.getBoundingClientRect();
+                if(r.width<47.5||r.height<47.5)targets.push({id:el.id,tag:el.tagName,text:el.textContent.trim().slice(0,50),w:r.width,h:r.height});
+            }
+        }
+        return {contrast,targets,min,checked};
+    }""")
+    assert not result["contrast"], f"Contrast failures: {result['contrast']}"
+    assert not result["targets"], f"Touch target failures: {result['targets']}"
+    assert result["checked"]>0
+    print(f"Computed text contrast {selector}: minimum {result['min']:.2f}:1; {result['checked']} text elements")
+
 def capture(browser, root, tag, width, theme, payload, large=False):
     qa.ROOT = root
     context = browser.new_context(viewport={"width":width,"height":844},
@@ -34,7 +72,18 @@ def capture(browser, root, tag, width, theme, payload, large=False):
                   const r=n.getBoundingClientRect(); return r.left>=b.left-1&&r.right<=b.right+1;
                 });
             })"""), "Numeric reading crosses cell bounds"
+    if tag.startswith("after"):
+        audit_accessibility(page,".app-shell")
     page.screenshot(path=str(out / f"r1-{tag}-{width}-{theme}.png"),full_page=True)
+    if tag=="after" and width==390:
+        page.locator('.wait-cell[data-crossing="tunnel"][data-direction="ca"]').click()
+        audit_accessibility(page,"#detailDialog")
+        page.locator("#detailClose").click()
+        page.locator("#settingsOpen").click()
+        audit_accessibility(page,"#settingsDialog")
+        page.locator("#sortToggle").click()
+        audit_accessibility(page,"#sortMenu")
+        page.locator("#settingsClose").click()
     context.close()
 
 with sync_playwright() as p:
