@@ -61,6 +61,7 @@
     const fresh=src.status==='ok'&&!src.retained_previous&&
       age(record.observation_at,now)<=MAX_OPERATOR_AGE&&
       age(src.retrieved_at,now)<=MAX_OPERATOR_AGE&&
+      age(src.last_success_at??src.retrieved_at,now)<=MAX_OPERATOR_AGE&&
       age(data.generated_at,now)<=SNAPSHOT_RECENT_AGE;
     if(!fresh)return {...base,kind:'stale',
       reason:'Operator report or its retrieval/publication is old or unavailable.'};

@@ -21,22 +21,76 @@ jobs:
           node-version: '22'
       - name: Python collector tests
         run: python -m unittest discover -s tests -v
-      - name: Decision engine tests
-        run: node tests/decision.test.cjs
-      - name: R2 shared model exact-boundary fixtures
-        run: node tests/r2_model.test.cjs
-      - name: Current scope excludes navigation and preserves core border dashboard
-        run: node tests/navigation_deferred.test.cjs
-      - name: M2c proposed independent scheduler offline safety tests
-        run: node tests/watchdog_m2c.test.cjs
-      - name: DWT operator NEXUS lane provenance and stale data tests
-        run: node tests/dwt_dashboard.test.cjs
-      - name: Approved M1 dual-direction dashboard checks
-        run: node tests/dashboard_m1.test.cjs
-      - name: Root dashboard source-state acceptance checks
-        run: node tests/dashboard_source_states.test.cjs
-      - name: Approved M3 paired-display and sort semantics fixtures
-        run: node tests/dashboard_m3.test.cjs
+      - name: Complete JavaScript regression suite (fail-closed aggregate)
+        run: |
+          failed=0
+          echo "::group::Decision engine tests"
+          node tests/decision.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::R2 shared model exact-boundary fixtures"
+          node tests/r2_model.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::Current scope excludes navigation and preserves core border dashboard"
+          node tests/navigation_deferred.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::M2c proposed independent scheduler offline safety tests"
+          node tests/watchdog_m2c.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::DWT operator NEXUS lane provenance and stale data tests"
+          node tests/dwt_dashboard.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::Approved M1 dual-direction dashboard checks"
+          node tests/dashboard_m1.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::Root dashboard source-state acceptance checks"
+          node tests/dashboard_source_states.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::Approved M3 paired-display and sort semantics fixtures"
+          node tests/dashboard_m3.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::M4a material notices and closure-priority regression checks"
+          node tests/notices_m4a.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::Three-crossing status dashboard tests"
+          node tests/status_board.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::Camera modal and NEXUS schedule tests"
+          node tests/camera_modal_board.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::Camera source regression tests"
+          node tests/camera_rc148.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::Standalone camera diagnostic tests"
+          node tests/camera_diagnostics.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::Alternative camera diagnostic tests"
+          node tests/camera_alternatives.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::DWT Camera Lab 3 tests"
+          node tests/camera_lab_v3.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::DWT camera navigation matrix tests"
+          node tests/camera_navigation.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::DWT modal viability lab tests"
+          node tests/camera_modal_viability.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::DWT player control lab tests"
+          node tests/camera_player_control.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::DWT miniature-to-modal lab tests"
+          node tests/camera_mini_modal.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::DWT one-tap crop lab tests"
+          node tests/camera_one_tap.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::DWT camera switch reliability lab tests"
+          node tests/camera_switch_reliability.test.cjs || failed=1
+          echo "::endgroup::"
+          echo "::group::Three-camera playback handoff diagnostic tests"
+          node tests/camera_playback_handoff.test.cjs || failed=1
+          echo "::endgroup::"
+          exit "$failed"
       - name: Prepare Chromium mobile QA
         run: |
           python -m pip install --disable-pip-version-check 'playwright==1.56.0'
@@ -64,31 +118,3 @@ jobs:
           path: qa-artifacts/
           if-no-files-found: ignore
           retention-days: 7
-      - name: M4a material notices and closure-priority regression checks
-        run: node tests/notices_m4a.test.cjs
-      - name: Three-crossing status dashboard tests
-        run: node tests/status_board.test.cjs
-      - name: Camera modal and NEXUS schedule tests
-        run: node tests/camera_modal_board.test.cjs
-      - name: Camera source regression tests
-        run: node tests/camera_rc148.test.cjs
-      - name: Standalone camera diagnostic tests
-        run: node tests/camera_diagnostics.test.cjs
-      - name: Alternative camera diagnostic tests
-        run: node tests/camera_alternatives.test.cjs
-      - name: DWT Camera Lab 3 tests
-        run: node tests/camera_lab_v3.test.cjs
-      - name: DWT camera navigation matrix tests
-        run: node tests/camera_navigation.test.cjs
-      - name: DWT modal viability lab tests
-        run: node tests/camera_modal_viability.test.cjs
-      - name: DWT player control lab tests
-        run: node tests/camera_player_control.test.cjs
-      - name: DWT miniature-to-modal lab tests
-        run: node tests/camera_mini_modal.test.cjs
-      - name: DWT one-tap crop lab tests
-        run: node tests/camera_one_tap.test.cjs
-      - name: DWT camera switch reliability lab tests
-        run: node tests/camera_switch_reliability.test.cjs
-      - name: Three-camera playback handoff diagnostic tests
-        run: node tests/camera_playback_handoff.test.cjs

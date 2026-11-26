@@ -121,9 +121,6 @@ def cell(data, direction, crossing, category, now):
                 (not reading.get("observation_at") or (observed is not None and observed <= 20))
                 else "Earlier agency N/A; applicability unverified")
 
-    if not recent_source:
-        return "Historical retained observation" if retained and observed is not None and observed < 120 else "Source/snapshot old"
-
     if status != "reported":
         return "Wait unavailable"
 
@@ -134,6 +131,8 @@ def cell(data, direction, crossing, category, now):
         return "Wait has no timestamp"
     if observed >= 120:
         return "Observation expired"
+    if not recent_source:
+        return "Historical retained observation" if retained else "Source/snapshot old"
     if observed > OBSERVATION_RECENT_MINUTES:
         return "Older observation (" + str(round(observed)) + "m)"
 

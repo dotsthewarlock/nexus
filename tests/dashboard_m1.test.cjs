@@ -119,7 +119,7 @@ api.store.sort='fixed';
 api.render();
 assert.match(node('noticeText').textContent,/Ambassador Bridge.*Canada.*CBSA reports port closed/);
 assert.equal(node('noticeOpen').dataset.direction,'ca','notice must preserve affected country direction');
-assert.equal(api.classify('ambassador','ca').kind,'closed','recent reported full-port closure must override numeric wait');
+assert.equal(api.classify('ambassador','ca').kind,'closure_unverified','undated reported port closure withholds conflicting numeric wait');
 assert.equal(node('noticesMore').hidden,true,'no more affordance for a single notice');
 assert.equal((node('crossingRows').innerHTML.match(/class="crossing-row"/g)||[]).length,3);
 assert.equal((node('crossingRows').innerHTML.match(/class="wait-cell"/g)||[]).length,6);

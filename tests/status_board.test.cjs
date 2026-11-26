@@ -158,7 +158,7 @@ assert.equal(api.entry(data.directions.us.ambassador.nexus,'nexus').display,'Clo
 assert.match(api.entry(data.directions.us.ambassador.nexus,'nexus').status,/Report time unknown/);
 data.directions.us.ambassador.standard=lane(0,26,2);
 api.setData(data);api.render();
-assert.doesNotMatch(node('crossingRows').innerHTML,/lanes (last report)/);
+assert.doesNotMatch(node('crossingRows').innerHTML,/lanes \(last report\)/);
 assert.match(node('crossingRows').innerHTML,/Reported 26m ago/);
 assert.doesNotMatch(node('crossingRows').innerHTML,/>—</,'never render dash placeholders');
 const expired=api.entry(lane(5,125,2),'regular');
