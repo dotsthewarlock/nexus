@@ -106,9 +106,9 @@ function cell(id,dir){
  const dwt=id==='tunnel'&&dir==='ca'&&store.vehicle==='passenger'&&store.lane==='nexus'&&v.kind!=='closed'
    ?D.dwtNexusLane?.(store.data,id,dir,'passenger','nexus',Date.now()):null;
  const operatorCurrent=dwt?.kind==='current'||dwt?.kind==='reported_zero';
- const operatorLabel=operatorCurrent?', DWT reports '+dwt.count+' NEXUS '+(dwt.count===1?'lane':'lanes')+' open':'';
+ const operatorLabel=operatorCurrent?', operator reports '+dwt.count+' NEXUS '+(dwt.count===1?'lane':'lanes')+' open':'';
  let visual='',laneCount='',sub='',kind=v.kind,spoken='';
- const wrap=document.documentElement?.dataset?.largeText==='true'||m.parts.some(p=>p.v.kind==='current'&&p.v.minutes>=100);
+ const wrap=document.documentElement?.dataset?.largeText==='true'||m.parts.some(p=>['current','stale'].includes(p.v.kind)&&p.v.minutes>=100);
  if(pairIsPortClosed(m)){
   kind='closed';visual='Closed';sub='Source-reported port closure';
   spoken='CBP reports this direction closed. ';
@@ -119,7 +119,11 @@ function cell(id,dir){
   if(wrap){
    visual='<span class="pair-stacked">'+m.parts.map(p=>'<span class="pair-stacked-row"><span class="pair-category">'+categoryLabel(p.category)+'</span><span class="pair-amount"'+partAttr(p.v)+'>'+escape(pairPiece(p.v))+(Number.isInteger(p.v.minutes)&&['current','stale'].includes(p.v.kind)?'<span class="wait-unit"> min</span>':'')+'</span></span>').join('')+'</span>';
   }else{
-   visual='<span class="pair-inline"><span class="pair-amount"'+partAttr(nx)+'>'+escape(pairPiece(nx))+'</span><span class="pair-separator"> / </span><span class="pair-amount"'+partAttr(reg)+'>'+escape(pairPiece(reg))+'</span><span class="wait-unit"> min</span></span>';
+   const numeric=p=>['current','stale'].includes(p.kind)&&Number.isInteger(p.minutes);
+   const unit='<span class="wait-unit"> min</span>';
+   visual='<span class="pair-inline"><span class="pair-amount"'+partAttr(nx)+'>'+escape(pairPiece(nx))+'</span>'+
+    (numeric(nx)&&!numeric(reg)?unit:'')+'<span class="pair-separator"> / </span><span class="pair-amount"'+partAttr(reg)+'>'+escape(pairPiece(reg))+'</span>'+
+    (numeric(reg)?unit:'')+'</span>';
   }
   const oldBoth=nx.kind==='stale'&&reg.kind==='stale'&&
    Number.isFinite(age(nx.raw?.observation_at))&&Number.isFinite(age(reg.raw?.observation_at))&&
@@ -134,7 +138,8 @@ function cell(id,dir){
     ', '+(countFor(p.v)===null?'lane count unreported':countFor(p.v)+' lanes reported')).join('; ')+'. ';
  }else{
   const sourceAge=v.raw?.observation_at&&Number.isFinite(age(v.raw.observation_at))?Math.round(age(v.raw.observation_at)):null;
-  laneCount=operatorCurrent?'<span class="lanes">'+dwt.count+' '+(dwt.count===1?'lane':'lanes')+' · DWT</span>'
+  // U20/U21: do not infer exclusive Regular counts from the Cars field.
+  laneCount=operatorCurrent?'<span class="lanes">'+dwt.count+' NEXUS '+(dwt.count===1?'lane':'lanes')+'</span>'
     :v.kind==='current'&&dir==='us'&&Number.isInteger(v.raw?.lanes_open)&&v.raw.lanes_open>=0
      ?'<span class="lanes">'+v.raw.lanes_open+' '+(v.raw.lanes_open===1?'lane':'lanes')+'</span>':'';
   sub=v.kind==='stale'?'Old report'+(sourceAge!==null?' · '+sourceAge+'m':''):
@@ -205,14 +210,17 @@ function renderNotices(){
 }
 function render(){
  const sort=sortStatus();
- $('caHeading').innerHTML='<span class="country-flag" aria-hidden="true">🇨🇦</span><span>To Canada</span>'+(store.sort==='ca'&&!sort.paused?' <span class="sort-arrow" aria-hidden="true">↓</span>':'');
- $('usHeading').innerHTML='<span class="country-flag" aria-hidden="true">🇺🇸</span><span>To USA</span>'+(store.sort==='us'&&!sort.paused?' <span class="sort-arrow" aria-hidden="true">↓</span>':'');
+ const paired=store.vehicle==='passenger'&&store.lane==='nexus';
+ const label=categoryLabel(store.lane);
+ const heading=(dir,country,category)=>'<span class="heading-country">'+country+'</span><span class="heading-category">'+escape(category)+'</span>'+
+  (store.sort===dir&&!sort.paused?' <span class="sort-arrow" aria-hidden="true">↓</span>':'');
+ $('caHeading').innerHTML=heading('ca','To Canada',paired?'General passenger':label);
+ $('usHeading').innerHTML=heading('us','To USA',paired?'NEXUS / Regular':label);
  const sortNames={fixed:'crossing order',ca:'lowest Canada wait',us:'lowest USA wait'};
  $('sortToggle').setAttribute('aria-label','Sort crossings; selected order: '+sortNames[store.sort]+(sort.paused?'; paused because no current qualifying waits':''));
  $('sortToggle').textContent='Sorting: '+({fixed:'Crossing order',ca:'Lowest Canada wait',us:'Lowest USA wait'}[store.sort])+(sort.paused?' (paused)':'')+' ▾';
  $('sortStatus').hidden=!sort.paused;
  $('sortStatus').textContent=sort.paused?'Sorting paused — no current '+sort.description+' waits. Old reports are not ranked.':'';
- $('pairLegend').hidden=!(store.vehicle==='passenger'&&store.lane==='nexus');
  $('sortHint').textContent='Whole crossing rows move together. '+(sort.paused?
    'Sorting is paused because there are no fresh eligible '+sort.description+' waits; current display stays in crossing order.':
    store.sort==='fixed'?'Fixed crossing order.':store.sort==='ca'?

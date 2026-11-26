@@ -7,15 +7,15 @@ const html=fs.readFileSync('index.html','utf8'),css=fs.readFileSync('dashboard.c
 new vm.Script(js);
 for(const id of ['crossingRows','caHeading','usHeading','sortToggle','sortMenu','sortStatus','vehicleSelect','laneSelect','themeToggle','settingsDialog','detailDialog','detailCa','detailUs','detailProvenance','detailAlert','diagnosticBody','notices','sourceDetails'])
  assert.ok(html.includes('id="'+id+'"'),'missing dashboard control '+id);
-for(const label of ['To Canada','To USA','Passenger','Commercial','Nexus <span class="brand-tail">- Commuter'])assert.ok(html.includes(label));
+for(const label of ['To Canada','To USA','Passenger','Commercial','Nexus Commuter Windsor-Detroit'])assert.ok(html.includes(label));
 assert.match(html,/class="mode-pill pill-vehicle"/);
 assert.match(html,/class="mode-pill pill-lane"/);
 assert.match(css,/\.wait-unit/);
-assert.match(html,/id="pairLegend"/);
+assert.doesNotMatch(html,/id="pairLegend"/);assert.match(html,/class="heading-category"/);
 assert.match(html,/id="sortToggle"/);
 assert.ok(html.indexOf('id="sortToggle"')>html.indexOf('id="settingsDialog"'), 'sorting belongs in Settings');
-assert.match(html,/dashboard\.js\?v=m3-stale2/);
-assert.match(html,/dashboard\.css\?v=m3-stale2/);
+assert.match(html,/dashboard\.js\?v=r1-v07-1/);
+assert.match(html,/dashboard\.css\?v=r1-v07-1/);
 assert.match(js,/const IDS=\['ambassador','tunnel','gordie'\]/);
 assert.match(js,/D\.reading\(raw,store\.data,Date\.now\(\)\)/);
 assert.match(js,/good\(x\)!==good\(y\)/);
